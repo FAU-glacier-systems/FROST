@@ -2,48 +2,90 @@ import argparse
 import json
 import subprocess
 import os
-import numpy as np
-import xarray as xr
-from scipy.ndimage import zoom
-from netCDF4 import Dataset
 import rasterio
 from rasterio.windows import from_bounds
 import math
+from netCDF4 import Dataset
+import numpy as np
+from scipy.ndimage import zoom
+from rasterio.merge import merge
+import matplotlib.pyplot as plt
 
 
-def scale_raster(input_file, scale_factor, output_file):
+def scale_raster(input_file, output_file, scale_factor):
     # Load the NetCDF file
-    ds = xr.open_dataset(input_file)
+    with Dataset(input_file, 'r') as input_ds:
+        # Downscale coordinates
+        new_x = input_ds.variables['x'][::int(1 / scale_factor)]
+        new_y = input_ds.variables['y'][::int(1 / scale_factor)]
 
-    # Downscale each data variable (assuming 2D or 3D arrays)
-    downscaled_data_vars = {}
-    for var in ds.data_vars:
-        data = ds[var].values
-        if data.ndim == 2:  # For 2D data
-            downscaled_data = zoom(data, zoom=scale_factor, order=0)
-        elif data.ndim == 3:  # For 3D data
-            downscaled_data = np.array(
-                [zoom(layer, zoom=scale_factor, order=0) for layer in data])
-        else:
-            raise ValueError(f'Unsupported data dimensions: {data.ndim}')
-        if var == 'icemask':
-            downscaled_data[downscaled_data >= 0.5] = 1
-            downscaled_data[downscaled_data < 0.5] = 0
-        downscaled_data_vars[var] = (ds[var].dims, downscaled_data)
+        # Create output NetCDF file
+        with Dataset(output_file, 'w') as scaled_ds:
+            # Create dimensions
+            scaled_ds.createDimension('x', len(new_x))
+            scaled_ds.createDimension('y', len(new_y))
 
-    # Create a new xarray dataset with the downscaled data
-    downscaled_ds = xr.Dataset(
-        downscaled_data_vars,
-        coords={
-            'y': np.linspace(ds.y.min(), ds.y.max(), downscaled_data.shape[-2]),
-            'x': np.linspace(ds.x.min(), ds.x.max(), downscaled_data.shape[-1]),
-            # Add other coordinates if needed
-        }
-    )
+            # Check if 'time' dimension exists
+            if 'time' in input_ds.dimensions:
+                scaled_ds.createDimension('time', len(input_ds.dimensions['time']))
+                time_var = scaled_ds.createVariable('time', 'f4', ('time',))
+                time_var[:] = input_ds.variables['time'][:]
+                time_var.setncatts({attr: input_ds.variables['time'].getncattr(attr)
+                                    for attr in input_ds.variables['time'].ncattrs()})
 
-    # Save the downscaled dataset to a new NetCDF file
-    downscaled_ds.to_netcdf(output_file)
-    print(f'Downscaled data saved to {output_file}')
+            # Create coordinate variables
+            x_var = scaled_ds.createVariable('x', 'f4', ('x',))
+            y_var = scaled_ds.createVariable('y', 'f4', ('y',))
+            x_var[:] = new_x
+            y_var[:] = new_y
+
+            # Copy attributes for x and y
+            x_var.setncatts(
+                {attr: input_ds.variables['x'].getncattr(attr) for attr in
+                 input_ds.variables['x'].ncattrs()})
+            y_var.setncatts(
+                {attr: input_ds.variables['y'].getncattr(attr) for attr in
+                 input_ds.variables['y'].ncattrs()})
+
+            # Copy other variables and downscale
+            for var_name in input_ds.variables:
+                if var_name in ['x', 'y', 'time']:
+                    continue
+
+                var = input_ds.variables[var_name]
+                dims = var.dimensions
+
+                # Create a new variable in the output dataset
+                scaled_var = scaled_ds.createVariable(var_name, var.datatype, dims)
+
+                # Downscale data if it has 'x' and 'y' dimensions
+                if 'x' in dims and 'y' in dims:
+                    scale_factors = [
+                        scale_factor if dim in ['y', 'x'] else 1
+                        for dim in dims
+                    ]
+                    scaled_data = zoom(var[:], scale_factors, order=0)
+                    scaled_var[:] = scaled_data
+                else:
+                    scaled_var[:] = var[:]
+
+                # Copy variable attributes
+                scaled_var.setncatts(
+                    {attr: var.getncattr(attr) for attr in var.ncattrs()})
+
+            # Copy global attributes (e.g., CRS, title, etc.)
+            scaled_ds.setncatts(
+                {attr: input_ds.getncattr(attr) for attr in input_ds.ncattrs()})
+
+            # Handle CRS explicitly, if available
+            if 'crs' in input_ds.variables:
+                crs_var = input_ds.variables['crs']
+                scaled_crs = scaled_ds.createVariable('crs', crs_var.datatype)
+                scaled_crs.setncatts(
+                    {attr: crs_var.getncattr(attr) for attr in crs_var.ncattrs()})
+                scaled_ds.variables['crs'] = crs_var[:]
+
+    print(f"Scaled raster saved to {output_file} with metadata.")
 
 
 # Function to handle the main logic
@@ -71,40 +113,79 @@ def download_OGGM_shop(rgi_id, scale_factor, rgi_id_directory):
     # Run the igm_run command
     subprocess.run(['igm_run', '--param_file', 'params.json'])
 
-    # scale the downloaded file
-    if scale_factor != 1:
-        scale_raster(input_file='input_saved.nc', scale_factor=scale_factor,
-                     output_file='input_scaled.nc')
     os.chdir(original_dir)
 
 
-def crop_hugonnet_to_glacier(hugonnet_dataset, oggm_shop_ds):
+def crop_hugonnet_to_glacier(date_range, tile_names, oggm_shop_ds):
+    """
+    Fuse multiple dh/dt tiles and crop to a specified OGGM dataset area.
+
+    Args:
+        date_range (str): The date range for the dh/dt dataset.
+        tile_names (list): List of tile names to process.
+        oggm_shop_ds (xarray.Dataset): OGGM dataset with spatial coordinates.
+
+    Returns:
+        np.ndarray: Cropped and filtered dh/dt map.
+    """
+    # Define the folder containing dh/dt files
+    folder_name = f'11_rgi60_{date_range}'
+    dhdt_folder = os.path.join('..', '..', 'Data', 'Hugonnet', folder_name, 'dhdt')
+    dhdt_err_folder = os.path.join('..', '..', 'Data', 'Hugonnet', folder_name, 'dhdt_err')
+
+    # Collect all dh/dt files for the specified tiles
+    dhdt_files = [os.path.join(dhdt_folder, f'{tile}_{date_range}_dhdt.tif') for tile
+                  in tile_names]
+    dhdt_err_files = [os.path.join(dhdt_err_folder,
+                                   f'{tile}_{date_range}_dhdt_err.tif')
+                      for tile in tile_names]
+
+    # Open all the dh/dt tiles and merge them
+    datasets = [rasterio.open(file) for file in dhdt_files]
+    datasets_err = [rasterio.open(file) for file in dhdt_err_files]
+
+    merged_map, merged_transform = merge(datasets)
+    merged_err_map, merged_err_transform = merge(datasets_err)
+
     # Get bounds of the OGGM shop dataset area
     area_x = oggm_shop_ds['x'][:]
     area_y = oggm_shop_ds['y'][:]
-
-    # Calculate the bounds from the min and max coordinates of oggm_shop_ds
     min_x, max_x = area_x.min(), area_x.max()
     min_y, max_y = area_y.min(), area_y.max()
 
-    # Define the window to crop the hugonnet dataset using these bounds
-    window = from_bounds(min_x, min_y, max_x, max_y, hugonnet_dataset.transform)
+    # Define the window to crop the merged dataset using these bounds
+    window = from_bounds(min_x, min_y, max_x, max_y, merged_transform)
 
-    # Read the data from the specified window (cropped area)
-    cropped_map = hugonnet_dataset.read(1, window=window)
+    # Ensure window indices are integers, and handle off-by-one errors
+    row_off = int(window.row_off)  # Ensure the row offset is an integer
+    col_off = int(window.col_off)  # Ensure the column offset is an integer
+    height = int(window.height)  # Ensure height is integer and within bounds
+    width = int(window.width)
+
+    # Crop the merged map using the calculated window
+    cropped_map = merged_map[0,  # Band 1
+                            row_off:row_off + height+1,
+                             col_off:col_off + width+1]
+
+    cropped_err_map = merged_err_map[0,
+                                     row_off:row_off + height+1,
+                                     col_off:col_off + width+1]
+
+    # Replace invalid values (-9999) with NaN
     filtered_map = np.where(cropped_map == -9999, np.nan, cropped_map)
+    filtered_err_map = np.where(cropped_err_map == -9999, np.nan, cropped_err_map)
 
-    return filtered_map
+    # Close all open datasets
+    for dataset in datasets:
+        dataset.close()
 
+    return filtered_map, filtered_err_map
 
 def download_hugonnet(scale_factor, rgi_id_dir, year_interval,
-                      tile_name):
+                      tile_names):
     oggm_shop_dir = os.path.join(rgi_id_dir, 'OGGM_shop')
 
-    if scale_factor != 1:
-        oggm_shop_file = os.path.join(oggm_shop_dir, 'input_scaled.nc')
-    else:
-        oggm_shop_file = os.path.join(oggm_shop_dir, 'input_saved.nc')
+    oggm_shop_file = os.path.join(oggm_shop_dir, 'input_saved.nc')
 
     # load file form oggm_shop
     oggm_shop_ds = Dataset(oggm_shop_file, 'r')
@@ -133,23 +214,14 @@ def download_hugonnet(scale_factor, rgi_id_dir, year_interval,
     for folder_name in folder_names:
         # load dhdt
         date_range = folder_name.split('_', 2)[-1]
-        dhdt_file = f'{tile_name}_{date_range}_dhdt.tif'
-        dhdt_path = os.path.join('..', '..', 'Data', 'Hugonnet', folder_name, 'dhdt',
-                                 dhdt_file)
-        with rasterio.open(dhdt_path) as dhdt_dataset:
-            cropped_dhdt = crop_hugonnet_to_glacier(dhdt_dataset, oggm_shop_ds)
-            dhdt_masked = cropped_dhdt[::-1] * icemask_2000
-            dhdts.append(dhdt_masked)
+        cropped_dhdt, cropped_dhdt_err = crop_hugonnet_to_glacier(date_range,
+                                                                  tile_names,
+                                                                  oggm_shop_ds)
+        dhdt_masked = cropped_dhdt[::-1] * icemask_2000
+        dhdts.append(dhdt_masked)
 
-        # load dhdt error
-        dhdt_err_file = dhdt_file.replace('.tif', '_err.tif')
-        dhdt_err_path = os.path.join('..', '..', 'Data', 'Hugonnet', folder_name,
-                                     'dhdt_err', dhdt_err_file)
-        with rasterio.open(dhdt_err_path) as dhdt_err_dataset:
-            cropped_dhdt_err = crop_hugonnet_to_glacier(dhdt_err_dataset,
-                                                        oggm_shop_ds)
-            dhdt_err_masked = cropped_dhdt_err[::-1] * icemask_2000
-            dhdts_err.append(dhdt_err_masked)
+        dhdt_err_masked = cropped_dhdt_err[::-1] * icemask_2000
+        dhdts_err.append(dhdt_err_masked)
 
     usurf_change = [usurf_2000]  # initialise with 2000 state
     thk_change = [thk_2000]
@@ -166,15 +238,20 @@ def download_hugonnet(scale_factor, rgi_id_dir, year_interval,
         # change the dhdt field every year_interval
         dhdt_index = math.floor(i / year_interval)
         dhdt = dhdts[dhdt_index]
+        dhdt = np.where(icemask_2000 == 1, dhdt, 0)
         dhdt_change.append(dhdt)
+
 
         # either bedrock or last usurf + current dhdt
         usurf = np.maximum(bedrock, usurf_change[-1] + dhdt)
         usurf_change.append(usurf)
-        thk_change.append(usurf - bedrock)
+        thk = usurf - bedrock
+        thk_change.append(thk)
+
 
         # compute uncertainty overtime
         dhdt_err = dhdts_err[dhdt_index]
+        dhdt_err= np.where(icemask_2000 == 1, dhdt_err, 0)
         dhdt_err_change.append(dhdt_err)
 
         # assuming the error is termporal independet
@@ -265,7 +342,9 @@ if __name__ == '__main__':
     # select between 5-year or 20-year dhdt
     parser.add_argument('--year_interval', type=int, default=5,
                         help='Select between 5-year or 20-year dhdt (5, 20)')
-    parser.add_argument('--tile_name', type=str, default='N46E008')
+    parser.add_argument('--tile_names', type=str, default='N46E008',
+                        nargs='+',
+                        help='Specify one or more tile names (e.g. N46E008 N46E007)')
 
     # Parse arguments
     args = parser.parse_args()
@@ -284,7 +363,16 @@ if __name__ == '__main__':
         print(f"  Scale factor: {args.scale_factor}")
         print(f"  RGI directory: {rgi_id_dir}")
         print(f"  Year interval: {args.year_interval}")
-        print(f"  Tile name: {args.tile_name}")
+        print(f"  Tile name: {args.tile_names}")
         download_hugonnet(args.scale_factor, rgi_id_dir, args.year_interval,
-                          args.tile_name)
+                          args.tile_names)
         print("Hugonnet data download completed.")
+
+    if args.scale_factor != 1.0:
+        scale_raster(
+            os.path.join(rgi_id_dir, 'OGGM_shop', 'input_saved.nc'),
+            os.path.join(rgi_id_dir, 'OGGM_shop', 'input_scaled.nc'),
+            args.scale_factor)
+        scale_raster(os.path.join(rgi_id_dir, 'observations.nc'),
+                     os.path.join(rgi_id_dir, 'observations_scaled.nc'),
+                     args.scale_factor)

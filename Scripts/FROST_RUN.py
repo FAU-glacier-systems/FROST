@@ -26,11 +26,14 @@ if __name__ == "__main__":
                         default="RGI2000-v7.0-G-11-01706",
                         help="RGI ID of the glacier for the model.")
 
-    parser.add_argument('--year_interval', type=int,
-                        default=5,
+    parser.add_argument('--year_interval', type=int, default=5,
                         help="Select between 5-year or 20-year dhdt (5, 20)")
 
-    parser.add_argument('--seed', type=int,)
+    parser.add_argument("-i", "--inflation", type=float,
+                        default='1', help="Inflation rate for the model." )
+
+    parser.add_argument('--seed', type=int, default=1,
+                        help="Random seed for the model.")
 
     # Parse arguments
     args = parser.parse_args()
