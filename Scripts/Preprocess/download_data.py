@@ -25,7 +25,7 @@ def scale_raster(input_file, scale_factor, output_file):
             downscaled_data = np.array(
                 [zoom(layer, zoom=scale_factor, order=0) for layer in data])
         else:
-            raise ValueError(f"Unsupported data dimensions: {data.ndim}")
+            raise ValueError(f'Unsupported data dimensions: {data.ndim}')
         if var == 'icemask':
             downscaled_data[downscaled_data >= 0.5] = 1
             downscaled_data[downscaled_data < 0.5] = 0
@@ -43,43 +43,39 @@ def scale_raster(input_file, scale_factor, output_file):
 
     # Save the downscaled dataset to a new NetCDF file
     downscaled_ds.to_netcdf(output_file)
-    print(f"Downscaled data saved to {output_file}")
+    print(f'Downscaled data saved to {output_file}')
 
 
 # Function to handle the main logic
 def download_OGGM_shop(rgi_id, scale_factor, rgi_id_directory):
     # Define the params to be saved in params.json
-    params = {
-        "modules_preproc": ["oggm_shop"],
-        "modules_process": [],
-        "modules_postproc": [],
-        "oggm_RGI_version": 7,
-        "oggm_RGI_product": "G",
-        "oggm_thk_source": "millan_ice_thickness",
-        "oggm_incl_glathida": True,
-        "oggm_RGI_ID": rgi_id
-    }
+    json_file_path = os.path.join('..', '..', 'Experiments', rgi_id,
+                                  'params_download.json')
+    with open(json_file_path, 'r') as file:
+        params = json.load(file)
 
     # Check if the directory exists, and create it if not
-    oggm_shop_dir = os.path.join(rgi_id_dir, "OGGM_shop")
+    oggm_shop_dir = os.path.join(rgi_id_dir, 'OGGM_shop')
 
     if not os.path.exists(oggm_shop_dir):
         os.makedirs(oggm_shop_dir)
 
         # Change directory to the correct location
+    original_dir = os.getcwd()
     os.chdir(oggm_shop_dir)
 
     # Write the params dictionary to the params.json file
-    with open("params.json", 'w') as json_file:
+    with open('params.json', 'w') as json_file:
         json.dump(params, json_file, indent=4)
 
     # Run the igm_run command
-    subprocess.run(["igm_run", "--param_file", "params.json"])
+    subprocess.run(['igm_run', '--param_file', 'params.json'])
 
     # scale the downloaded file
     if scale_factor != 1:
-        scale_raster(input_file="input_saved.nc", scale_factor=scale_factor,
-                     output_file="input_scaled.nc")
+        scale_raster(input_file='input_saved.nc', scale_factor=scale_factor,
+                     output_file='input_scaled.nc')
+    os.chdir(original_dir)
 
 
 def crop_hugonnet_to_glacier(hugonnet_dataset, oggm_shop_ds):
@@ -101,14 +97,14 @@ def crop_hugonnet_to_glacier(hugonnet_dataset, oggm_shop_ds):
     return filtered_map
 
 
-def download_hugonnet(scale_factor, rgi_id_dir, time_period,
+def download_hugonnet(scale_factor, rgi_id_dir, year_interval,
                       tile_name):
-    oggm_shop_dir = os.path.join(rgi_id_dir, "OGGM_shop")
+    oggm_shop_dir = os.path.join(rgi_id_dir, 'OGGM_shop')
 
     if scale_factor != 1:
-        oggm_shop_file = os.path.join(oggm_shop_dir, "input_scaled.nc")
+        oggm_shop_file = os.path.join(oggm_shop_dir, 'input_scaled.nc')
     else:
-        oggm_shop_file = os.path.join(oggm_shop_dir, "input_saved.nc")
+        oggm_shop_file = os.path.join(oggm_shop_dir, 'input_saved.nc')
 
     # load file form oggm_shop
     oggm_shop_ds = Dataset(oggm_shop_file, 'r')
@@ -117,10 +113,10 @@ def download_hugonnet(scale_factor, rgi_id_dir, time_period,
     thk_2000 = oggm_shop_ds['thkinit'][:]
 
     # list folder names depending on time period
-    if time_period == 20:
+    if year_interval == 20:
         folder_names = ['11_rgi60_2000-01-01_2020-01-01']
 
-    elif time_period == 5:
+    elif year_interval == 5:
         folder_names = ['11_rgi60_2000-01-01_2005-01-01',
                         '11_rgi60_2005-01-01_2010-01-01',
                         '11_rgi60_2010-01-01_2015-01-01',
@@ -128,26 +124,27 @@ def download_hugonnet(scale_factor, rgi_id_dir, time_period,
 
     else:
         raise ValueError(
-            "Invalid time period: {}. Please choose either 5 or 20.".format(
-                time_period))
+            'Invalid time period: {}. Please choose either 5 or 20.'.format(
+                year_interval))
 
     # load dhdts data sets
     dhdts = []
     dhdts_err = []
     for folder_name in folder_names:
         # load dhdt
-        date_range = folder_name.split("_", 2)[-1]
-        dhdt_file = output_filename = f"{tile_name}_{date_range}_dhdt.tif"
-        dhdt_path = os.path.join('../Hugonnet', folder_name, 'dhdt', dhdt_file)
+        date_range = folder_name.split('_', 2)[-1]
+        dhdt_file = f'{tile_name}_{date_range}_dhdt.tif'
+        dhdt_path = os.path.join('..', '..', 'Data', 'Hugonnet', folder_name, 'dhdt',
+                                 dhdt_file)
         with rasterio.open(dhdt_path) as dhdt_dataset:
             cropped_dhdt = crop_hugonnet_to_glacier(dhdt_dataset, oggm_shop_ds)
             dhdt_masked = cropped_dhdt[::-1] * icemask_2000
             dhdts.append(dhdt_masked)
 
         # load dhdt error
-        dhdt_err_file = dhdt_file.replace(".tif", "_err.tif")
-        dhdt_err_path = os.path.join('../Hugonnet', folder_name, 'dhdt_err',
-                                     dhdt_err_file)
+        dhdt_err_file = dhdt_file.replace('.tif', '_err.tif')
+        dhdt_err_path = os.path.join('..', '..', 'Data', 'Hugonnet', folder_name,
+                                     'dhdt_err', dhdt_err_file)
         with rasterio.open(dhdt_err_path) as dhdt_err_dataset:
             cropped_dhdt_err = crop_hugonnet_to_glacier(dhdt_err_dataset,
                                                         oggm_shop_ds)
@@ -166,8 +163,8 @@ def download_hugonnet(scale_factor, rgi_id_dir, time_period,
 
     for i, year in enumerate(year_range[1:]):
         # compute surface change based on dhdt and provide uncertainties
-        # change the dhdt field every time_period
-        dhdt_index = math.floor(i / time_period)
+        # change the dhdt field every year_interval
+        dhdt_index = math.floor(i / year_interval)
         dhdt = dhdts[dhdt_index]
         dhdt_change.append(dhdt)
 
@@ -201,7 +198,7 @@ def download_hugonnet(scale_factor, rgi_id_dir, time_period,
     smb = np.zeros_like(dhdt)
 
     # Create a new netCDF file
-    observation_file = os.path.join(rgi_id_dir, "observations.nc")
+    observation_file = os.path.join(rgi_id_dir, 'observations.nc')
     with Dataset(observation_file, 'w') as merged_ds:
         # Create dimensions
         merged_ds.createDimension('time', len(year_range))
@@ -239,47 +236,55 @@ def download_hugonnet(scale_factor, rgi_id_dir, time_period,
         velsurf_mag_var[:] = velo
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     # Parse command-line arguments
     parser = argparse.ArgumentParser(
-        description="This script generates params.json for downloading data with "
-                    "oggm shop as the igm module and runs igm_run."
+        description='This script generates params.json for downloading data with '
+                    'oggm shop as the igm module and runs igm_run.'
     )
 
     # Add argument for RGI ID
     parser.add_argument('--rgi_id', type=str,
-                        default="RGI2000-v7.0-G-11-01706",
-                        help="The RGI ID of the glacier to be calibrated "
-                             "(default: RGI2000-v7.0-G-11-01706).")
+                        default='RGI2000-v7.0-G-11-01706',
+                        help='The RGI ID of the glacier to be calibrated '
+                             '(default: RGI2000-v7.0-G-11-01706).')
 
     # Add argument for scale factor
     parser.add_argument('--scale_factor', type=float,
                         default=1.0,
-                        help="Factor to scale the resolution of the glacier. "
-                             "OGGM scales the resolution according to the glacier "
-                             "size.")
+                        help='Factor to scale the resolution of the glacier. '
+                             'OGGM scales the resolution according to the glacier '
+                             'size.')
 
     # Add flags to control function execution
     parser.add_argument('--download_oggm_shop', action='store_true',
-                        help="Flag to control execution of download_OGGM_shop.")
+                        help='Flag to control execution of download_OGGM_shop.')
     parser.add_argument('--download_hugonnet', action='store_true',
-                        help="Flag to control execution of download_Hugonnet.")
+                        help='Flag to control execution of download_Hugonnet.')
 
     # select between 5-year or 20-year dhdt
-    parser.add_argument('--time_period', type=int, default=5,
-                        help=" select between 5-year or 20-year dhdt (5, 20)")
-    parser.add_argument("--tile_name", type=str, default="N46E008")
+    parser.add_argument('--year_interval', type=int, default=5,
+                        help='Select between 5-year or 20-year dhdt (5, 20)')
+    parser.add_argument('--tile_name', type=str, default='N46E008')
 
     # Parse arguments
     args = parser.parse_args()
 
     # Define the path using os.path.join
-    rgi_id_dir = os.path.join("../Glaciers", args.rgi_id)
+    rgi_id_dir = os.path.join('..', '..', 'Data', 'Glaciers', args.rgi_id)
 
     # Call functions based on flags
     if args.download_oggm_shop:
+        print(f"Downloading OGGM shop data for RGI ID: {args.rgi_id}...")
         download_OGGM_shop(args.rgi_id, args.scale_factor, rgi_id_dir)
+        print("OGGM shop data download completed.")
 
     if args.download_hugonnet:
-        download_hugonnet(args.scale_factor, rgi_id_dir, args.time_period,
+        print(f"Downloading Hugonnet data with the following parameters:")
+        print(f"  Scale factor: {args.scale_factor}")
+        print(f"  RGI directory: {rgi_id_dir}")
+        print(f"  Year interval: {args.year_interval}")
+        print(f"  Tile name: {args.tile_name}")
+        download_hugonnet(args.scale_factor, rgi_id_dir, args.year_interval,
                           args.tile_name)
+        print("Hugonnet data download completed.")

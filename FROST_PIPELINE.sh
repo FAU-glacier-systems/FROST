@@ -31,18 +31,18 @@ echo "Running pipeline for RGI ID: $rgi_id"
 # 1. Download data with OGGM_shop (if --download is set)
 if [ "$download" = true ]; then
     echo "Downloading data..."
-    pushd Preprocess
+    pushd Scripts/Preprocess
     python download_data.py --rgi_id "$rgi_id" --scale_factor $scale_factor \
     --download_oggm_shop --download_hugonnet
-    popd
+    popd && popd
 fi
 
 # 3. IGM inversion step (if --inversion is set)
 if [ "$inversion" = true ]; then
     echo "Starting IGM inversion..."
-    pushd Preprocess
+    pushd Scripts/Preprocess
     python igm_inversion.py --rgi_id "$rgi_id"
-    popd
+    popd && popd
 fi
 
 # 4. Calibration step (if --calibrate is set)
