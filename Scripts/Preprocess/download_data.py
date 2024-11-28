@@ -9,15 +9,15 @@ from netCDF4 import Dataset
 import numpy as np
 from scipy.ndimage import zoom
 from rasterio.merge import merge
-import matplotlib.pyplot as plt
+import utm
 
 
 def scale_raster(input_file, output_file, scale_factor):
     # Load the NetCDF file
     with Dataset(input_file, 'r') as input_ds:
         # Downscale coordinates
-        new_x = input_ds.variables['x'][::int(1 / scale_factor)]
-        new_y = input_ds.variables['y'][::int(1 / scale_factor)]
+        new_x = zoom(input_ds.variables['x'][:], scale_factor, order=1)
+        new_y = zoom(input_ds.variables['y'][:], scale_factor, order=1)
 
         # Create output NetCDF file
         with Dataset(output_file, 'w') as scaled_ds:
@@ -31,7 +31,8 @@ def scale_raster(input_file, output_file, scale_factor):
                 time_var = scaled_ds.createVariable('time', 'f4', ('time',))
                 time_var[:] = input_ds.variables['time'][:]
                 time_var.setncatts({attr: input_ds.variables['time'].getncattr(attr)
-                                    for attr in input_ds.variables['time'].ncattrs()})
+                                    for attr in
+                                    input_ds.variables['time'].ncattrs()})
 
             # Create coordinate variables
             x_var = scaled_ds.createVariable('x', 'f4', ('x',))
@@ -89,7 +90,7 @@ def scale_raster(input_file, output_file, scale_factor):
 
 
 # Function to handle the main logic
-def download_OGGM_shop(rgi_id, scale_factor, rgi_id_directory):
+def download_OGGM_shop(rgi_id):
     # Define the params to be saved in params.json
     json_file_path = os.path.join('..', '..', 'Experiments', rgi_id,
                                   'params_download.json')
@@ -113,16 +114,26 @@ def download_OGGM_shop(rgi_id, scale_factor, rgi_id_directory):
     # Run the igm_run command
     subprocess.run(['igm_run', '--param_file', 'params.json'])
 
+    with Dataset('input_saved.nc', 'r') as scaled_ds:
+        x = scaled_ds.variables['x'][:]
+        resolution = abs(x[1] - x[2])
+        print(resolution)
+        if resolution != 100:
+            scale_factor = resolution / 100
+            print(scale_factor)
+            scale_raster('input_saved.nc', 'input_scaled.nc', scale_factor)
+            os.remove('input_saved.nc')
+            os.rename('input_scaled.nc', 'input_saved.nc')
+
     os.chdir(original_dir)
 
 
-def crop_hugonnet_to_glacier(date_range, tile_names, oggm_shop_ds):
+def crop_hugonnet_to_glacier(date_range, oggm_shop_ds):
     """
     Fuse multiple dh/dt tiles and crop to a specified OGGM dataset area.
 
     Args:
         date_range (str): The date range for the dh/dt dataset.
-        tile_names (list): List of tile names to process.
         oggm_shop_ds (xarray.Dataset): OGGM dataset with spatial coordinates.
 
     Returns:
@@ -131,7 +142,32 @@ def crop_hugonnet_to_glacier(date_range, tile_names, oggm_shop_ds):
     # Define the folder containing dh/dt files
     folder_name = f'11_rgi60_{date_range}'
     dhdt_folder = os.path.join('..', '..', 'Data', 'Hugonnet', folder_name, 'dhdt')
-    dhdt_err_folder = os.path.join('..', '..', 'Data', 'Hugonnet', folder_name, 'dhdt_err')
+    dhdt_err_folder = os.path.join('..', '..', 'Data', 'Hugonnet', folder_name,
+                                   'dhdt_err')
+
+    # Extract UTM coordinates from the NetCDF file (adjust according to your dataset)
+    x_coords = oggm_shop_ds['x'][:]
+    y_coords = oggm_shop_ds['y'][:]
+    min_x, max_x = x_coords.min(), x_coords.max()
+    min_y, max_y = y_coords.min(), y_coords.max()
+    # UTM northing
+
+    lat_lon_corner = utm.to_latlon(np.array([min_x, min_x, max_x, max_x]),
+                                   np.array([min_y, max_y, min_y, max_y]),
+                                   32, 'N')
+
+    min_lat, max_lat = min(lat_lon_corner[0]), max(lat_lon_corner[0])
+    min_lon, max_lon = min(lat_lon_corner[1]), max(lat_lon_corner[1])
+
+    # Create a list to store overlapping tile names
+    tile_names = []
+
+    # Iterate over possible tiles
+    for lat in range(int(min_lat), int(max_lat) + 1):
+        for lon in range(int(min_lon), int(max_lon) + 1):
+            # Construct the tile name
+            tile_name = f'N{lat:02d}E{lon:03d}'
+            tile_names.append(tile_name)
 
     # Collect all dh/dt files for the specified tiles
     dhdt_files = [os.path.join(dhdt_folder, f'{tile}_{date_range}_dhdt.tif') for tile
@@ -147,29 +183,23 @@ def crop_hugonnet_to_glacier(date_range, tile_names, oggm_shop_ds):
     merged_map, merged_transform = merge(datasets)
     merged_err_map, merged_err_transform = merge(datasets_err)
 
-    # Get bounds of the OGGM shop dataset area
-    area_x = oggm_shop_ds['x'][:]
-    area_y = oggm_shop_ds['y'][:]
-    min_x, max_x = area_x.min(), area_x.max()
-    min_y, max_y = area_y.min(), area_y.max()
-
     # Define the window to crop the merged dataset using these bounds
     window = from_bounds(min_x, min_y, max_x, max_y, merged_transform)
 
     # Ensure window indices are integers, and handle off-by-one errors
-    row_off = int(window.row_off)  # Ensure the row offset is an integer
-    col_off = int(window.col_off)  # Ensure the column offset is an integer
-    height = int(window.height)  # Ensure height is integer and within bounds
-    width = int(window.width)
+    row_off = round(window.row_off)  # Ensure the row offset is an integer
+    col_off = round(window.col_off)  # Ensure the column offset is an integer
+    height = len(y_coords)  # Ensure height is integer and within bounds
+    width = len(x_coords)
 
     # Crop the merged map using the calculated window
-    cropped_map = merged_map[0,  # Band 1
-                            row_off:row_off + height+1,
-                             col_off:col_off + width+1]
+    cropped_map = merged_map[0,
+                  row_off:row_off + height,
+                  col_off:col_off + width]
 
     cropped_err_map = merged_err_map[0,
-                                     row_off:row_off + height+1,
-                                     col_off:col_off + width+1]
+                      row_off:row_off + height,
+                      col_off:col_off + width]
 
     # Replace invalid values (-9999) with NaN
     filtered_map = np.where(cropped_map == -9999, np.nan, cropped_map)
@@ -181,8 +211,8 @@ def crop_hugonnet_to_glacier(date_range, tile_names, oggm_shop_ds):
 
     return filtered_map, filtered_err_map
 
-def download_hugonnet(scale_factor, rgi_id_dir, year_interval,
-                      tile_names):
+
+def download_hugonnet(rgi_id_dir, year_interval):
     oggm_shop_dir = os.path.join(rgi_id_dir, 'OGGM_shop')
 
     oggm_shop_file = os.path.join(oggm_shop_dir, 'input_saved.nc')
@@ -214,8 +244,9 @@ def download_hugonnet(scale_factor, rgi_id_dir, year_interval,
     for folder_name in folder_names:
         # load dhdt
         date_range = folder_name.split('_', 2)[-1]
+
+        ### MERGE TILES AND CROP to oggmshop area ###
         cropped_dhdt, cropped_dhdt_err = crop_hugonnet_to_glacier(date_range,
-                                                                  tile_names,
                                                                   oggm_shop_ds)
         dhdt_masked = cropped_dhdt[::-1] * icemask_2000
         dhdts.append(dhdt_masked)
@@ -241,17 +272,15 @@ def download_hugonnet(scale_factor, rgi_id_dir, year_interval,
         dhdt = np.where(icemask_2000 == 1, dhdt, 0)
         dhdt_change.append(dhdt)
 
-
         # either bedrock or last usurf + current dhdt
         usurf = np.maximum(bedrock, usurf_change[-1] + dhdt)
         usurf_change.append(usurf)
         thk = usurf - bedrock
         thk_change.append(thk)
 
-
         # compute uncertainty overtime
         dhdt_err = dhdts_err[dhdt_index]
-        dhdt_err= np.where(icemask_2000 == 1, dhdt_err, 0)
+        dhdt_err = np.where(icemask_2000 == 1, dhdt_err, 0)
         dhdt_err_change.append(dhdt_err)
 
         # assuming the error is termporal independet
@@ -329,9 +358,7 @@ if __name__ == '__main__':
     # Add argument for scale factor
     parser.add_argument('--scale_factor', type=float,
                         default=1.0,
-                        help='Factor to scale the resolution of the glacier. '
-                             'OGGM scales the resolution according to the glacier '
-                             'size.')
+                        help='1.0 mean 100m resolution, 0.5 mean 200m resolution, ')
 
     # Add flags to control function execution
     parser.add_argument('--download_oggm_shop', action='store_true',
@@ -342,9 +369,6 @@ if __name__ == '__main__':
     # select between 5-year or 20-year dhdt
     parser.add_argument('--year_interval', type=int, default=5,
                         help='Select between 5-year or 20-year dhdt (5, 20)')
-    parser.add_argument('--tile_names', type=str, default='N46E008',
-                        nargs='+',
-                        help='Specify one or more tile names (e.g. N46E008 N46E007)')
 
     # Parse arguments
     args = parser.parse_args()
@@ -355,24 +379,25 @@ if __name__ == '__main__':
     # Call functions based on flags
     if args.download_oggm_shop:
         print(f"Downloading OGGM shop data for RGI ID: {args.rgi_id}...")
-        download_OGGM_shop(args.rgi_id, args.scale_factor, rgi_id_dir)
+        download_OGGM_shop(args.rgi_id)
         print("OGGM shop data download completed.")
 
     if args.download_hugonnet:
         print(f"Downloading Hugonnet data with the following parameters:")
-        print(f"  Scale factor: {args.scale_factor}")
+
         print(f"  RGI directory: {rgi_id_dir}")
         print(f"  Year interval: {args.year_interval}")
-        print(f"  Tile name: {args.tile_names}")
-        download_hugonnet(args.scale_factor, rgi_id_dir, args.year_interval,
-                          args.tile_names)
+        download_hugonnet(rgi_id_dir, args.year_interval)
         print("Hugonnet data download completed.")
+
+    print(f"  Scale factor: {args.scale_factor}")
 
     if args.scale_factor != 1.0:
         scale_raster(
             os.path.join(rgi_id_dir, 'OGGM_shop', 'input_saved.nc'),
             os.path.join(rgi_id_dir, 'OGGM_shop', 'input_scaled.nc'),
             args.scale_factor)
+
         scale_raster(os.path.join(rgi_id_dir, 'observations.nc'),
                      os.path.join(rgi_id_dir, 'observations_scaled.nc'),
                      args.scale_factor)

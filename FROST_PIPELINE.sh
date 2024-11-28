@@ -7,8 +7,9 @@ conda activate igm
 
 # Default value for rgi_id
 rgi_id="RGI2000-v7.0-G-11-01706"
+tile_name="N46E008"
 download=false
-scale_factor=0.5
+scale_factor=1
 inversion=false
 calibrate=false
 
@@ -34,7 +35,7 @@ if [ "$download" = true ]; then
     pushd Scripts/Preprocess
     python download_data.py --rgi_id "$rgi_id" --scale_factor $scale_factor \
     --download_oggm_shop --download_hugonnet
-    popd && popd
+    popd
 fi
 
 # 3. IGM inversion step (if --inversion is set)
@@ -42,7 +43,7 @@ if [ "$inversion" = true ]; then
     echo "Starting IGM inversion..."
     pushd Scripts/Preprocess
     python igm_inversion.py --rgi_id "$rgi_id"
-    popd && popd
+    popd
 fi
 
 # 4. Calibration step (if --calibrate is set)

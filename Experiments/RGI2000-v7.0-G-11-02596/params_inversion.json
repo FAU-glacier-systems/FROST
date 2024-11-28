@@ -3,7 +3,7 @@
         "modules_process": ["iceflow"],
         "modules_postproc": [],
         "iflo_run_data_assimilation": true,
-        "lncd_input_file": "../OGGM_shop/input_scaled.nc",
+        "lncd_input_file": "../OGGM_shop/input_saved.nc",
         "opti_control": ["thk", "usurf","slidingco"],
         "opti_cost": ["velsurf","icemask", "usurf", "thk", "divfluxfcz"],
         "opti_usurfobs_std"			: 0.3,
