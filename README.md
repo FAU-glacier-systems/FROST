@@ -1,2 +1,2 @@
 # FROST
-Filtering Remote-sensing Observations for Surface Mass Balance Tuning
+Framwork for assimilating Remote-sensing Observations for Surface Mass Balance Tuning
