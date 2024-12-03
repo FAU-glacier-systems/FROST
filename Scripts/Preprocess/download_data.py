@@ -14,50 +14,50 @@ import utm
 
 def scale_raster(input_file, output_file, scale_factor):
     # Load the NetCDF file
-    with Dataset(input_file, 'r') as input_ds:
+    with Dataset(input_file, 'r') as input_dataset:
         # Downscale coordinates
-        new_x = zoom(input_ds.variables['x'][:], scale_factor, order=1)
-        new_y = zoom(input_ds.variables['y'][:], scale_factor, order=1)
+        new_x = zoom(input_dataset.variables['x'][:], scale_factor, order=1)
+        new_y = zoom(input_dataset.variables['y'][:], scale_factor, order=1)
 
         # Create output NetCDF file
-        with Dataset(output_file, 'w') as scaled_ds:
+        with Dataset(output_file, 'w') as scaled_dataset:
             # Create dimensions
-            scaled_ds.createDimension('x', len(new_x))
-            scaled_ds.createDimension('y', len(new_y))
+            scaled_dataset.createDimension('x', len(new_x))
+            scaled_dataset.createDimension('y', len(new_y))
 
             # Check if 'time' dimension exists
-            if 'time' in input_ds.dimensions:
-                scaled_ds.createDimension('time', len(input_ds.dimensions['time']))
-                time_var = scaled_ds.createVariable('time', 'f4', ('time',))
-                time_var[:] = input_ds.variables['time'][:]
-                time_var.setncatts({attr: input_ds.variables['time'].getncattr(attr)
+            if 'time' in input_dataset.dimensions:
+                scaled_dataset.createDimension('time', len(input_dataset.dimensions['time']))
+                time_var = scaled_dataset.createVariable('time', 'f4', ('time',))
+                time_var[:] = input_dataset.variables['time'][:]
+                time_var.setncatts({attr: input_dataset.variables['time'].getncattr(attr)
                                     for attr in
-                                    input_ds.variables['time'].ncattrs()})
+                                    input_dataset.variables['time'].ncattrs()})
 
             # Create coordinate variables
-            x_var = scaled_ds.createVariable('x', 'f4', ('x',))
-            y_var = scaled_ds.createVariable('y', 'f4', ('y',))
+            x_var = scaled_dataset.createVariable('x', 'f4', ('x',))
+            y_var = scaled_dataset.createVariable('y', 'f4', ('y',))
             x_var[:] = new_x
             y_var[:] = new_y
 
             # Copy attributes for x and y
             x_var.setncatts(
-                {attr: input_ds.variables['x'].getncattr(attr) for attr in
-                 input_ds.variables['x'].ncattrs()})
+                {attr: input_dataset.variables['x'].getncattr(attr) for attr in
+                 input_dataset.variables['x'].ncattrs()})
             y_var.setncatts(
-                {attr: input_ds.variables['y'].getncattr(attr) for attr in
-                 input_ds.variables['y'].ncattrs()})
+                {attr: input_dataset.variables['y'].getncattr(attr) for attr in
+                 input_dataset.variables['y'].ncattrs()})
 
             # Copy other variables and downscale
-            for var_name in input_ds.variables:
+            for var_name in input_dataset.variables:
                 if var_name in ['x', 'y', 'time']:
                     continue
 
-                var = input_ds.variables[var_name]
+                var = input_dataset.variables[var_name]
                 dims = var.dimensions
 
                 # Create a new variable in the output dataset
-                scaled_var = scaled_ds.createVariable(var_name, var.datatype, dims)
+                scaled_var = scaled_dataset.createVariable(var_name, var.datatype, dims)
 
                 # Downscale data if it has 'x' and 'y' dimensions
                 if 'x' in dims and 'y' in dims:
@@ -75,16 +75,16 @@ def scale_raster(input_file, output_file, scale_factor):
                     {attr: var.getncattr(attr) for attr in var.ncattrs()})
 
             # Copy global attributes (e.g., CRS, title, etc.)
-            scaled_ds.setncatts(
-                {attr: input_ds.getncattr(attr) for attr in input_ds.ncattrs()})
+            scaled_dataset.setncatts(
+                {attr: input_dataset.getncattr(attr) for attr in input_dataset.ncattrs()})
 
             # Handle CRS explicitly, if available
-            if 'crs' in input_ds.variables:
-                crs_var = input_ds.variables['crs']
-                scaled_crs = scaled_ds.createVariable('crs', crs_var.datatype)
+            if 'crs' in input_dataset.variables:
+                crs_var = input_dataset.variables['crs']
+                scaled_crs = scaled_dataset.createVariable('crs', crs_var.datatype)
                 scaled_crs.setncatts(
                     {attr: crs_var.getncattr(attr) for attr in crs_var.ncattrs()})
-                scaled_ds.variables['crs'] = crs_var[:]
+                scaled_dataset.variables['crs'] = crs_var[:]
 
     print(f"Scaled raster saved to {output_file} with metadata.")
 
@@ -114,8 +114,8 @@ def download_OGGM_shop(rgi_id):
     # Run the igm_run command
     subprocess.run(['igm_run', '--param_file', 'params.json'])
 
-    with Dataset('input_saved.nc', 'r') as scaled_ds:
-        x = scaled_ds.variables['x'][:]
+    with Dataset('input_saved.nc', 'r') as scaled_dataset:
+        x = scaled_dataset.variables['x'][:]
         resolution = abs(x[1] - x[2])
         print(resolution)
         if resolution != 100:
@@ -128,13 +128,13 @@ def download_OGGM_shop(rgi_id):
     os.chdir(original_dir)
 
 
-def crop_hugonnet_to_glacier(date_range, oggm_shop_ds):
+def crop_hugonnet_to_glacier(date_range, oggm_shop_dataset):
     """
     Fuse multiple dh/dt tiles and crop to a specified OGGM dataset area.
 
     Args:
         date_range (str): The date range for the dh/dt dataset.
-        oggm_shop_ds (xarray.Dataset): OGGM dataset with spatial coordinates.
+        oggm_shop_dataset (xarray.Dataset): OGGM dataset with spatial coordinates.
 
     Returns:
         np.ndarray: Cropped and filtered dh/dt map.
@@ -146,8 +146,8 @@ def crop_hugonnet_to_glacier(date_range, oggm_shop_ds):
                                    'dhdt_err')
 
     # Extract UTM coordinates from the NetCDF file (adjust according to your dataset)
-    x_coords = oggm_shop_ds['x'][:]
-    y_coords = oggm_shop_ds['y'][:]
+    x_coords = oggm_shop_dataset['x'][:]
+    y_coords = oggm_shop_dataset['y'][:]
     min_x, max_x = x_coords.min(), x_coords.max()
     min_y, max_y = y_coords.min(), y_coords.max()
     # UTM northing
@@ -218,10 +218,10 @@ def download_hugonnet(rgi_id_dir, year_interval):
     oggm_shop_file = os.path.join(oggm_shop_dir, 'input_saved.nc')
 
     # load file form oggm_shop
-    oggm_shop_ds = Dataset(oggm_shop_file, 'r')
-    icemask_2000 = oggm_shop_ds['icemask'][:]
-    usurf_2000 = oggm_shop_ds['usurf'][:]
-    thk_2000 = oggm_shop_ds['thkinit'][:]
+    oggm_shop_dataset = Dataset(oggm_shop_file, 'r')
+    icemask_2000 = oggm_shop_dataset['icemask'][:]
+    usurf_2000 = oggm_shop_dataset['usurf'][:]
+    thk_2000 = oggm_shop_dataset['thkinit'][:]
 
     # list folder names depending on time period
     if year_interval == 20:
@@ -247,7 +247,7 @@ def download_hugonnet(rgi_id_dir, year_interval):
 
         ### MERGE TILES AND CROP to oggmshop area ###
         cropped_dhdt, cropped_dhdt_err = crop_hugonnet_to_glacier(date_range,
-                                                                  oggm_shop_ds)
+                                                                  oggm_shop_dataset)
         dhdt_masked = cropped_dhdt[::-1] * icemask_2000
         dhdts.append(dhdt_masked)
 
@@ -297,40 +297,40 @@ def download_hugonnet(rgi_id_dir, year_interval):
     dhdt_err_change = np.array(dhdt_err_change)
 
     # compute velocity magnitude
-    uvelo = oggm_shop_ds.variables['uvelsurfobs'][:]
-    vvelo = oggm_shop_ds.variables['vvelsurfobs'][:]
+    uvelo = oggm_shop_dataset.variables['uvelsurfobs'][:]
+    vvelo = oggm_shop_dataset.variables['vvelsurfobs'][:]
     velo = np.sqrt(uvelo ** 2 + vvelo ** 2)
     # create placeholder smb
     smb = np.zeros_like(dhdt)
 
     # Create a new netCDF file
     observation_file = os.path.join(rgi_id_dir, 'observations.nc')
-    with Dataset(observation_file, 'w') as merged_ds:
+    with Dataset(observation_file, 'w') as merged_dataset:
         # Create dimensions
-        merged_ds.createDimension('time', len(year_range))
-        merged_ds.createDimension('x', oggm_shop_ds.dimensions['x'].size)
-        merged_ds.createDimension('y', oggm_shop_ds.dimensions['y'].size)
+        merged_dataset.createDimension('time', len(year_range))
+        merged_dataset.createDimension('x', oggm_shop_dataset.dimensions['x'].size)
+        merged_dataset.createDimension('y', oggm_shop_dataset.dimensions['y'].size)
 
         # Create variables
-        time_var = merged_ds.createVariable('time', 'f4', ('time',))
-        x_var = merged_ds.createVariable('x', 'f4', ('x',))
-        y_var = merged_ds.createVariable('y', 'f4', ('y',))
-        thk_var = merged_ds.createVariable('thk', 'f4', ('time', 'y', 'x'))
-        usurf_var = merged_ds.createVariable('usurf', 'f4', ('time', 'y', 'x'))
-        usurf_err_var = merged_ds.createVariable('usurf_err', 'f4', ('time', 'y',
+        time_var = merged_dataset.createVariable('time', 'f4', ('time',))
+        x_var = merged_dataset.createVariable('x', 'f4', ('x',))
+        y_var = merged_dataset.createVariable('y', 'f4', ('y',))
+        thk_var = merged_dataset.createVariable('thk', 'f4', ('time', 'y', 'x'))
+        usurf_var = merged_dataset.createVariable('usurf', 'f4', ('time', 'y', 'x'))
+        usurf_err_var = merged_dataset.createVariable('usurf_err', 'f4', ('time', 'y',
                                                                      'x'))
-        topg_var = merged_ds.createVariable('topg', 'f4', ('time', 'y', 'x'))
-        icemask_var = merged_ds.createVariable('icemask', 'f4', ('time', 'y', 'x'))
-        dhdt_var = merged_ds.createVariable('dhdt', 'f4', ('time', 'y', 'x'))
-        dhdt_err_var = merged_ds.createVariable('dhdt_err', 'f4', ('time', 'y', 'x'))
-        smb_var = merged_ds.createVariable('smb', 'f4', ('time', 'y', 'x'))
-        velsurf_mag_var = merged_ds.createVariable('velsurf_mag', 'f4',
+        topg_var = merged_dataset.createVariable('topg', 'f4', ('time', 'y', 'x'))
+        icemask_var = merged_dataset.createVariable('icemask', 'f4', ('time', 'y', 'x'))
+        dhdt_var = merged_dataset.createVariable('dhdt', 'f4', ('time', 'y', 'x'))
+        dhdt_err_var = merged_dataset.createVariable('dhdt_err', 'f4', ('time', 'y', 'x'))
+        smb_var = merged_dataset.createVariable('smb', 'f4', ('time', 'y', 'x'))
+        velsurf_mag_var = merged_dataset.createVariable('velsurf_mag', 'f4',
                                                    ('time', 'y', 'x'))
 
         # Assign data to variables
         time_var[:] = year_range
-        x_var[:] = oggm_shop_ds.variables['x'][:]
-        y_var[:] = oggm_shop_ds.variables['y'][:]
+        x_var[:] = oggm_shop_dataset.variables['x'][:]
+        y_var[:] = oggm_shop_dataset.variables['y'][:]
         thk_var[:] = thk_change
         usurf_var[:] = usurf_change
         usurf_err_var[:] = usurf_err_change
