@@ -1,19 +1,22 @@
-import argparse
 import os
 from netCDF4 import Dataset
-import json
 import copy
 import numpy as np
 from concurrent.futures import ThreadPoolExecutor
 import IGM_wrapper
 import shutil
 
+from Scripts.Tools.utils import get_observation_point_locations
+
+
 class EnsembleKalmanFilter:
     def __init__(self, rgi_id, ensemble_size, initial_smb, initial_spread,
-                 covered_area, year_interval, inflation, seed):
+                 covered_area, years, year_interval, inflation, seed):
         self.rgi_id = rgi_id
         self.ensemble_size = ensemble_size
         self.covered_area = covered_area
+
+        self.years = years
         self.year_interval = year_interval
         self.inflation = inflation
         self.seed = seed
@@ -22,7 +25,14 @@ class EnsembleKalmanFilter:
         rng = np.random.default_rng(seed)
 
         self.ensemble_usurf = []
+        self.ensemble_usurf_log = []
+
+        self.ensemble_smb_raster = []
+
         self.ensemble_smb = []
+        self.ensemble_smb_log = {'ela':[[] for e in range(self.ensemble_size)],
+                                 'gradabl':[[] for e in range(self.ensemble_size)],
+                                 'gradacc':[[] for e in range(self.ensemble_size)]}
 
         # load inversion data
         self.rgi_id_dir = os.path.join('..', 'Data', 'Glaciers', rgi_id)
@@ -31,26 +41,33 @@ class EnsembleKalmanFilter:
         if not os.path.exists(ensemble_dir):
             os.makedirs(ensemble_dir)
 
-        #TODO transfer necessary data and close file
+        # load geology file
         geology_file = os.path.join(inversion_dir, 'geology-optimized.nc')
-        geology_dataset = Dataset(geology_file, 'r')
+        with Dataset(geology_file, 'r') as geology_dataset:
+            icemask = np.array(geology_dataset['icemask'])
+            usurf = np.array(geology_dataset['usurf'])
 
-        observation_file = os.path.join(self.rgi_id_dir, 'observations.nc')
-        observation_dataset = Dataset(observation_file, 'r')
-        self.years = observation_dataset.variables['time']
+
+        # sample observation points to reduce computational costs
+        self.observation_point_location = get_observation_point_locations(icemask,
+                                                                          usurf,
+                                                                          covered_area)
 
         # Initialise the Ensemble and create directories for each member to
         # parallize the forward simulation
         for i in range(self.ensemble_size):
-            print('Initialise ensemble member', i )
+            print('Initialise ensemble member', i)
 
             # Copy the initial surface elevation
-            #TODO create different starting geometries
-            member_usurf = copy.copy(np.array(geology_dataset['usurf']))
+            # TODO create different starting geometries
+            member_usurf = copy.copy(usurf)
             self.ensemble_usurf.append(member_usurf)
 
             # Generate ensemble using the random generator
-            member_smb = rng.normal(np.array(initial_smb), np.array(initial_spread))
+            member_smb = {
+                key: rng.normal(initial_smb[key], initial_spread[key])
+                for key in initial_smb
+            }
             self.ensemble_smb.append(member_smb)
 
             # Create directory for folder if it does not exist
@@ -69,7 +86,11 @@ class EnsembleKalmanFilter:
             shutil.copytree(os.path.join(inversion_dir, "iceflow-model"),
                             member_iceflow_dir)
 
+        self.ensemble_usurf_log.append(self.ensemble_usurf)
 
+        for key in self.ensemble_smb_log:
+            for e in range(self.ensemble_size):
+                self.ensemble_smb_log[key][e].append(self.ensemble_smb[e][key])
 
 
     def forward(self, year_interval, parallel_cpu=True):
@@ -79,7 +100,7 @@ class EnsembleKalmanFilter:
             # Create a thread pool
             with ThreadPoolExecutor() as executor:
                 # Submit tasks to the thread pool
-                new_usurf = [
+                (new_usurf_ensemble, new_smb_raster_ensemble) = [
                     executor.submit(IGM_wrapper.forward,
                                     member_id,
                                     self.rgi_id_dir,
@@ -87,31 +108,40 @@ class EnsembleKalmanFilter:
                                     smb,
                                     year_interval)
                     for member_id, (usurf, smb) in enumerate(zip(self.ensemble_usurf,
-                                                    self.ensemble_smb))
+                                                                 self.ensemble_smb))
                 ]
 
                 # Wait for all tasks to complete
-                for usurf in new_usurf:
+                for new_usurf in new_usurf_ensemble:
                     try:
-                        usurf.result(timeout=3600)  # Timeout after 1 hour
+                        new_usurf.result(timeout=3600)  # Timeout after 1 hour
                     except Exception as e:
                         print(f"Task failed with error: {e}")
 
         else:
 
+            new_usurf_ensemble = []
+            new_smb_raster_ensemble = []
             for member_id, (usurf, smb) in enumerate(zip(self.ensemble_usurf,
-                                             self.ensemble_smb)):
-                new_usurf = IGM_wrapper.forward(member_id,
+                                                         self.ensemble_smb)):
+                new_usurf, new_smb_raster = IGM_wrapper.forward(member_id,
                                                 self.rgi_id_dir,
                                                 usurf,
                                                 smb,
                                                 year_interval)
+                new_usurf_ensemble.append(new_usurf)
+                new_smb_raster_ensemble.append(new_smb_raster)
 
-        pass
-
-
+        self.ensemble_usurf = new_usurf_ensemble
+        self.ensemble_smb_raster = new_smb_raster_ensemble
+        self.ensemble_usurf_log.append(new_usurf_ensemble)
 
     def update(self):
+
+        for key in self.ensemble_smb_log:
+            for e in range(self.ensemble_size):
+                self.ensemble_smb_log[key][e].append(self.ensemble_smb[e][key])
+
         pass
 
     def save_results(self):

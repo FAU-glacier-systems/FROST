@@ -1,6 +1,19 @@
 {
-  "reference_smb" : [2000, 9.0, 2.9, 2966, 2],
-
-  "initial_smb": [3056, 7.6, 3.9],
-  "initial_spread": [245, 3.5, 3.9]
+  "reference_smb": {
+    "time": 2000,
+    "gradabl": 9.0,
+    "gradacc": 2.9,
+    "ela": 2966,
+    "accmax": 2
+  },
+  "initial_smb": {
+    "ela": 3056,
+    "gradabl": 7.6,
+    "gradacc": 3.9
+  },
+  "initial_spread": {
+    "ela": 245,
+    "gradabl": 3.5,
+    "gradacc": 3.9
+  }
 }

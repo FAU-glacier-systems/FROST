@@ -2,6 +2,20 @@ import argparse
 import os
 import json
 from EnsembleKalmanFilter import EnsembleKalmanFilter
+from Scripts.Visualization.monitor import Monitor
+from netCDF4 import Dataset
+import numpy as np
+
+
+def get_observations(rgi_id, year):
+    # load observations
+    observation_file = (os.path.join('..', 'Data', 'Glaciers', rgi_id,
+                                     'observations.nc'))
+    with Dataset(observation_file, 'r') as ds:
+        start_year = ds['time'][0]
+        dhdt = ds['dhdt'][year-start_year]
+
+    return dhdt
 
 
 def main(rgi_id, ensemble_size, covered_area, year_interval, inflation, iterations,
@@ -14,25 +28,43 @@ def main(rgi_id, ensemble_size, covered_area, year_interval, inflation, iteratio
         initial_smb = params['initial_smb']
         initial_spread = params['initial_spread']
 
-    # TODO save params
+    observation_file = (os.path.join('..', 'Data', 'Glaciers', rgi_id,
+                                     'observations.nc'))
+    with Dataset(observation_file, 'r') as ds:
+        years = np.array(ds.variables['time'])
 
+    # TODO save params
     ENKF = EnsembleKalmanFilter(rgi_id=rgi_id,
                                 ensemble_size=ensemble_size,
                                 initial_smb=initial_smb,
                                 initial_spread=initial_spread,
                                 covered_area=covered_area,
+                                years=years,
                                 year_interval=year_interval,
                                 inflation=inflation,
                                 seed=seed)
 
+    monitor_dir = os.path.join('..', 'Experiments', rgi_id, 'Monitor')
+    if not os.path.exists(monitor_dir):
+        os.makedirs(monitor_dir)
+
+
+    monitor = Monitor(EnKF_object=ENKF,
+                      monitor_dir=monitor_dir, )
+
+
     for i in range(iterations):
         for year in ENKF.years[::year_interval]:
             print(year)
-            # TODO implement forward
-            ENKF.forward(year_interval=year_interval, parallel_cpu=True)
+            print('Forward pass...')
+            ENKF.forward(year_interval=year_interval, parallel_cpu=False)
 
             # TODO implement update
+            observation = get_observations(rgi_id, year+year_interval)
+            print("Update")
             ENKF.update()
+            monitor.plot_status(ENKF, observation, i, year+year_interval,)
+
 
     ENKF.save_results()
 
