@@ -3,12 +3,13 @@ import os
 import subprocess
 from netCDF4 import Dataset
 import numpy as np
-import time
-import threading
+
 
 os.environ['PYTHONWARNINGS'] = "ignore"
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 os.environ['TF_XLA_FLAGS'] = '--tf_xla_auto_jit=2 --tf_xla_cpu_global_jit'
+os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
+
 
 
 def forward(member_id, rgi_dir, usurf, smb, year_interval):
@@ -38,16 +39,13 @@ def forward(member_id, rgi_dir, usurf, smb, year_interval):
         json.dump(igm_params, file, indent=4, separators=(',', ': '))
 
     input_file = os.path.join(member_dir, "input.nc")
-
     with Dataset(input_file, 'r+') as input_dataset:
-        # Open in read/write mode
-        # Update 'usurf'
-        input_dataset.variables['usurf'][:] = usurf
-
-        # Update 'thk' based on 'topg'
+        # Read variables
         bedrock = input_dataset.variables['topg'][:]
         thickness = usurf - bedrock
 
+        # Write variables
+        input_dataset.variables['usurf'][:] = usurf
         input_dataset.variables['thk'][:] = thickness
 
     ################################## RUN IGM ######################################
