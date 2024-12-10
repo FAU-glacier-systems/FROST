@@ -1,4 +1,27 @@
 import numpy as np
+import gstools as gs
+
+
+class Variogram_hugonnet(gs.CovModel):
+    def cor(self, d: np.ndarray):
+        """
+        Spatial correlation of error in mean elevation change (Hugonnet et al., 2021).
+
+        :param d: Distance between two glaciers (meters).
+
+        :return: Spatial correlation function (input = distance in meters, output = correlation between 0 and 1).
+        """
+
+        # About 50% correlation of error until 150m, 80% until 2km, etc...
+        ranges = [150, 2000, 5000, 20000, 50000, 500000]
+        psills = [0.47741896, 0.34238422, 0.06662273, 0.06900394, 0.01602816,
+                  0.02854199]
+
+        # Spatial correlation at a given distance (using sum of exponential models)
+        return 1 - np.sum((psills[i] * (1 - np.exp(- 3 * d / ranges[i])) for i in
+                           range(len(ranges))))
+
+
 
 def get_observation_point_locations(icemask, usurf, covered_area):
     gx, gy = np.where(icemask)
@@ -42,7 +65,7 @@ def get_observation_point_values(EnKF_object, points):
     dhdt_ensemble_all = []
 
     # Loop through all consecutive time steps
-    for i in range(1, len(ensemble_usurf_log)):
+    for i in range(1, len(ensemble_usurf_log),2):
         current_usurf_ensemble = np.array(ensemble_usurf_log[i])
         previous_usurf_ensemble = np.array(ensemble_usurf_log[i - 1])
 
@@ -55,7 +78,10 @@ def get_observation_point_values(EnKF_object, points):
         dhdt_ensemble_all)  # Shape: (iter-1, ensemble, x, y)
 
     # Compute mean dh/dt across the spatial dimensions (x, y)
-    mean_dhdt = dhdt_ensemble_all.mean(axis=(2, 3))  # Shape: (iter-1, ensemble)
+    mean_dhdt = dhdt_ensemble_all.mean(axis=(2, 3))
+    mean_dhdt /= EnKF_object.year_interval
+    # Shape: (iter-1,
+    # ensemble)
 
     # Compute dhdt values for the given points and create dictionary entries
     point_observables = {}
@@ -71,4 +97,5 @@ def get_observation_point_values(EnKF_object, points):
     }
 
     return observables
+
 

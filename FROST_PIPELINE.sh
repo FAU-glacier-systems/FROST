@@ -1,17 +1,17 @@
 #!/bin/bash -l
 #SBATCH --nodes=1
-#SBATCH --time=24:00:00
+#SBATCH --time=1:00:00
 #SBATCH --job-name=frost
 module load python
 conda activate igm
 
 # Default value for rgi_id
 rgi_id="RGI2000-v7.0-G-11-01706"
-tile_name="N46E008"
 download=false
 scale_factor=1
 inversion=false
 calibrate=false
+forward_parallel=false
 
 
 # Parse command-line arguments
@@ -22,6 +22,7 @@ while [[ "$#" -gt 0 ]]; do
         --scale_factor) scale_factor="$2"; shift 2 ;; # Set download flag to true
         --inversion) inversion=true; shift ;;
         --calibrate) calibrate=true; shift ;; # Set calibrate flag to true
+        --forward_parallel) forward_parallel=true; shift ;;
         *) echo "Unknown parameter $1"; exit 1 ;;  # Exit on unknown argument
     esac
 done
@@ -33,7 +34,7 @@ echo "Running pipeline for RGI ID: $rgi_id"
 if [ "$download" = true ]; then
     echo "Downloading data..."
     pushd Scripts/Preprocess
-    python download_data.py --rgi_id "$rgi_id" --scale_factor $scale_factor \
+    python -u download_data.py --rgi_id "$rgi_id" --scale_factor $scale_factor \
     --download_oggm_shop --download_hugonnet
     popd
 fi
@@ -42,13 +43,13 @@ fi
 if [ "$inversion" = true ]; then
     echo "Starting IGM inversion..."
     pushd Scripts/Preprocess
-    python igm_inversion.py --rgi_id "$rgi_id"
+    python -u igm_inversion.py --rgi_id "$rgi_id"
     popd
 fi
 
 # 4. Calibration step (if --calibrate is set)
 if [ "$calibrate" = true ]; then
     echo "Starting calibration..."
-    # Forward the rgi_id argument to the Python script
-    python FROST_RUN.py --rgi_id "$rgi_id"
+    python -u FROST_RUN.py --rgi_id "$rgi_id" --ensemble_size 50 --year_interval 5 \
+    --forward_parallel "$forward_parallel" --iterations 5
 fi
