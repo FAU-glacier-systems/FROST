@@ -128,7 +128,7 @@ def download_OGGM_shop(rgi_id):
     os.chdir(original_dir)
 
 
-def crop_hugonnet_to_glacier(date_range, oggm_shop_dataset):
+def crop_hugonnet_to_glacier(rgi_region, date_range, oggm_shop_dataset):
     """
     Fuse multiple dh/dt tiles and crop to a specified OGGM dataset area.
 
@@ -140,7 +140,7 @@ def crop_hugonnet_to_glacier(date_range, oggm_shop_dataset):
         np.ndarray: Cropped and filtered dh/dt map.
     """
     # Define the folder containing dh/dt files
-    folder_name = f'11_rgi60_{date_range}'
+    folder_name = f'{rgi_region}_rgi60_{date_range}'
     dhdt_folder = os.path.join('..', '..', 'Data', 'Hugonnet', folder_name, 'dhdt')
     dhdt_err_folder = os.path.join('..', '..', 'Data', 'Hugonnet', folder_name,
                                    'dhdt_err')
@@ -150,19 +150,22 @@ def crop_hugonnet_to_glacier(date_range, oggm_shop_dataset):
     y_coords = oggm_shop_dataset['y'][:]
     min_x, max_x = x_coords.min(), x_coords.max()
     min_y, max_y = y_coords.min(), y_coords.max()
-    # UTM northing
 
-    lat_lon_corner = utm.to_latlon(np.array([min_x, min_x, max_x, max_x]),
-                                   np.array([min_y, max_y, min_y, max_y]),
-                                   32, 'N')
+    zone_number = int(oggm_shop_dataset.pyproj_srs.split('+')[2].split("=")[1])
+    zone_letter = "N"           #TODO for south regions
+    x_range= np.array([min_x, min_x, max_x, max_x])
+    y_range = np.array([min_y, min_y, max_y, max_y])
 
+    lat_lon_corner = utm.to_latlon(x_range, y_range, zone_number, zone_letter)
+    lat_lon_corner = np.abs(lat_lon_corner)
     min_lat, max_lat = min(lat_lon_corner[0]), max(lat_lon_corner[0])
     min_lon, max_lon = min(lat_lon_corner[1]), max(lat_lon_corner[1])
 
     # Create a list to store overlapping tile names
     tile_names = []
-
+    print(tile_names)
     # Iterate over possible tiles
+
     for lat in range(int(min_lat), int(max_lat) + 1):
         for lon in range(int(min_lon), int(max_lon) + 1):
             # Construct the tile name
@@ -187,7 +190,7 @@ def crop_hugonnet_to_glacier(date_range, oggm_shop_dataset):
     window = from_bounds(min_x, min_y, max_x, max_y, merged_transform)
 
     # Ensure window indices are integers, and handle off-by-one errors
-    row_off = round(window.row_off)  # Ensure the row offset is an integer
+    row_off = round(window.row_off)# Ensure the row offset is an integer
     col_off = round(window.col_off)  # Ensure the column offset is an integer
     height = len(y_coords)  # Ensure height is integer and within bounds
     width = len(x_coords)
@@ -224,14 +227,16 @@ def download_hugonnet(rgi_id_dir, year_interval):
     thk_2000 = oggm_shop_dataset['thkinit'][:]
 
     # list folder names depending on time period
+    rgi_region = rgi_id_dir.split('/')[-1].split("-")[3]
+
     if year_interval == 20:
-        folder_names = ['11_rgi60_2000-01-01_2020-01-01']
+        folder_names = [rgi_region+'_rgi60_2000-01-01_2020-01-01']
 
     elif year_interval == 5:
-        folder_names = ['11_rgi60_2000-01-01_2005-01-01',
-                        '11_rgi60_2005-01-01_2010-01-01',
-                        '11_rgi60_2010-01-01_2015-01-01',
-                        '11_rgi60_2015-01-01_2020-01-01']
+        folder_names = [rgi_region+'_rgi60_2000-01-01_2005-01-01',
+                        rgi_region+'_rgi60_2005-01-01_2010-01-01',
+                        rgi_region+'_rgi60_2010-01-01_2015-01-01',
+                        rgi_region+'_rgi60_2015-01-01_2020-01-01']
 
     else:
         raise ValueError(
@@ -246,7 +251,8 @@ def download_hugonnet(rgi_id_dir, year_interval):
         date_range = folder_name.split('_', 2)[-1]
 
         ### MERGE TILES AND CROP to oggmshop area ###
-        cropped_dhdt, cropped_dhdt_err = crop_hugonnet_to_glacier(date_range,
+        cropped_dhdt, cropped_dhdt_err = crop_hugonnet_to_glacier(rgi_region,
+                                                                    date_range,
                                                                   oggm_shop_dataset)
         dhdt_masked = cropped_dhdt[::-1] * icemask_2000
         dhdts.append(dhdt_masked)
@@ -255,7 +261,6 @@ def download_hugonnet(rgi_id_dir, year_interval):
         dhdts_err.append(dhdt_err_masked)
 
     usurf_change = [usurf_2000]  # initialise with 2000 state
-    thk_change = [thk_2000]
     dhdt_change = [np.zeros_like(usurf_2000)]
     dhdt_err_change = [np.zeros_like(usurf_2000)]
     usurf_err_change = [np.zeros_like(usurf_2000)]  # TODO
@@ -275,8 +280,6 @@ def download_hugonnet(rgi_id_dir, year_interval):
         # either bedrock or last usurf + current dhdt
         usurf = np.maximum(bedrock, usurf_change[-1] + dhdt)
         usurf_change.append(usurf)
-        thk = usurf - bedrock
-        thk_change.append(thk)
 
         # compute uncertainty overtime
         dhdt_err = dhdts_err[dhdt_index]
@@ -292,7 +295,6 @@ def download_hugonnet(rgi_id_dir, year_interval):
     # transform to numpy array
     usurf_change = np.array(usurf_change)
     usurf_err_change = np.array(usurf_err_change)
-    thk_change = np.array(thk_change)
     dhdt_change = np.array(dhdt_change)
     dhdt_err_change = np.array(dhdt_err_change)
 
@@ -300,8 +302,7 @@ def download_hugonnet(rgi_id_dir, year_interval):
     uvelo = oggm_shop_dataset.variables['uvelsurfobs'][:]
     vvelo = oggm_shop_dataset.variables['vvelsurfobs'][:]
     velo = np.sqrt(uvelo ** 2 + vvelo ** 2)
-    # create placeholder smb
-    smb = np.zeros_like(dhdt)
+
 
     # Create a new netCDF file
     observation_file = os.path.join(rgi_id_dir, 'observations.nc')
@@ -315,15 +316,12 @@ def download_hugonnet(rgi_id_dir, year_interval):
         time_var = merged_dataset.createVariable('time', 'f4', ('time',))
         x_var = merged_dataset.createVariable('x', 'f4', ('x',))
         y_var = merged_dataset.createVariable('y', 'f4', ('y',))
-        thk_var = merged_dataset.createVariable('thk', 'f4', ('time', 'y', 'x'))
         usurf_var = merged_dataset.createVariable('usurf', 'f4', ('time', 'y', 'x'))
         usurf_err_var = merged_dataset.createVariable('usurf_err', 'f4', ('time', 'y',
                                                                      'x'))
-        topg_var = merged_dataset.createVariable('topg', 'f4', ('time', 'y', 'x'))
         icemask_var = merged_dataset.createVariable('icemask', 'f4', ('time', 'y', 'x'))
         dhdt_var = merged_dataset.createVariable('dhdt', 'f4', ('time', 'y', 'x'))
         dhdt_err_var = merged_dataset.createVariable('dhdt_err', 'f4', ('time', 'y', 'x'))
-        smb_var = merged_dataset.createVariable('smb', 'f4', ('time', 'y', 'x'))
         velsurf_mag_var = merged_dataset.createVariable('velsurf_mag', 'f4',
                                                    ('time', 'y', 'x'))
 
@@ -331,14 +329,11 @@ def download_hugonnet(rgi_id_dir, year_interval):
         time_var[:] = year_range
         x_var[:] = oggm_shop_dataset.variables['x'][:]
         y_var[:] = oggm_shop_dataset.variables['y'][:]
-        thk_var[:] = thk_change
         usurf_var[:] = usurf_change
         usurf_err_var[:] = usurf_err_change
-        topg_var[:] = bedrock
         icemask_var[:] = icemask_2000
         dhdt_var[:] = dhdt_change
         dhdt_err_var[:] = dhdt_err_change
-        smb_var[:] = smb
         velsurf_mag_var[:] = velo
 
 
@@ -367,7 +362,7 @@ if __name__ == '__main__':
                         help='Flag to control execution of download_Hugonnet.')
 
     # select between 5-year or 20-year dhdt
-    parser.add_argument('--year_interval', type=int, default=5,
+    parser.add_argument('--year_interval', type=int, default=20,
                         help='Select between 5-year or 20-year dhdt (5, 20)')
 
     # Parse arguments
