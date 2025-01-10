@@ -18,6 +18,7 @@ class EnsembleKalmanFilter:
         self.ensemble_size = ensemble_size
         self.inflation = inflation
         self.seed = seed
+        self.start_year = start_year
         self.current_year = start_year
 
         # create a folder to store the in- and output of the ensemble members
@@ -45,8 +46,9 @@ class EnsembleKalmanFilter:
             params = json.load(file)
             self.initial_smb = params['initial_smb']
             self.initial_spread = params['initial_spread']
+            self.reference_smb = params['reference_smb']
 
-        rng = np.random.default_rng(seed=42)
+        rng = np.random.default_rng(seed=seed)
         self.ensemble_smb = []
 
         # Initialise the Ensemble and create directories for each member to
@@ -99,10 +101,11 @@ class EnsembleKalmanFilter:
         for e in range(self.ensemble_size):
             self.ensemble_usurf[e] = self.usurf_init
 
-        self.ensemble_usurf_log = [self.ensemble_usurf]
-        for key in self.ensemble_smb_log:
-            for e in range(self.ensemble_size):
-                self.ensemble_smb_log[key][e] = [self.ensemble_smb[e][key]]
+        # self.ensemble_usurf_log = [self.ensemble_usurf]
+        self.current_year = self.start_year
+        # for key in self.ensemble_smb_log:
+        #    for e in range(self.ensemble_size):
+        #        self.ensemble_smb_log[key][e] = [self.ensemble_smb[e][key]]
 
     def forward(self, year, forward_parallel):
         # forwards the ensemble to the given year
@@ -154,15 +157,16 @@ class EnsembleKalmanFilter:
         self.ensemble_usurf = new_usurf_ensemble
         self.ensemble_smb_raster = new_smb_raster_ensemble
         self.ensemble_usurf_log.append(new_usurf_ensemble)
+        self.current_year = int(year)
 
     def update(self, new_observation, noise_matrix, noise_samples,
                modeled_observables):
 
-        ensemble_obs_mean = np.mean(new_observation, axis=0)
+        ensemble_obs_mean = np.mean(modeled_observables, axis=0)
         ensemble_deviations_obs = modeled_observables - ensemble_obs_mean
         ensemble_cov = (
-                    np.dot(ensemble_deviations_obs.T, ensemble_deviations_obs) / (
-                    self.ensemble_size - 1) + noise_matrix)
+                np.dot(ensemble_deviations_obs.T, ensemble_deviations_obs) / (
+                self.ensemble_size - 1) + noise_matrix)
 
         # Convert self.ensemble_smb from list of dict into np.array
         keys = self.initial_smb.keys()
@@ -172,6 +176,7 @@ class EnsembleKalmanFilter:
         ])
         ensemble_smb_mean = np.mean(ensemble_smb, axis=0)
         deviations_smb = ensemble_smb - ensemble_smb_mean
+
 
         cross_covariance = np.dot(ensemble_deviations_obs.T, deviations_smb) / (
                 self.ensemble_size - 1)
@@ -188,7 +193,6 @@ class EnsembleKalmanFilter:
                                             + member_noise
                                             - member_observable)
 
-
             new_member_smb = {}
             for i, key in enumerate(member_smb.keys()):
                 new_member_smb[key] = member_smb[key] + member_update[i]
@@ -198,10 +202,3 @@ class EnsembleKalmanFilter:
             new_ensemble_smb.append(new_member_smb)
 
         self.ensemble_smb = new_ensemble_smb
-
-    def update_geometries(self, usurf):
-        self.ensemble_usurf = [usurf for _ in range(self.ensemble_size)]
-        self.ensemble_usurf_log.append(self.ensemble_usurf)
-
-    def save_results(self):
-        pass
