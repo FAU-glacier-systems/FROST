@@ -117,10 +117,8 @@ def download_OGGM_shop(rgi_id):
     with Dataset('input_saved.nc', 'r') as scaled_dataset:
         x = scaled_dataset.variables['x'][:]
         resolution = abs(x[1] - x[2])
-        print(resolution)
         if resolution != 100:
             scale_factor = resolution / 100
-            print(scale_factor)
             scale_raster('input_saved.nc', 'input_scaled.nc', scale_factor)
             os.remove('input_saved.nc')
             os.rename('input_scaled.nc', 'input_saved.nc')
@@ -214,6 +212,24 @@ def crop_hugonnet_to_glacier(rgi_region, date_range, oggm_shop_dataset):
 
     return filtered_map, filtered_err_map
 
+def fill_nans(array):
+    from scipy.interpolate import griddata
+
+    # Coordinates of valid (non-NaN) data
+    x, y = np.meshgrid(np.arange(array.shape[1]), np.arange(array.shape[0]))
+    valid_mask = ~np.isnan(array)
+
+    # Interpolation
+    dhdt_filled = griddata(
+        (x[valid_mask], y[valid_mask]),
+        array[valid_mask],
+        (x, y),
+        method='linear'
+    )
+
+    # Optionally, fill any remaining NaNs (if edges couldn't be interpolated)
+    dhdt_filled = np.nan_to_num(dhdt_filled, nan=0)
+    return dhdt_filled
 
 def download_hugonnet(rgi_id_dir, year_interval):
     oggm_shop_dir = os.path.join(rgi_id_dir, 'OGGM_shop')
@@ -266,19 +282,22 @@ def download_hugonnet(rgi_id_dir, year_interval):
     usurf_err_change = [np.zeros_like(usurf_2000)]  # TODO
 
     bedrock = usurf_2000 - thk_2000
+    step_size = 20
+    year_range = np.arange(2000, 2021, step_size)
 
-    year_range = np.arange(2000, 2021)
-
-    for i, year in enumerate(year_range[1:]):
+    for year in year_range[1:]:
         # compute surface change based on dhdt and provide uncertainties
         # change the dhdt field every year_interval
-        dhdt_index = math.floor(i / year_interval)
+        year_index = year - 2001
+
+        dhdt_index = math.floor(year_index / year_interval)
         dhdt = dhdts[dhdt_index]
         dhdt = np.where(icemask_2000 == 1, dhdt, 0)
         dhdt_change.append(dhdt)
 
         # either bedrock or last usurf + current dhdt
-        usurf = np.maximum(bedrock, usurf_change[-1] + dhdt)
+        usurf = np.maximum(bedrock, usurf_change[-1] + dhdt*step_size)
+        usurf = fill_nans(usurf)
         usurf_change.append(usurf)
 
         # compute uncertainty overtime
@@ -335,6 +354,7 @@ def download_hugonnet(rgi_id_dir, year_interval):
         dhdt_var[:] = dhdt_change
         dhdt_err_var[:] = dhdt_err_change
         velsurf_mag_var[:] = velo
+
 
 
 if __name__ == '__main__':

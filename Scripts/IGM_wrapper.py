@@ -17,15 +17,15 @@ def forward(member_id, rgi_dir, usurf, smb, year_interval):
     ela = smb['ela']
     grad_abl = smb['gradabl']/1000
     grad_acc = smb['gradacc']/1000
-    print("SMB: "+str(smb))
+    print(f"Forward ensemble member {member_id} with SMB: "+str(smb))
     igm_params = {"modules_preproc": ["load_ncdf"],
                   "modules_process": ["smb_simple", "iceflow", "time",
                                       "thk"],
                   "modules_postproc": ["write_ncdf", "print_info"],
                   "smb_simple_array": [
                       ["time", "gradabl", "gradacc", "ela", "accmax"],
-                      [0, grad_abl, grad_acc, ela, 2],
-                      [year_interval, grad_abl, grad_acc, ela, 2]],
+                      [0, grad_abl, grad_acc, ela, 100],
+                      [year_interval, grad_abl, grad_acc, ela, 100]],
                   "iflo_emulator": "iceflow-model",
                   "lncd_input_file": f'input.nc',
                   "wncd_output_file": f'output.nc',

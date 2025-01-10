@@ -1,9 +1,10 @@
 import numpy as np
 import os
-
+from skimage.morphology import skeletonize
 from matplotlib import pyplot as plt
 from netCDF4 import Dataset
 import gstools as gs
+import copy
 
 
 class Variogram_hugonnet(gs.CovModel):
@@ -28,7 +29,7 @@ class Variogram_hugonnet(gs.CovModel):
 
 
 class ObservationProvider:
-    def __init__(self, rgi_id, covered_area):
+    def __init__(self, rgi_id):
 
         observation_file = (os.path.join('Data', 'Glaciers', rgi_id,
                                          'observations.nc'))
@@ -36,38 +37,41 @@ class ObservationProvider:
         with Dataset(observation_file, 'r') as ds:
             self.dhdt = ds['dhdt'][:]
             self.dhdt_err = ds['dhdt_err'][:]
-            self.icemask = ds['icemask'][:][0]
-            self.usurf = ds['usurf'][:][0]
+            self.icemask = np.array(ds['icemask'][:][0])
+            self.usurf = ds['usurf'][:]
+            self.usurf_err = ds['usurf_err'][:]
             self.time_period = np.array(ds['time'][:]).astype(int)
             self.x = ds['x'][:]
             self.y = ds['y'][:]
 
-        self.observation_locations = self.sample_locations(covered_area)
+        #self.observation_locations = self.sample_locations()
+        self.num_obs_points = 20
+        usurf2000_masked = self.usurf[0][self.icemask == 1]
+        self.bin_edges = np.linspace(usurf2000_masked.min(), usurf2000_masked.max(),
+                                self.num_obs_points + 1)
+
+        # Compute bin indices for 2000 surface
+        self.bin_indices = np.digitize(usurf2000_masked, self.bin_edges)
 
         self.variogram_model = Variogram_hugonnet(dim=2)
         self.srf = gs.SRF(self.variogram_model, mode_no=100)
         self.srf.set_pos([self.y, self.x], "structured")
 
-    def sample_locations(self, covered_area):
-        num_sample_points = int((covered_area / 100) * np.sum(self.icemask))
-        print('Number of points: {}'.format(num_sample_points))
+    def sample_locations(self, ):
 
-        gx, gy = np.where(self.icemask)
+        slim_icemask = skeletonize(self.icemask)
+        print('Number of points: {}'.format(np.sum(slim_icemask)))
+
+        gx, gy = np.where(slim_icemask)
         glacier_points = np.array(list(zip(gx, gy)))
 
         # We check for NaNs along the third dimension
         valid_mask = ~np.isnan(self.dhdt).any(axis=0)
-        valid_points = glacier_points[valid_mask[gx, gy]]
-
-        random_state = np.random.RandomState(seed=42)
-        observation_index = random_state.choice(len(valid_points),
-                                                num_sample_points,
-                                                replace=False)
-        observation_points = valid_points[observation_index]
+        observation_points = glacier_points[valid_mask[gx, gy]]
 
         def get_pixel_value(point):
             x, y = point
-            return self.usurf[x][y]
+            return self.usurf[0][x][y]
 
         sorted_observation_points = sorted(observation_points, key=get_pixel_value)
         return np.array(sorted_observation_points)
@@ -78,7 +82,7 @@ class ObservationProvider:
 
         # Compute pairwise covariance
         for i in range(num_pixels):
-            for j in range(i,num_pixels): # use symmetry
+            for j in range(i, num_pixels):  # use symmetry
                 # Calculate distance between locations i and j (assuming 2D coordinates)
                 distance = np.linalg.norm(
                     self.observation_locations[i] - self.observation_locations[j])
@@ -97,43 +101,49 @@ class ObservationProvider:
         # load observations
         next_index = np.where(self.time_period == current_year)[0][0] + 1
         if next_index >= len(self.time_period):
-            return None, None, None
+            return None, None, None, None
 
         year = self.time_period[next_index]
-        dhdt_raster = self.dhdt[next_index]
-        dhdt_err_raster = self.dhdt_err[next_index]
-        dhdt = dhdt_raster[self.observation_locations[:,0],
-                           self.observation_locations[:, 1]]
+        usurf_raster = self.usurf[next_index]
+        usurf_err_raster = self.usurf_err[next_index]
 
-        dhdt_err = dhdt_err_raster[self.observation_locations[:, 0],
-                                   self.observation_locations[:, 1]]
+        usurf_line = self.average_elevation_bin(usurf_raster)
 
-        noise_matrix = self.generate_covariance_matrix(dhdt_err)
+        # noise_matrix = self.generate_covariance_matrix(usurf_err_line) #TODO
+        noise_matrix = np.eye(len(usurf_line))
 
-        noise_samples = np.random.multivariate_normal(np.zeros_like(dhdt),
+        noise_samples = np.random.multivariate_normal(np.zeros_like(usurf_line),
                                                       noise_matrix, size=num_samples)
 
-        return year, dhdt, noise_matrix, noise_samples
+        return year, usurf_line, noise_matrix, noise_samples
+
+    def average_elevation_bin(self, usurf):
+        # Apply mask to both surfaces
+
+        usurf_masked = usurf[self.icemask==1]
+
+        # Compute average 2020 surface for each bin
+        average_usurf = []
+        for i in range(1, len(self.bin_edges)):
+            # Mask for pixels in the current bin
+            in_bin = self.bin_indices == i
+            if np.any(in_bin):
+                avg = np.mean(usurf_masked[in_bin])
+
+            average_usurf.append(avg)
+
+        # Convert results to a NumPy array
+        return np.array(average_usurf)
 
     def get_observables_from_ensemble(self, EnKF_object):
-        ensemble_usurf_log = EnKF_object.ensemble_usurf_log
 
-        # Check that there are at least two time steps
-        if len(ensemble_usurf_log) < 2:
-            return None
+        ensemble_usurf = EnKF_object.ensemble_usurf
+        observables = []
+        for usurf in ensemble_usurf:
+            observables.append(self.average_elevation_bin(usurf))
 
-        current_usurf_ensemble = np.array(ensemble_usurf_log[-1])
-        previous_usurf_ensemble = np.array(ensemble_usurf_log[-2])
+        return np.array(observables)
 
-        # Compute the difference between the current and previous time step
-        dhdt_ensemble = current_usurf_ensemble - previous_usurf_ensemble
-        dhdt_ensemble_all.append(dhdt_ensemble)
-
-        # Convert the differences to a numpy array
-        dhdt_ensemble_all = np.array(dhdt_ensemble_all)
-
-        # Compute mean dh/dt across the spatial dimensions (x, y)
-        mean_dhdt = dhdt_ensemble_all.mean(axis=(2, 3))
-        mean_dhdt /= EnKF_object.year_interval
-
-        return observables
+    def get_new_geometrie(self, year):
+        index = np.where(self.time_period == year)[0][0]
+        return self.usurf[index]
