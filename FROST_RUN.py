@@ -58,7 +58,7 @@ def main(rgi_id, ensemble_size, inflation, iterations, seed,
         ENKF.reset_time()
     #################################################################################
 
-    ENKF.save_results()
+    #ENKF.save_results()
 
 
 if __name__ == '__main__':

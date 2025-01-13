@@ -59,4 +59,4 @@ def forward(member_id, rgi_dir, usurf, smb, year_interval):
         new_usurf = np.array(new_ds['usurf'][-1])
         new_smb = np.array(new_ds['smb'][-1])
 
-    return new_usurf, new_smb
+    return member_id, new_usurf, new_smb
