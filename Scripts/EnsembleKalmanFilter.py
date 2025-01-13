@@ -132,13 +132,18 @@ class EnsembleKalmanFilter:
                 ]
 
                 # Initialize storage for results
-                new_usurf_ensemble = []
-                new_smb_raster_ensemble = []
+                id_order = []
+                new_usurf_ensemble = np.empty_like(self.ensemble_usurf)
+                new_smb_raster_ensemble = np.empty_like(self.ensemble_smb_raster)
                 # Wait for all tasks to complete
                 for future in concurrent.futures.as_completed(futures):
-                    new_usurf, new_smb_raster = future.result()  # Unpack the returned values
-                    new_usurf_ensemble.append(new_usurf)
-                    new_smb_raster_ensemble.append(new_smb_raster)
+                    member_id, new_usurf, new_smb_raster = future.result()  # Unpack
+                    # the returned values
+                    id_order.append(member_id)
+                    new_usurf_ensemble[member_id] = new_usurf
+                    new_smb_raster_ensemble[member_id] = new_smb_raster
+                print("################# id Order")
+                print(id_order)
 
         else:
 
@@ -146,13 +151,14 @@ class EnsembleKalmanFilter:
             new_smb_raster_ensemble = np.empty_like(self.ensemble_smb_raster)
             for member_id, (usurf, smb) in enumerate(zip(self.ensemble_usurf,
                                                          self.ensemble_smb)):
-                new_usurf, new_smb_raster = IGM_wrapper.forward(member_id,
+                member_id, new_usurf, new_smb_raster = IGM_wrapper.forward(member_id,
                                                                 self.rgi_id_dir,
                                                                 usurf,
                                                                 smb,
                                                                 year_interval)
                 new_usurf_ensemble[member_id] = new_usurf
                 new_smb_raster_ensemble[member_id] = new_smb_raster
+
 
         self.ensemble_usurf = new_usurf_ensemble
         self.ensemble_smb_raster = new_smb_raster_ensemble

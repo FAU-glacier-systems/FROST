@@ -52,7 +52,20 @@ class ObservationProvider:
 
         # Compute bin indices for 2000 surface
         self.bin_indices = np.digitize(usurf2000_masked, self.bin_edges)
+        # Compute bin indices for 2000 surface
 
+        # Create a grid for visualization
+        bin_colored_image = np.zeros_like(self.usurf[0], dtype=int)
+        bin_colored_image[self.icemask == 1] = self.bin_indices
+        # Plot the bins colored by indices
+
+        plt.figure(figsize=(10, 8))
+        plt.imshow(bin_colored_image, cmap="viridis", origin="lower")
+        plt.colorbar(label="Bin Index")
+        plt.title("Pixels Colored by Elevation Bin")
+        plt.xlabel("X-axis")
+        plt.ylabel("Y-axis")
+        plt.show(dpi=300)
         self.variogram_model = Variogram_hugonnet(dim=2)
         self.srf = gs.SRF(self.variogram_model, mode_no=100)
         self.srf.set_pos([self.y, self.x], "structured")
@@ -109,8 +122,8 @@ class ObservationProvider:
 
         usurf_line = self.average_elevation_bin(usurf_raster)
 
-        # noise_matrix = self.generate_covariance_matrix(usurf_err_line) #TODO
-        noise_matrix = np.eye(len(usurf_line))
+        #noise_matrix = self.generate_covariance_matrix(usurf_err_line) #TODO
+        noise_matrix = np.eye(len(usurf_line))*10
 
         noise_samples = np.random.multivariate_normal(np.zeros_like(usurf_line),
                                                       noise_matrix, size=num_samples)
