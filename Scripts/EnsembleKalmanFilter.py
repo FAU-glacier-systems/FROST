@@ -10,7 +10,8 @@ import json
 
 
 class EnsembleKalmanFilter:
-    def __init__(self, rgi_id, ensemble_size, inflation, seed, start_year):
+    def __init__(self, rgi_id, ensemble_size, inflation, seed, start_year,
+                 output_dir):
 
         # save arguments
         self.rgi_id = rgi_id
@@ -20,6 +21,7 @@ class EnsembleKalmanFilter:
         self.seed = seed
         self.start_year = start_year
         self.current_year = start_year
+        self.output_dir = output_dir
 
         # create a folder to store the in- and output of the ensemble members
         ensemble_dir = os.path.join('Data', 'Glaciers', rgi_id, 'Ensemble')
@@ -152,13 +154,12 @@ class EnsembleKalmanFilter:
             for member_id, (usurf, smb) in enumerate(zip(self.ensemble_usurf,
                                                          self.ensemble_smb)):
                 member_id, new_usurf, new_smb_raster = IGM_wrapper.forward(member_id,
-                                                                self.rgi_id_dir,
-                                                                usurf,
-                                                                smb,
-                                                                year_interval)
+                                                                           self.rgi_id_dir,
+                                                                           usurf,
+                                                                           smb,
+                                                                           year_interval)
                 new_usurf_ensemble[member_id] = new_usurf
                 new_smb_raster_ensemble[member_id] = new_smb_raster
-
 
         self.ensemble_usurf = new_usurf_ensemble
         self.ensemble_smb_raster = new_smb_raster_ensemble
@@ -183,7 +184,6 @@ class EnsembleKalmanFilter:
         ensemble_smb_mean = np.mean(ensemble_smb, axis=0)
         deviations_smb = ensemble_smb - ensemble_smb_mean
 
-
         cross_covariance = np.dot(ensemble_deviations_obs.T, deviations_smb) / (
                 self.ensemble_size - 1)
 
@@ -202,9 +202,60 @@ class EnsembleKalmanFilter:
             new_member_smb = {}
             for i, key in enumerate(member_smb.keys()):
                 new_member_smb[key] = member_smb[key] + member_update[i]
-                # logging
-                self.ensemble_smb_log[key][e].append(new_member_smb[key])
 
             new_ensemble_smb.append(new_member_smb)
 
-        self.ensemble_smb = new_ensemble_smb
+        ### INFLATION ###
+        # Compute the ensemble mean for each key
+        ensemble_mean = {
+            key: sum(member[key] for member in new_ensemble_smb) / len(
+                new_ensemble_smb)
+            for key in new_ensemble_smb[0].keys()}
+
+        # Apply multiplicative inflation to each member
+        inflated_ensemble_smb = []
+        for e, member in enumerate(new_ensemble_smb):
+            inflated_member = {}
+            for key in member.keys():
+                deviation = member[key] - ensemble_mean[key]
+                inflated_member[key] = (ensemble_mean[key] + self.inflation *
+                                        deviation)
+                # logging
+                self.ensemble_smb_log[key][e].append(inflated_member[key])
+
+            inflated_ensemble_smb.append(inflated_member)
+
+        self.ensemble_smb = inflated_ensemble_smb
+
+    def save_results(self):
+        self.params = dict()
+
+        keys = self.initial_smb.keys()
+        ensemble_smb = np.array([
+            [member_smb[key] for key in keys]
+            for member_smb in self.ensemble_smb
+        ])
+
+        self.params['final_mean'] = list(ensemble_smb.mean(axis=0))
+        self.params['final_std'] = list(ensemble_smb.std(axis=0))
+        self.params['final_ensemble'] = [list(sigma) for sigma in ensemble_smb]
+
+        # information
+        self.params['initial_smb'] = self.initial_smb
+        self.params['initial_spread'] = self.initial_spread
+        self.params['reference_smb'] = self.reference_smb
+        self.params['ensemble_size'] = self.ensemble_size
+        self.params['inflation'] = self.inflation
+        self.params['seed'] = self.seed
+
+        from pathlib import Path
+
+        # Ensure self.output_dir is a Path object
+        self.output_dir = Path(self.output_dir)
+
+        # Use / operator to join paths
+        output_path = self.output_dir / f"result_seed_{self.seed}_inflation_{self.inflation}.json"
+
+        # Write to the file
+        with open(output_path, 'w') as f:
+            json.dump(self.params, f, indent=4, separators=(',', ': '))

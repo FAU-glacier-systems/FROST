@@ -12,6 +12,8 @@ scale_factor=1
 inversion=false
 calibrate=false
 forward_parallel=false
+seed=1
+inflation=1
 
 
 # Parse command-line arguments
@@ -23,6 +25,8 @@ while [[ "$#" -gt 0 ]]; do
         --inversion) inversion=true; shift ;;
         --calibrate) calibrate=true; shift ;; # Set calibrate flag to true
         --forward_parallel) forward_parallel=true; shift ;;
+        --seed) seed="$2"; shift 2 ;;
+        --inflation) inflation="$2"; shift 2 ;;
         *) echo "Unknown parameter $1"; exit 1 ;;  # Exit on unknown argument
     esac
 done
@@ -51,5 +55,6 @@ fi
 if [ "$calibrate" = true ]; then
     echo "Starting calibration..."
     python -u FROST_RUN.py --rgi_id "$rgi_id" --ensemble_size 50 \
-    --forward_parallel "$forward_parallel" --iterations 5 --seed 51
+    --forward_parallel "$forward_parallel" --iterations 5 --seed "$seed" \
+    --inflation "$inflation"
 fi

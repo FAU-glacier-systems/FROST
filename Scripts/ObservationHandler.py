@@ -44,33 +44,23 @@ class ObservationProvider:
             self.x = ds['x'][:]
             self.y = ds['y'][:]
 
-        #self.observation_locations = self.sample_locations()
-        self.num_obs_points = 20
+        # self.observation_locations = self.sample_locations()
+        self.num_obs_points = 10
         usurf2000_masked = self.usurf[0][self.icemask == 1]
         self.bin_edges = np.linspace(usurf2000_masked.min(), usurf2000_masked.max(),
-                                self.num_obs_points + 1)
+                                     self.num_obs_points + 1)
 
         # Compute bin indices for 2000 surface
-        self.bin_indices = np.digitize(usurf2000_masked, self.bin_edges)
+        self.bin_map = np.digitize(self.usurf[0], self.bin_edges)
+        self.bin_map[self.icemask == 0] = 0
+
         # Compute bin indices for 2000 surface
 
-        # Create a grid for visualization
-        bin_colored_image = np.zeros_like(self.usurf[0], dtype=int)
-        bin_colored_image[self.icemask == 1] = self.bin_indices
-        # Plot the bins colored by indices
-
-        plt.figure(figsize=(10, 8))
-        plt.imshow(bin_colored_image, cmap="viridis", origin="lower")
-        plt.colorbar(label="Bin Index")
-        plt.title("Pixels Colored by Elevation Bin")
-        plt.xlabel("X-axis")
-        plt.ylabel("Y-axis")
-        plt.show(dpi=300)
         self.variogram_model = Variogram_hugonnet(dim=2)
         self.srf = gs.SRF(self.variogram_model, mode_no=100)
         self.srf.set_pos([self.y, self.x], "structured")
 
-    def sample_locations(self, ):
+    def sample_locations(self):
 
         slim_icemask = skeletonize(self.icemask)
         print('Number of points: {}'.format(np.sum(slim_icemask)))
@@ -89,26 +79,40 @@ class ObservationProvider:
         sorted_observation_points = sorted(observation_points, key=get_pixel_value)
         return np.array(sorted_observation_points)
 
-    def generate_covariance_matrix(self, uncertainties):
-        num_pixels = len(self.observation_locations)
-        covariance_matrix = np.zeros((num_pixels, num_pixels))
+    def compute_bin_uncertainty(self, usurf_err_raster, nan_mask):
+        bin_variance = []
 
-        # Compute pairwise covariance
-        for i in range(num_pixels):
-            for j in range(i, num_pixels):  # use symmetry
-                # Calculate distance between locations i and j (assuming 2D coordinates)
-                distance = np.linalg.norm(
-                    self.observation_locations[i] - self.observation_locations[j])
+        for bin_id in range(1, self.num_obs_points + 1):
+            # Filter pixels belonging to the current bin and not masked
+            mask = np.logical_and(self.bin_map == bin_id, ~nan_mask)
+            err_bin = usurf_err_raster[mask]
+            index_x, index_y = np.where(mask)
+            loc_x, loc_y = self.y[index_x], self.x[index_y]
+            locations = np.column_stack((loc_x, loc_y))
 
-                # Get the correlation for this distance
-                correlation = self.variogram_model.cor(distance)
+            num_pixels = len(locations)
+            if num_pixels == 0:  # Skip empty bins
+                bin_variance.append(0.0)
+                continue
 
-                # Calculate the covariance: Corr * sigma_i * sigma_j
-                covariance_matrix[i, j] = correlation * uncertainties[i] * \
-                                          uncertainties[j]
-                covariance_matrix[j, i] = covariance_matrix[i, j]  # Symmetry
+            # Compute pairwise distances (vectorized)
+            distances = np.linalg.norm(
+                locations[:, np.newaxis, :] - locations[np.newaxis, :, :], axis=2
+            )
 
-        return covariance_matrix
+            # Apply variogram model to compute correlations
+            correlations = self.variogram_model.cor(distances)
+
+            # Compute covariance matrix (vectorized)
+            pixel_uncertainties = err_bin[:, np.newaxis] * err_bin[np.newaxis, :]
+            covariance_matrix = correlations * pixel_uncertainties
+
+            # Variance of the bin mean
+            bin_var = np.sum(covariance_matrix) / (num_pixels ** 2)
+            print(f'Bin {bin_id} variance: {bin_var}')
+            bin_variance.append(bin_var)
+
+        return bin_variance
 
     def get_next_observation(self, current_year, num_samples):
         # load observations
@@ -119,30 +123,32 @@ class ObservationProvider:
         year = self.time_period[next_index]
         usurf_raster = self.usurf[next_index]
         usurf_err_raster = self.usurf_err[next_index]
+        self.nan_mask = np.isnan(usurf_raster)
 
-        usurf_line = self.average_elevation_bin(usurf_raster)
+        usurf_line = self.average_elevation_bin(usurf_raster, self.nan_mask)
+        # usurf_err_line = self.average_elevation_bin(usurf_err_raster, self.nan_mask)
 
-        #noise_matrix = self.generate_covariance_matrix(usurf_err_line) #TODO
-        noise_matrix = np.eye(len(usurf_line))*10
+        # TODO
+        noise_matrix = self.compute_bin_uncertainty(usurf_err_raster,
+                                                       self.nan_mask)  #
+
+        noise_matrix = np.diag(noise_matrix)
+        # noise_matrix = np.eye(len(usurf_line)) * 10
 
         noise_samples = np.random.multivariate_normal(np.zeros_like(usurf_line),
                                                       noise_matrix, size=num_samples)
 
         return year, usurf_line, noise_matrix, noise_samples
 
-    def average_elevation_bin(self, usurf):
+    def average_elevation_bin(self, usurf, nan_mask):
         # Apply mask to both surfaces
-
-        usurf_masked = usurf[self.icemask==1]
 
         # Compute average 2020 surface for each bin
         average_usurf = []
         for i in range(1, len(self.bin_edges)):
             # Mask for pixels in the current bin
-            in_bin = self.bin_indices == i
-            if np.any(in_bin):
-                avg = np.mean(usurf_masked[in_bin])
-
+            bin_pixels = usurf[np.logical_and(self.bin_map == i, ~ nan_mask)]
+            avg = np.mean(bin_pixels)
             average_usurf.append(avg)
 
         # Convert results to a NumPy array
@@ -153,7 +159,7 @@ class ObservationProvider:
         ensemble_usurf = EnKF_object.ensemble_usurf
         observables = []
         for usurf in ensemble_usurf:
-            observables.append(self.average_elevation_bin(usurf))
+            observables.append(self.average_elevation_bin(usurf, self.nan_mask))
 
         return np.array(observables)
 
