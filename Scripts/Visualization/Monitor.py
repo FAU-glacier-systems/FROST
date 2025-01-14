@@ -4,7 +4,7 @@ import numpy as np
 
 
 class Monitor:
-    def __init__(self, EnKF_object, ObsProvider):
+    def __init__(self, EnKF_object, ObsProvider, output_dir):
 
         self.rgi_id = EnKF_object.rgi_id
         self.ensemble_size = EnKF_object.ensemble_size
@@ -18,8 +18,7 @@ class Monitor:
 
         self.colorscale = plt.get_cmap('tab20')
 
-        self.monitor_dir = os.path.join('Experiments', self.rgi_id,
-                                        f'Monitor_{self.seed}')
+        self.monitor_dir = output_dir
         if not os.path.exists(self.monitor_dir):
             os.makedirs(self.monitor_dir)
 

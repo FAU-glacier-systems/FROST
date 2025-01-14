@@ -27,12 +27,14 @@ def scale_raster(input_file, output_file, scale_factor):
 
             # Check if 'time' dimension exists
             if 'time' in input_dataset.dimensions:
-                scaled_dataset.createDimension('time', len(input_dataset.dimensions['time']))
+                scaled_dataset.createDimension('time',
+                                               len(input_dataset.dimensions['time']))
                 time_var = scaled_dataset.createVariable('time', 'f4', ('time',))
                 time_var[:] = input_dataset.variables['time'][:]
-                time_var.setncatts({attr: input_dataset.variables['time'].getncattr(attr)
-                                    for attr in
-                                    input_dataset.variables['time'].ncattrs()})
+                time_var.setncatts(
+                    {attr: input_dataset.variables['time'].getncattr(attr)
+                     for attr in
+                     input_dataset.variables['time'].ncattrs()})
 
             # Create coordinate variables
             x_var = scaled_dataset.createVariable('x', 'f4', ('x',))
@@ -57,7 +59,8 @@ def scale_raster(input_file, output_file, scale_factor):
                 dims = var.dimensions
 
                 # Create a new variable in the output dataset
-                scaled_var = scaled_dataset.createVariable(var_name, var.datatype, dims)
+                scaled_var = scaled_dataset.createVariable(var_name, var.datatype,
+                                                           dims)
 
                 # Downscale data if it has 'x' and 'y' dimensions
                 if 'x' in dims and 'y' in dims:
@@ -76,7 +79,8 @@ def scale_raster(input_file, output_file, scale_factor):
 
             # Copy global attributes (e.g., CRS, title, etc.)
             scaled_dataset.setncatts(
-                {attr: input_dataset.getncattr(attr) for attr in input_dataset.ncattrs()})
+                {attr: input_dataset.getncattr(attr) for attr in
+                 input_dataset.ncattrs()})
 
             # Handle CRS explicitly, if available
             if 'crs' in input_dataset.variables:
@@ -150,8 +154,8 @@ def crop_hugonnet_to_glacier(rgi_region, date_range, oggm_shop_dataset):
     min_y, max_y = y_coords.min(), y_coords.max()
 
     zone_number = int(oggm_shop_dataset.pyproj_srs.split('+')[2].split("=")[1])
-    zone_letter = "N"           #TODO for south regions
-    x_range= np.array([min_x, min_x, max_x, max_x])
+    zone_letter = "N"  # TODO for south regions
+    x_range = np.array([min_x, min_x, max_x, max_x])
     y_range = np.array([min_y, min_y, max_y, max_y])
 
     lat_lon_corner = utm.to_latlon(x_range, y_range, zone_number, zone_letter)
@@ -188,7 +192,7 @@ def crop_hugonnet_to_glacier(rgi_region, date_range, oggm_shop_dataset):
     window = from_bounds(min_x, min_y, max_x, max_y, merged_transform)
 
     # Ensure window indices are integers, and handle off-by-one errors
-    row_off = round(window.row_off)# Ensure the row offset is an integer
+    row_off = round(window.row_off)  # Ensure the row offset is an integer
     col_off = round(window.col_off)  # Ensure the column offset is an integer
     height = len(y_coords)  # Ensure height is integer and within bounds
     width = len(x_coords)
@@ -212,24 +216,6 @@ def crop_hugonnet_to_glacier(rgi_region, date_range, oggm_shop_dataset):
 
     return filtered_map, filtered_err_map
 
-def fill_nans(array):
-    from scipy.interpolate import griddata
-
-    # Coordinates of valid (non-NaN) data
-    x, y = np.meshgrid(np.arange(array.shape[1]), np.arange(array.shape[0]))
-    valid_mask = ~np.isnan(array)
-
-    # Interpolation
-    dhdt_filled = griddata(
-        (x[valid_mask], y[valid_mask]),
-        array[valid_mask],
-        (x, y),
-        method='linear'
-    )
-
-    # Optionally, fill any remaining NaNs (if edges couldn't be interpolated)
-    dhdt_filled = np.nan_to_num(dhdt_filled, nan=0)
-    return dhdt_filled
 
 def download_hugonnet(rgi_id_dir, year_interval):
     oggm_shop_dir = os.path.join(rgi_id_dir, 'OGGM_shop')
@@ -246,13 +232,13 @@ def download_hugonnet(rgi_id_dir, year_interval):
     rgi_region = rgi_id_dir.split('/')[-1].split("-")[3]
 
     if year_interval == 20:
-        folder_names = [rgi_region+'_rgi60_2000-01-01_2020-01-01']
+        folder_names = [rgi_region + '_rgi60_2000-01-01_2020-01-01']
 
     elif year_interval == 5:
-        folder_names = [rgi_region+'_rgi60_2000-01-01_2005-01-01',
-                        rgi_region+'_rgi60_2005-01-01_2010-01-01',
-                        rgi_region+'_rgi60_2010-01-01_2015-01-01',
-                        rgi_region+'_rgi60_2015-01-01_2020-01-01']
+        folder_names = [rgi_region + '_rgi60_2000-01-01_2005-01-01',
+                        rgi_region + '_rgi60_2005-01-01_2010-01-01',
+                        rgi_region + '_rgi60_2010-01-01_2015-01-01',
+                        rgi_region + '_rgi60_2015-01-01_2020-01-01']
 
     else:
         raise ValueError(
@@ -268,7 +254,7 @@ def download_hugonnet(rgi_id_dir, year_interval):
 
         ### MERGE TILES AND CROP to oggmshop area ###
         cropped_dhdt, cropped_dhdt_err = crop_hugonnet_to_glacier(rgi_region,
-                                                                    date_range,
+                                                                  date_range,
                                                                   oggm_shop_dataset)
         dhdt_masked = cropped_dhdt[::-1] * icemask_2000
         dhdts.append(dhdt_masked)
@@ -296,8 +282,7 @@ def download_hugonnet(rgi_id_dir, year_interval):
         dhdt_change.append(dhdt)
 
         # either bedrock or last usurf + current dhdt
-        usurf = np.maximum(bedrock, usurf_change[-1] + dhdt*step_size)
-        usurf = fill_nans(usurf)
+        usurf = np.maximum(bedrock, usurf_change[-1] + dhdt * step_size)
         usurf_change.append(usurf)
 
         # compute uncertainty overtime
@@ -308,7 +293,8 @@ def download_hugonnet(rgi_id_dir, year_interval):
         # assuming the error is termporal independet
         # the square root of the sum of variance should be the right err for the
         # surface
-        usurf_err = np.sqrt(sum([dhdt_err_i ** 2 for dhdt_err_i in dhdt_err_change]))
+        usurf_err = np.sqrt(sum([dhdt_err_i ** 2 for dhdt_err_i in
+                                 dhdt_err_change * step_size ]))
         usurf_err_change.append(usurf_err)
 
     # transform to numpy array
@@ -321,7 +307,6 @@ def download_hugonnet(rgi_id_dir, year_interval):
     uvelo = oggm_shop_dataset.variables['uvelsurfobs'][:]
     vvelo = oggm_shop_dataset.variables['vvelsurfobs'][:]
     velo = np.sqrt(uvelo ** 2 + vvelo ** 2)
-
 
     # Create a new netCDF file
     observation_file = os.path.join(rgi_id_dir, 'observations.nc')
@@ -336,13 +321,16 @@ def download_hugonnet(rgi_id_dir, year_interval):
         x_var = merged_dataset.createVariable('x', 'f4', ('x',))
         y_var = merged_dataset.createVariable('y', 'f4', ('y',))
         usurf_var = merged_dataset.createVariable('usurf', 'f4', ('time', 'y', 'x'))
-        usurf_err_var = merged_dataset.createVariable('usurf_err', 'f4', ('time', 'y',
-                                                                     'x'))
-        icemask_var = merged_dataset.createVariable('icemask', 'f4', ('time', 'y', 'x'))
+        usurf_err_var = merged_dataset.createVariable('usurf_err', 'f4',
+                                                      ('time', 'y',
+                                                       'x'))
+        icemask_var = merged_dataset.createVariable('icemask', 'f4',
+                                                    ('time', 'y', 'x'))
         dhdt_var = merged_dataset.createVariable('dhdt', 'f4', ('time', 'y', 'x'))
-        dhdt_err_var = merged_dataset.createVariable('dhdt_err', 'f4', ('time', 'y', 'x'))
+        dhdt_err_var = merged_dataset.createVariable('dhdt_err', 'f4',
+                                                     ('time', 'y', 'x'))
         velsurf_mag_var = merged_dataset.createVariable('velsurf_mag', 'f4',
-                                                   ('time', 'y', 'x'))
+                                                        ('time', 'y', 'x'))
 
         # Assign data to variables
         time_var[:] = year_range
@@ -354,7 +342,6 @@ def download_hugonnet(rgi_id_dir, year_interval):
         dhdt_var[:] = dhdt_change
         dhdt_err_var[:] = dhdt_err_change
         velsurf_mag_var[:] = velo
-
 
 
 if __name__ == '__main__':

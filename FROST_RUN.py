@@ -2,6 +2,7 @@ import argparse
 from Scripts.EnsembleKalmanFilter import EnsembleKalmanFilter
 from Scripts.ObservationHandler import ObservationProvider
 from Scripts.Visualization.Monitor import Monitor
+import os
 
 
 def main(rgi_id, ensemble_size, inflation, iterations, seed,
@@ -12,23 +13,24 @@ def main(rgi_id, ensemble_size, inflation, iterations, seed,
           f'Iterations: {iterations}',
           f'Seed: {seed}',
           f'Forward parallel: {forward_parallel}')
-
-    # TODO save params
+    output_dir = os.path.join('Experiments', rgi_id, f'Experiment_{seed}_{inflation}')
     # Initialise an ensemble kalman filter object
     ENKF = EnsembleKalmanFilter(rgi_id=rgi_id,
                                 ensemble_size=ensemble_size,
                                 inflation=inflation,
                                 seed=seed,
-                                start_year=2000)
+                                start_year=2000,
+                                output_dir=output_dir)
 
     # Initialise the Observation provider
     ObsProvider = ObservationProvider(rgi_id=rgi_id)
 
     # Initialise a monitor for visualising the process
-    monitor = Monitor(EnKF_object=ENKF, ObsProvider=ObsProvider)
+    monitor = Monitor(EnKF_object=ENKF, ObsProvider=ObsProvider,
+                      output_dir=output_dir)
 
     ################# MAIN LOOP #####################################################
-    for i in range(1,iterations+1):
+    for i in range(1, iterations + 1):
         # get new observation
 
         year, new_observation, noise_matrix, noise_samples \
@@ -46,7 +48,6 @@ def main(rgi_id, ensemble_size, inflation, iterations, seed,
         # update geometries
         new_geometry = ObsProvider.get_new_geometrie(year)
 
-
         print("Visualise")
         monitor.plot_iteration(ensemble_smb_log=ENKF.ensemble_smb_log,
                                ensemble_smb_raster=ENKF.ensemble_smb_raster,
@@ -58,7 +59,8 @@ def main(rgi_id, ensemble_size, inflation, iterations, seed,
         ENKF.reset_time()
     #################################################################################
 
-    #ENKF.save_results()
+    ENKF.save_results()
+    print('Done')
 
 
 if __name__ == '__main__':
