@@ -15,7 +15,7 @@ while [[ "$#" -gt 0 ]]; do
 done
 
 # Define seeds and inflation factors
-seeds=(6 7 8 9)
+seeds=(1 2 3 4 5 6 7 8 9)
 inflation_factors=(1.0 1.2 1.4 1.6 1.8 2.0)
 
 echo "Starting calibration..."
@@ -26,7 +26,7 @@ for seed in "${seeds[@]}"; do
         echo "Running with seed: $seed and inflation: $inflation"
         python -u FROST_RUN.py --rgi_id "$rgi_id" --ensemble_size 50 \
         --forward_parallel "$forward_parallel" --iterations 5 \
-        --seed "$seed" --inflation "$inflation"
+        --seed "$seed" --inflation "$inflation"  --elevation_bin 50
     done
 done
 

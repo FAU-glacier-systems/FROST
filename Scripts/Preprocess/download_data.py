@@ -165,7 +165,7 @@ def crop_hugonnet_to_glacier(rgi_region, date_range, oggm_shop_dataset):
 
     # Create a list to store overlapping tile names
     tile_names = []
-    print(tile_names)
+
     # Iterate over possible tiles
 
     for lat in range(int(min_lat), int(max_lat) + 1):
@@ -173,7 +173,7 @@ def crop_hugonnet_to_glacier(rgi_region, date_range, oggm_shop_dataset):
             # Construct the tile name
             tile_name = f'N{lat:02d}E{lon:03d}'
             tile_names.append(tile_name)
-
+    print(tile_names)
     # Collect all dh/dt files for the specified tiles
     dhdt_files = [os.path.join(dhdt_folder, f'{tile}_{date_range}_dhdt.tif') for tile
                   in tile_names]

@@ -227,7 +227,7 @@ class EnsembleKalmanFilter:
 
         self.ensemble_smb = inflated_ensemble_smb
 
-    def save_results(self):
+    def save_results(self, elevation_bins):
         self.params = dict()
 
         keys = self.initial_smb.keys()
@@ -246,6 +246,7 @@ class EnsembleKalmanFilter:
         self.params['reference_smb'] = self.reference_smb
         self.params['ensemble_size'] = self.ensemble_size
         self.params['inflation'] = self.inflation
+        self.params['elevation_bins'] = elevation_bins
         self.params['seed'] = self.seed
 
         from pathlib import Path

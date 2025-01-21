@@ -1,6 +1,6 @@
 #!/bin/bash -l
 #SBATCH --nodes=1
-#SBATCH --time=1:00:00
+#SBATCH --time=0:20:00
 #SBATCH --job-name=frost
 module load python
 conda activate igm
@@ -56,5 +56,5 @@ if [ "$calibrate" = true ]; then
     echo "Starting calibration..."
     python -u FROST_RUN.py --rgi_id "$rgi_id" --ensemble_size 50 \
     --forward_parallel "$forward_parallel" --iterations 5 --seed "$seed" \
-    --inflation "$inflation"
+    --inflation "$inflation" --elevation_bin 50
 fi
