@@ -29,7 +29,7 @@ class Variogram_hugonnet(gs.CovModel):
 
 
 class ObservationProvider:
-    def __init__(self, rgi_id):
+    def __init__(self, rgi_id, elevation_bins):
 
         observation_file = (os.path.join('Data', 'Glaciers', rgi_id,
                                          'observations.nc'))
@@ -44,15 +44,17 @@ class ObservationProvider:
             self.x = ds['x'][:]
             self.y = ds['y'][:]
 
-        # self.observation_locations = self.sample_locations()
-        self.num_obs_points = 10
+        #self.observation_locations = self.sample_locations()
+        self.elevation_bins = elevation_bins
         usurf2000_masked = self.usurf[0][self.icemask == 1]
         self.bin_edges = np.linspace(usurf2000_masked.min(), usurf2000_masked.max(),
-                                     self.num_obs_points + 1)
+                                     self.elevation_bins + 1)
 
         # Compute bin indices for 2000 surface
         self.bin_map = np.digitize(self.usurf[0], self.bin_edges)
         self.bin_map[self.icemask == 0] = 0
+
+        self.obs_locations = self.sample_locations()
 
         # Compute bin indices for 2000 surface
 
@@ -79,13 +81,15 @@ class ObservationProvider:
         sorted_observation_points = sorted(observation_points, key=get_pixel_value)
         return np.array(sorted_observation_points)
 
-    def compute_bin_uncertainty(self, usurf_err_raster, nan_mask):
+    def compute_bin_uncertainty(self, usurf_raster, usurf_err_raster, nan_mask):
         bin_variance = []
 
-        for bin_id in range(1, self.num_obs_points + 1):
+        for bin_id in range(1, self.elevation_bins + 1):
             # Filter pixels belonging to the current bin and not masked
             mask = np.logical_and(self.bin_map == bin_id, ~nan_mask)
             err_bin = usurf_err_raster[mask]
+            usurf_bin = usurf_raster[mask]
+            usurf_bin_var = np.var(usurf_bin)
             index_x, index_y = np.where(mask)
             loc_x, loc_y = self.y[index_x], self.x[index_y]
             locations = np.column_stack((loc_x, loc_y))
@@ -104,13 +108,19 @@ class ObservationProvider:
             correlations = self.variogram_model.cor(distances)
 
             # Compute covariance matrix (vectorized)
+
             pixel_uncertainties = err_bin[:, np.newaxis] * err_bin[np.newaxis, :]
             covariance_matrix = correlations * pixel_uncertainties
 
             # Variance of the bin mean
             bin_var = np.sum(covariance_matrix) / (num_pixels ** 2)
+            combined_var = bin_var + usurf_bin_var
+            if bin_id == 97:
+                print()
+                continue
             print(f'Bin {bin_id} variance: {bin_var}')
-            bin_variance.append(bin_var)
+            print(usurf_bin)
+            bin_variance.append(combined_var)
 
         return bin_variance
 
@@ -125,20 +135,49 @@ class ObservationProvider:
         usurf_err_raster = self.usurf_err[next_index]
         self.nan_mask = np.isnan(usurf_raster)
 
+        #usurf_line = usurf_raster[self.obs_locations[:, 0], self.obs_locations[:,
+        # 1]]
+
         usurf_line = self.average_elevation_bin(usurf_raster, self.nan_mask)
-        # usurf_err_line = self.average_elevation_bin(usurf_err_raster, self.nan_mask)
+        #usurf_err_line = self.average_elevation_bin(usurf_err_raster, self.nan_mask)
 
         # TODO
-        noise_matrix = self.compute_bin_uncertainty(usurf_err_raster,
-                                                       self.nan_mask)  #
 
-        noise_matrix = np.diag(noise_matrix)
-        # noise_matrix = np.eye(len(usurf_line)) * 10
+        bin_uncertainties = self.compute_bin_uncertainty(usurf_raster,
+                                                         usurf_err_raster,
+                                                    self.nan_mask)
+
+        noise_matrix = np.diag(bin_uncertainties)
+        #noise_matrix = self.compute_noise_matrix(usurf_err_raster)
 
         noise_samples = np.random.multivariate_normal(np.zeros_like(usurf_line),
                                                       noise_matrix, size=num_samples)
 
         return year, usurf_line, noise_matrix, noise_samples
+
+    def compute_noise_matrix(self, usurf_err_raster):
+        usurf_err_line = usurf_err_raster[
+            self.obs_locations[:, 0], self.obs_locations[:, 1]]
+
+        loc_x, loc_y = self.y[self.obs_locations[:, 0]], self.x[self.obs_locations[:,
+                                                             1]]
+        locations = np.column_stack((loc_x, loc_y))
+
+
+        # Compute pairwise distances (vectorized)
+        distances = np.linalg.norm(
+            locations[:, np.newaxis, :] - locations[np.newaxis, :, :], axis=2
+        )
+
+        # Apply variogram model to compute correlations
+        correlations = self.variogram_model.cor(distances)
+
+        # Compute covariance matrix (vectorized)
+        pixel_uncertainties = usurf_err_line[:, np.newaxis] * usurf_err_line[np.newaxis, :]
+
+        covariance_matrix = correlations * pixel_uncertainties
+        return covariance_matrix
+
 
     def average_elevation_bin(self, usurf, nan_mask):
         # Apply mask to both surfaces
@@ -160,7 +199,8 @@ class ObservationProvider:
         observables = []
         for usurf in ensemble_usurf:
             observables.append(self.average_elevation_bin(usurf, self.nan_mask))
-
+            #observables.append(usurf[self.obs_locations[:, 0],
+        # self.obs_locations[:, 1]])
         return np.array(observables)
 
     def get_new_geometrie(self, year):

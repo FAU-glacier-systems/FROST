@@ -5,7 +5,7 @@ from Scripts.Visualization.Monitor import Monitor
 import os
 
 
-def main(rgi_id, ensemble_size, inflation, iterations, seed,
+def main(rgi_id, ensemble_size, inflation, iterations, seed, elevation_bins,
          forward_parallel):
     print(f'Running calibration for glacier: {rgi_id}')
     print(f'Ensemble size: {ensemble_size}',
@@ -15,7 +15,7 @@ def main(rgi_id, ensemble_size, inflation, iterations, seed,
           f'Forward parallel: {forward_parallel}')
     output_dir = os.path.join('Experiments', rgi_id, f'Experiment_{seed}_{inflation}')
     # Initialise an ensemble kalman filter object
-    ENKF = EnsembleKalmanFilter(rgi_id=rgi_id,
+    ensemble_kalman_filter = EnsembleKalmanFilter(rgi_id=rgi_id,
                                 ensemble_size=ensemble_size,
                                 inflation=inflation,
                                 seed=seed,
@@ -23,10 +23,11 @@ def main(rgi_id, ensemble_size, inflation, iterations, seed,
                                 output_dir=output_dir)
 
     # Initialise the Observation provider
-    ObsProvider = ObservationProvider(rgi_id=rgi_id)
+    ObsProvider = ObservationProvider(rgi_id=rgi_id,
+                                      elevation_bins=int(elevation_bins))
 
     # Initialise a monitor for visualising the process
-    monitor = Monitor(EnKF_object=ENKF, ObsProvider=ObsProvider,
+    monitor = Monitor(EnKF_object=ensemble_kalman_filter, ObsProvider=ObsProvider,
                       output_dir=output_dir)
 
     ################# MAIN LOOP #####################################################
@@ -35,31 +36,32 @@ def main(rgi_id, ensemble_size, inflation, iterations, seed,
 
         year, new_observation, noise_matrix, noise_samples \
             = ObsProvider.get_next_observation(
-            ENKF.current_year, ENKF.ensemble_size)
-
+            ensemble_kalman_filter.current_year, ensemble_kalman_filter.ensemble_size)
+        print(new_observation)
+        print(noise_matrix)
         print(f'Forward pass ensemble to {year}')
-        ENKF.forward(year=year, forward_parallel=forward_parallel)
-        ensemble_observables = ObsProvider.get_observables_from_ensemble(ENKF)
+        ensemble_kalman_filter.forward(year=year, forward_parallel=forward_parallel)
+        ensemble_observables = ObsProvider.get_observables_from_ensemble(ensemble_kalman_filter)
 
         print("Update")
-        ENKF.update(new_observation, noise_matrix, noise_samples,
+        ensemble_kalman_filter.update(new_observation, noise_matrix, noise_samples,
                     ensemble_observables)
 
         # update geometries
         new_geometry = ObsProvider.get_new_geometrie(year)
 
         print("Visualise")
-        monitor.plot_iteration(ensemble_smb_log=ENKF.ensemble_smb_log,
-                               ensemble_smb_raster=ENKF.ensemble_smb_raster,
+        monitor.plot_iteration(ensemble_smb_log=ensemble_kalman_filter.ensemble_smb_log,
+                               ensemble_smb_raster=ensemble_kalman_filter.ensemble_smb_raster,
                                new_observation=new_observation,
-                               usurf_raster=new_geometry,
+                               uncertainty=noise_matrix,
                                iteration=i,
                                year=year,
                                ensemble_observables=ensemble_observables)
-        ENKF.reset_time()
+        ensemble_kalman_filter.reset_time()
     #################################################################################
 
-    ENKF.save_results()
+    ensemble_kalman_filter.save_results(elevation_bins)
     print('Done')
 
 
@@ -86,6 +88,8 @@ if __name__ == '__main__':
 
     parser.add_argument('--seed', type=int, default=12345,
                         help='Random seed for the model.')
+    parser.add_argument('--elevation_bin', type=int, default=20,
+                        help='Elevation bin for observations.')
 
     # Parse arguments
     args = parser.parse_args()
@@ -100,4 +104,5 @@ if __name__ == '__main__':
          inflation=args.inflation,
          iterations=args.iterations,
          seed=args.seed,
-         forward_parallel=forward_parallel)
+         forward_parallel=forward_parallel,
+         elevation_bins=args.elevation_bin)

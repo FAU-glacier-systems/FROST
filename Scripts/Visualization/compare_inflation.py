@@ -46,7 +46,7 @@ for exp_dir in experiment_dirs:
 df = pd.DataFrame(inflation_data)
 
 filter_values = {
-    'Equilibrium_Line_Altitude': (2000, 4000, 'final_mean_ela', 'final_std_ela'),
+    'Equilibrium_Line_Altitude': (3100, 3400, 'final_mean_ela', 'final_std_ela'),
     'Ablation_Gradient': (-100, 100, 'final_mean_grad_abl', 'final_std_grad_abl'),
     'Accumulation_Gradient': (-100, 100, 'final_mean_grad_acc', 'final_std_grad_acc')
 }
