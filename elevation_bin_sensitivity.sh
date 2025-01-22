@@ -18,17 +18,17 @@ done
 
 # Define seeds and inflation factors
 seeds=(1 2 3 4 5)
-inflation_factors=(1.0 1.2 1.4)
+elevation_bin=(10 20 30 40 50)
 
 echo "Starting calibration..."
 # Iterate over each seed
 for seed in "${seeds[@]}"; do
     # Iterate over each inflation factor
-    for inflation in "${inflation_factors[@]}"; do
-        echo "Running with seed: $seed and inflation: $inflation"
+    for num_bins in "${elevation_bin[@]}"; do
+        echo "Running with seed: $seed and num_bin: $num_bins"
         python -u FROST_RUN.py --rgi_id "$rgi_id" --ensemble_size 50 \
         --forward_parallel "$forward_parallel" --iterations 5 \
-        --seed "$seed" --inflation "$inflation"  --elevation_bin 50
+        --seed "$seed" --inflation 1.1 --num_bins "$num_bins"
     done
 done
 

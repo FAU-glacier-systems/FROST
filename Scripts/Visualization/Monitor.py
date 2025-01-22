@@ -37,11 +37,9 @@ class Monitor:
             point1=dict(y_label='Mean surface elevation of bin 3 (m)'),
             point2=dict(y_label='Mean surface elevation of bin -3 (m)'),
             ela=dict(y_label='Equilibrium Line  Altitude (m)'),
-            gradabl=dict(y_label='Ablation Gradient (m a$^{-1}$ km$^{-1}$)'),
-            gradacc=dict(y_label='Accumulated Gradient (m a$^{-1}$ km$^{-1}$)'),
+            gradabl=dict(y_label='Ablation Gradient\n(m a$^{-1}$ km$^{-1}$)'),
+            gradacc=dict(y_label='Accumulated Gradient\n(m a$^{-1}$ km$^{-1}$)'),
         )
-
-
 
     def summariese_observables(self, ensemble_observables, new_observables,
                                uncertainty_matrix):
@@ -76,7 +74,7 @@ class Monitor:
                        new_observation, uncertainty, iteration, year,
                        ensemble_observables):
 
-        fig, ax = plt.subplots(2, 4, figsize=(16, 9), layout="tight")
+        fig, ax = plt.subplots(2, 4, figsize=(12, 6))
 
         self.summariese_observables(ensemble_observables, new_observation,
                                     uncertainty)
@@ -85,39 +83,38 @@ class Monitor:
         iteration_axis_repeat = np.repeat(iteration_axis, 2)[1:-1]
         # Plot observables
         for i, key in enumerate(self.ensemble_observables_log.keys()):
+
             for e in range(self.ensemble_size):
                 observable_log_values = self.ensemble_observables_log[key][e]
                 observable_log_repeat = np.repeat(observable_log_values, 2)
                 ax[0, i].plot(iteration_axis_repeat,
                               observable_log_repeat,
                               color=self.colorscale(5), marker='o', markersize=10,
-                              markevery=[-1], zorder=2)
+                              markevery=[-1], zorder=2, label='Ensemble Member')
 
             observable_log_values = self.observation_log[key]
             observation_log_repeat = np.repeat(observable_log_values, 2)
             ax[0, i].plot(iteration_axis_repeat,
                           observation_log_repeat,
                           color=self.colorscale(0), marker='o', markersize=10,
-                          markevery=[-1], zorder=2
+                          markevery=[-1], zorder=2, label='Observation'
                           )
 
             observable_var_log_values = self.observation_std_log[key]
             observation_var_log_repeat = np.repeat(observable_var_log_values, 2)
             std_plus = observation_log_repeat + observation_var_log_repeat
-            print(std_plus)
-            ax[0, i].plot(iteration_axis_repeat,
-                          std_plus,
-                          color=self.colorscale(1), marker='o', markersize=10,
-                          markevery=[-1], zorder=2
-                          )
             std_minus = observation_log_repeat - observation_var_log_repeat
 
-            ax[0, i].plot(iteration_axis_repeat,
-                          std_minus,
-                          color=self.colorscale(1), marker='o', markersize=10,
-                          markevery=[-1], zorder=2
-                          )
+            ax[0, i].fill_between(iteration_axis_repeat,
+                                  std_minus,
+                                  std_plus,
+                                  color=self.colorscale(1), alpha=0.5,
+                                  label='Observation Uncertainty')
+
             ax[0, i].set_ylabel(self.plot_style[key]['y_label'])
+        handles, labels = ax[0, 0].get_legend_handles_labels()
+        by_label = dict(zip(labels, handles))
+        fig.legend(by_label.values(), by_label.keys(), loc='upper center', ncol=4)
 
         # Plot surface mass balance parameters
         for i, key in enumerate(ensemble_smb_log.keys()):
@@ -127,19 +124,23 @@ class Monitor:
                 ax[1, i].plot(iteration_axis,
                               smb_log_values,
                               color='gold', marker='o', markersize=10,
-                              markevery=[-1], zorder=2)
+                              markevery=[-1], zorder=2, label='Ensemble Member')
 
             ax[1, i].plot(iteration_axis,
                           [self.reference_smb[key] for _ in range(len(
                               smb_log_values))],
                           color=self.colorscale(8), marker='o', markersize=10,
-                          markevery=[-1], zorder=2
+                          markevery=[-1], zorder=2, label='Reference SMB'
                           )
             ax[1, i].set_ylabel(self.plot_style[key]['y_label'])
+            ax[1, i].set_xlabel('Iterations')
+
+        handles, labels = ax[1,0].get_legend_handles_labels()
+        by_label = dict(zip(labels, handles))
+        fig.legend(by_label.values(), by_label.keys(), loc='lower center', ncol=4)
 
         ax_obs_map = ax[0, 3]
-        # obs_img = ax_dhdt_map.imshow(usurf_raster, cmap='Blues_r',
-        #                             origin='lower')
+
         obs_mapped = np.zeros_like(self.bin_map, dtype=np.float32)
 
         for bin_id, value in enumerate(new_observation, start=1):
@@ -154,9 +155,6 @@ class Monitor:
         cbar = plt.colorbar(img_obs, ax=ax_obs_map, orientation='vertical',
                             label='Binned Surface Elevation (m)')
 
-        # ax_dhdt_map.scatter(self.plot_points[:, 1], self.plot_points[:, 0])
-        # ax_dhdt_map.scatter(self.plot_points[:, 1], self.plot_points[:, 0])
-
         ax_smb_map = ax[1, 3]
         mean_smb_raster = np.mean(ensemble_smb_raster, axis=0)
         mean_smb_raster[self.icemask_init == 0] = 0
@@ -164,7 +162,8 @@ class Monitor:
                                     origin='lower')
         cbar = plt.colorbar(smb_img, ax=ax_smb_map, orientation='vertical',
                             label='Estimated Surface Mass Balance (m a$^{-1}$)')
+        fig.tight_layout()
+        fig.subplots_adjust(top=0.92, bottom=0.15)
 
-        fig.savefig(os.path.join(self.monitor_dir, f"status_{iteration}_{year}.png"),
-                    dpi=300, )
+        fig.savefig(os.path.join(self.monitor_dir, f"status_{iteration}_{year}.png"))
         plt.close(fig)

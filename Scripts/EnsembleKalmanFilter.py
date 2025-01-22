@@ -227,7 +227,7 @@ class EnsembleKalmanFilter:
 
         self.ensemble_smb = inflated_ensemble_smb
 
-    def save_results(self, elevation_bins):
+    def save_results(self, num_bins):
         self.params = dict()
 
         keys = self.initial_smb.keys()
@@ -246,7 +246,7 @@ class EnsembleKalmanFilter:
         self.params['reference_smb'] = self.reference_smb
         self.params['ensemble_size'] = self.ensemble_size
         self.params['inflation'] = self.inflation
-        self.params['elevation_bins'] = elevation_bins
+        self.params['num_bins'] = num_bins
         self.params['seed'] = self.seed
 
         from pathlib import Path
@@ -255,8 +255,10 @@ class EnsembleKalmanFilter:
         self.output_dir = Path(self.output_dir)
 
         # Use / operator to join paths
-        output_path = self.output_dir / f"result_seed_{self.seed}_inflation_{self.inflation}.json"
+        output_path = self.output_dir / (
+            f"result_seed_{self.seed}_{self.inflation}_{num_bins}.json"
 
-        # Write to the file
+            # Write to the file
+            )
         with open(output_path, 'w') as f:
             json.dump(self.params, f, indent=4, separators=(',', ': '))

@@ -231,10 +231,11 @@ def download_hugonnet(rgi_id_dir, year_interval):
     # list folder names depending on time period
     rgi_region = rgi_id_dir.split('/')[-1].split("-")[3]
 
-    if year_interval == 20:
+    data_interval = 5
+    if data_interval == 20:
         folder_names = [rgi_region + '_rgi60_2000-01-01_2020-01-01']
 
-    elif year_interval == 5:
+    elif data_interval == 5:
         folder_names = [rgi_region + '_rgi60_2000-01-01_2005-01-01',
                         rgi_region + '_rgi60_2005-01-01_2010-01-01',
                         rgi_region + '_rgi60_2010-01-01_2015-01-01',
@@ -262,27 +263,25 @@ def download_hugonnet(rgi_id_dir, year_interval):
         dhdt_err_masked = cropped_dhdt_err[::-1] * icemask_2000
         dhdts_err.append(dhdt_err_masked)
 
-    usurf_change = [usurf_2000]  # initialise with 2000 state
+    usurf_change = [usurf_2000]  # initialise with 2000 state #TODO ASTER ?
     dhdt_change = [np.zeros_like(usurf_2000)]
     dhdt_err_change = [np.zeros_like(usurf_2000)]
-    usurf_err_change = [np.zeros_like(usurf_2000)]  # TODO
+    usurf_err_change = []  # TODO
 
     bedrock = usurf_2000 - thk_2000
-    step_size = 20
-    year_range = np.arange(2000, 2021, step_size)
+    year_range = np.arange(2000, 2021, data_interval)
 
-    for year in year_range[1:]:
+    for i, year in enumerate(year_range[1:]):
         # compute surface change based on dhdt and provide uncertainties
         # change the dhdt field every year_interval
-        year_index = year - 2001
 
-        dhdt_index = math.floor(year_index / year_interval)
+        dhdt_index = math.floor((year - 2001) / data_interval)
         dhdt = dhdts[dhdt_index]
         dhdt = np.where(icemask_2000 == 1, dhdt, 0)
         dhdt_change.append(dhdt)
 
         # either bedrock or last usurf + current dhdt
-        usurf = np.maximum(bedrock, usurf_change[-1] + dhdt * step_size)
+        usurf = np.maximum(bedrock, usurf_change[-1] + dhdt * data_interval)
         usurf_change.append(usurf)
 
         # compute uncertainty overtime
@@ -293,9 +292,20 @@ def download_hugonnet(rgi_id_dir, year_interval):
         # assuming the error is termporal independet
         # the square root of the sum of variance should be the right err for the
         # surface
-        usurf_err = np.sqrt(sum([dhdt_err_i ** 2 for dhdt_err_i in
-                                 dhdt_err_change * step_size ]))
+        # usurf_err_new = dhdt_err * year_interval / 2
+
+        if not usurf_err_change:
+            usurf_err = dhdt_err * data_interval / 2
+        else:
+            usurf_err = ((dhdt_err_change[-2] * data_interval / 2
+                          + dhdt_err_change[-1] *data_interval / 2)) / 2
+
+
         usurf_err_change.append(usurf_err)
+
+    # usurf error of final year
+    usurf_err = dhdt_err_change[-1] * data_interval / 2
+    usurf_err_change.append(usurf_err)
 
     # transform to numpy array
     usurf_change = np.array(usurf_change)
