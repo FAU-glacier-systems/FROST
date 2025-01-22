@@ -5,7 +5,7 @@ from Scripts.Visualization.Monitor import Monitor
 import os
 
 
-def main(rgi_id, ensemble_size, inflation, iterations, seed, elevation_bins,
+def main(rgi_id, ensemble_size, inflation, iterations, seed, num_bins,
          forward_parallel):
     print(f'Running calibration for glacier: {rgi_id}')
     print(f'Ensemble size: {ensemble_size}',
@@ -13,18 +13,19 @@ def main(rgi_id, ensemble_size, inflation, iterations, seed, elevation_bins,
           f'Iterations: {iterations}',
           f'Seed: {seed}',
           f'Forward parallel: {forward_parallel}')
-    output_dir = os.path.join('Experiments', rgi_id, f'Experiment_{seed}_{inflation}')
+    output_dir = os.path.join('Experiments', rgi_id, 'Bin_sensitivity',
+                              f'Experiment_{seed}_{num_bins}')
     # Initialise an ensemble kalman filter object
     ensemble_kalman_filter = EnsembleKalmanFilter(rgi_id=rgi_id,
-                                ensemble_size=ensemble_size,
-                                inflation=inflation,
-                                seed=seed,
-                                start_year=2000,
-                                output_dir=output_dir)
+                                                  ensemble_size=ensemble_size,
+                                                  inflation=inflation,
+                                                  seed=seed,
+                                                  start_year=2000,
+                                                  output_dir=output_dir)
 
     # Initialise the Observation provider
     ObsProvider = ObservationProvider(rgi_id=rgi_id,
-                                      elevation_bins=int(elevation_bins))
+                                      num_bins=int(num_bins))
 
     # Initialise a monitor for visualising the process
     monitor = Monitor(EnKF_object=ensemble_kalman_filter, ObsProvider=ObsProvider,
@@ -36,32 +37,31 @@ def main(rgi_id, ensemble_size, inflation, iterations, seed, elevation_bins,
 
         year, new_observation, noise_matrix, noise_samples \
             = ObsProvider.get_next_observation(
-            ensemble_kalman_filter.current_year, ensemble_kalman_filter.ensemble_size)
-        print(new_observation)
+            ensemble_kalman_filter.current_year,
+            ensemble_kalman_filter.ensemble_size)
         print(noise_matrix)
         print(f'Forward pass ensemble to {year}')
         ensemble_kalman_filter.forward(year=year, forward_parallel=forward_parallel)
-        ensemble_observables = ObsProvider.get_observables_from_ensemble(ensemble_kalman_filter)
+        ensemble_observables = ObsProvider.get_observables_from_ensemble(
+            ensemble_kalman_filter)
 
         print("Update")
         ensemble_kalman_filter.update(new_observation, noise_matrix, noise_samples,
-                    ensemble_observables)
-
-        # update geometries
-        new_geometry = ObsProvider.get_new_geometrie(year)
+                                      ensemble_observables)
 
         print("Visualise")
-        monitor.plot_iteration(ensemble_smb_log=ensemble_kalman_filter.ensemble_smb_log,
-                               ensemble_smb_raster=ensemble_kalman_filter.ensemble_smb_raster,
-                               new_observation=new_observation,
-                               uncertainty=noise_matrix,
-                               iteration=i,
-                               year=year,
-                               ensemble_observables=ensemble_observables)
+        monitor.plot_iteration(
+            ensemble_smb_log=ensemble_kalman_filter.ensemble_smb_log,
+            ensemble_smb_raster=ensemble_kalman_filter.ensemble_smb_raster,
+            new_observation=new_observation,
+            uncertainty=noise_matrix,
+            iteration=i,
+            year=year,
+            ensemble_observables=ensemble_observables)
         ensemble_kalman_filter.reset_time()
     #################################################################################
 
-    ensemble_kalman_filter.save_results(elevation_bins)
+    ensemble_kalman_filter.save_results(num_bins)
     print('Done')
 
 
@@ -88,7 +88,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--seed', type=int, default=12345,
                         help='Random seed for the model.')
-    parser.add_argument('--elevation_bin', type=int, default=20,
+    parser.add_argument('--num_bins', type=int, default=20,
                         help='Elevation bin for observations.')
 
     # Parse arguments
@@ -105,4 +105,4 @@ if __name__ == '__main__':
          iterations=args.iterations,
          seed=args.seed,
          forward_parallel=forward_parallel,
-         elevation_bins=args.elevation_bin)
+         num_bins=args.num_bins)
