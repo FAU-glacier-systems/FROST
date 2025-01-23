@@ -11,7 +11,7 @@ import json
 
 class EnsembleKalmanFilter:
     def __init__(self, rgi_id, ensemble_size, inflation, seed, start_year,
-                 output_dir):
+                 output_dir, usurf_ensemble):
 
         # save arguments
         self.rgi_id = rgi_id
@@ -33,12 +33,12 @@ class EnsembleKalmanFilter:
         geology_file = os.path.join(inversion_dir, 'geology-optimized.nc')
         with Dataset(geology_file, 'r') as geology_dataset:
             self.icemask_init = np.array(geology_dataset['icemask'])
-            self.usurf_init = np.array(geology_dataset['usurf'])
 
         # create placeholder for observable and hidden variables
-        self.ensemble_usurf = np.empty((self.ensemble_size,) + self.usurf_init.shape)
+        self.ensemble_usurf = np.empty(
+            (self.ensemble_size,) + self.icemask_init.shape)
         self.ensemble_smb_raster = np.empty(
-            (self.ensemble_size,) + self.usurf_init.shape)
+            (self.ensemble_size,) + self.icemask_init.shape)
 
         # Load parameter file with glacier specific values
         params_file_path = os.path.join('Experiments', rgi_id,
@@ -55,13 +55,12 @@ class EnsembleKalmanFilter:
 
         # Initialise the Ensemble and create directories for each member to
         # parallize the forward simulation
-        for e in range(self.ensemble_size):
+        for e, usurf in enumerate(usurf_ensemble):
             print('Initialise ensemble member', e)
 
             # Copy the initial surface elevation
             # TODO create different starting geometries
-            member_usurf = copy.copy(self.usurf_init)
-            self.ensemble_usurf[e] = member_usurf
+            self.ensemble_usurf[e] = usurf
 
             # Generate ensemble using the random generator
             member_smb = {
@@ -101,7 +100,7 @@ class EnsembleKalmanFilter:
     def reset_time(self):
         # resets the ensemble usurf
         for e in range(self.ensemble_size):
-            self.ensemble_usurf[e] = self.usurf_init
+            self.ensemble_usurf[e] = self.ensemble_usurf_log[0][e]
 
         # self.ensemble_usurf_log = [self.ensemble_usurf]
         self.current_year = self.start_year
@@ -259,6 +258,6 @@ class EnsembleKalmanFilter:
             f"result_seed_{self.seed}_{self.inflation}_{num_bins}.json"
 
             # Write to the file
-            )
+        )
         with open(output_path, 'w') as f:
             json.dump(self.params, f, indent=4, separators=(',', ': '))

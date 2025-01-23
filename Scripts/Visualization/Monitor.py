@@ -32,10 +32,14 @@ class Monitor:
 
         self.observation_std_log = {key: [] for key in self.keys}
 
+        self.density_factor= {'ela': 1,
+                        'gradabl':0.91,
+                       'gradacc':0.55}
+
         self.plot_style = dict(
             mean_usurf=dict(y_label='Mean surface elevation in 2020 (m)'),
             point1=dict(y_label='Mean surface elevation of bin 3 (m)'),
-            point2=dict(y_label='Mean surface elevation of bin -3 (m)'),
+            point2=dict(y_label=f'Mean surface elevation of bin -3 (m)'),
             ela=dict(y_label='Equilibrium Line  Altitude (m)'),
             gradabl=dict(y_label='Ablation Gradient\n(m a$^{-1}$ km$^{-1}$)'),
             gradacc=dict(y_label='Accumulated Gradient\n(m a$^{-1}$ km$^{-1}$)'),
@@ -127,7 +131,9 @@ class Monitor:
                               markevery=[-1], zorder=2, label='Ensemble Member')
 
             ax[1, i].plot(iteration_axis,
-                          [self.reference_smb[key] for _ in range(len(
+                          [self.reference_smb[key] / self.density_factor[key] for
+                           _ in
+                           range(len(
                               smb_log_values))],
                           color=self.colorscale(8), marker='o', markersize=10,
                           markevery=[-1], zorder=2, label='Reference SMB'
