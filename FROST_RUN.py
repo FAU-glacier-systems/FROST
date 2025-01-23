@@ -15,17 +15,24 @@ def main(rgi_id, ensemble_size, inflation, iterations, seed, num_bins,
           f'Forward parallel: {forward_parallel}')
     output_dir = os.path.join('Experiments', rgi_id, 'Bin_sensitivity',
                               f'Experiment_{seed}_{num_bins}')
+
+    # Initialise the Observation provider
+    ObsProvider = ObservationProvider(rgi_id=rgi_id,
+                                      num_bins=int(num_bins))
+
+    year, usurf_ensemble =  ObsProvider.inital_usurf_ensemble(
+        num_samples=ensemble_size)
+
     # Initialise an ensemble kalman filter object
     ensemble_kalman_filter = EnsembleKalmanFilter(rgi_id=rgi_id,
                                                   ensemble_size=ensemble_size,
                                                   inflation=inflation,
                                                   seed=seed,
-                                                  start_year=2000,
+                                                  start_year=year,
+                                                  usurf_ensemble=usurf_ensemble,
                                                   output_dir=output_dir)
 
-    # Initialise the Observation provider
-    ObsProvider = ObservationProvider(rgi_id=rgi_id,
-                                      num_bins=int(num_bins))
+
 
     # Initialise a monitor for visualising the process
     monitor = Monitor(EnKF_object=ensemble_kalman_filter, ObsProvider=ObsProvider,

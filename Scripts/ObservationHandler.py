@@ -6,6 +6,7 @@ from skimage.morphology import skeletonize
 from matplotlib import pyplot as plt
 from netCDF4 import Dataset
 import gstools as gs
+import copy
 
 
 # Variogram from Hugonnet
@@ -70,7 +71,7 @@ class ObservationProvider:
     def get_next_observation(self, current_year, num_samples):
         # load observations
         next_index = np.where(self.time_period == current_year)[0][0] + 1
-        next_index = 4 #TODO
+        next_index = 4  # TODO
         if next_index >= len(self.time_period):
             return None, None, None, None
 
@@ -95,6 +96,42 @@ class ObservationProvider:
                                                       noise_matrix, size=num_samples)
 
         return year, usurf_line, noise_matrix, noise_samples
+
+    def inital_usurf_ensemble(self, num_samples):
+        index = 0
+
+        # get data of next year
+        year = self.time_period[index]
+        usurf_raster = self.usurf[index]
+        usurf_err_raster = self.usurf_err[index]
+        usurf_err_masked = usurf_err_raster[self.icemask == 1]
+
+        index_x, index_y = np.where(self.icemask)
+        loc_x, loc_y = self.y[index_x], self.x[index_y]
+        locations = np.column_stack((loc_x, loc_y))
+
+        # Compute pairwise distances between all points in bin1 and bin2
+        distances = np.linalg.norm(
+            locations[:, None, :] - locations[None, :, :], axis=2
+        )  # Shape: (n1, n2)
+
+        # Apply the correlation function to each distance
+        correlations = self.variogram_model.cor(distances)
+        pixel_uncertainties = usurf_err_masked[:, np.newaxis] * usurf_err_masked[
+                                                                np.newaxis, :]
+        covariance_matrix = correlations * pixel_uncertainties
+
+        noise_samples = np.random.multivariate_normal(
+            np.zeros_like(usurf_err_masked),
+            covariance_matrix, size=num_samples)
+
+        ensemble_usurf = np.empty((num_samples,)+ usurf_raster.shape)
+        for e,noise_sample in enumerate(noise_samples):
+            usurf_sample = copy.deepcopy(usurf_raster)
+            usurf_sample[self.icemask == 1] += noise_sample
+            ensemble_usurf[e] = usurf_sample
+
+        return int(year), ensemble_usurf
 
     def compute_bin_variance(self, usurf_raster, usurf_err_raster, nan_mask):
         bin_variance = []
