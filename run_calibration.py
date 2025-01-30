@@ -13,62 +13,62 @@ def main(rgi_id, ensemble_size, inflation, iterations, seed, num_bins,
           f'Iterations: {iterations}',
           f'Seed: {seed}',
           f'Forward parallel: {forward_parallel}')
-    output_dir = os.path.join('Experiments', rgi_id, 'Bin_sensitivity',
-                              f'Experiment_{seed}_{num_bins}')
+    output_dir = os.path.join('Experiments', rgi_id,
+                              f'Experiment_{seed}_{num_bins}_{ensemble_size}_{inflation}')
 
     # Initialise the Observation provider
-    ObsProvider = ObservationProvider(rgi_id=rgi_id,
-                                      num_bins=int(num_bins))
+    obs_provider = ObservationProvider(rgi_id=rgi_id,
+                                       num_bins=int(num_bins))
 
-    year, usurf_ensemble =  ObsProvider.inital_usurf_ensemble(
-        num_samples=ensemble_size)
+    year, usurf_ensemble = obs_provider.inital_usurf(num_samples=ensemble_size)
 
     # Initialise an ensemble kalman filter object
-    ensemble_kalman_filter = EnsembleKalmanFilter(rgi_id=rgi_id,
-                                                  ensemble_size=ensemble_size,
-                                                  inflation=inflation,
-                                                  seed=seed,
-                                                  start_year=year,
-                                                  usurf_ensemble=usurf_ensemble,
-                                                  output_dir=output_dir)
-
-
+    ensembleKF = EnsembleKalmanFilter(rgi_id=rgi_id,
+                                      ensemble_size=ensemble_size,
+                                      inflation=inflation,
+                                      seed=seed,
+                                      start_year=year,
+                                      usurf_ensemble=usurf_ensemble,
+                                      output_dir=output_dir)
 
     # Initialise a monitor for visualising the process
-    monitor = Monitor(EnKF_object=ensemble_kalman_filter, ObsProvider=ObsProvider,
+    monitor = Monitor(EnKF_object=ensembleKF,
+                      ObsProvider=obs_provider,
                       output_dir=output_dir)
 
     ################# MAIN LOOP #####################################################
     for i in range(1, iterations + 1):
         # get new observation
-
         year, new_observation, noise_matrix, noise_samples \
-            = ObsProvider.get_next_observation(
-            ensemble_kalman_filter.current_year,
-            ensemble_kalman_filter.ensemble_size)
-        print(noise_matrix)
+            = obs_provider.get_next_observation(
+            current_year=ensembleKF.current_year,
+            num_samples=ensembleKF.ensemble_size)
+
         print(f'Forward pass ensemble to {year}')
-        ensemble_kalman_filter.forward(year=year, forward_parallel=forward_parallel)
-        ensemble_observables = ObsProvider.get_observables_from_ensemble(
-            ensemble_kalman_filter)
+        ensembleKF.forward(year=year, forward_parallel=forward_parallel)
+
+        ensemble_observables = obs_provider.get_ensemble_observables(
+            EnKF_object=ensembleKF)
 
         print("Update")
-        ensemble_kalman_filter.update(new_observation, noise_matrix, noise_samples,
-                                      ensemble_observables)
+        ensembleKF.update(new_observation=new_observation,
+                          noise_matrix=noise_matrix,
+                          noise_samples=noise_samples,
+                          modeled_observables=ensemble_observables)
 
         print("Visualise")
         monitor.plot_iteration(
-            ensemble_smb_log=ensemble_kalman_filter.ensemble_smb_log,
-            ensemble_smb_raster=ensemble_kalman_filter.ensemble_smb_raster,
+            ensemble_smb_log=ensembleKF.ensemble_smb_log,
+            ensemble_smb_raster=ensembleKF.ensemble_smb_raster,
             new_observation=new_observation,
             uncertainty=noise_matrix,
             iteration=i,
             year=year,
             ensemble_observables=ensemble_observables)
-        ensemble_kalman_filter.reset_time()
+        ensembleKF.reset_time()
     #################################################################################
 
-    ensemble_kalman_filter.save_results(num_bins)
+    ensembleKF.save_results(num_bins)
     print('Done')
 
 

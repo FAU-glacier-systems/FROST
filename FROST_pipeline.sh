@@ -56,7 +56,7 @@ fi
 # 4. Calibration step (if --calibrate is set)
 if [ "$calibrate" = true ]; then
     echo "Starting calibration..."
-    python -u FROST_RUN.py --rgi_id "$rgi_id" --ensemble_size 50 \
+    python -u run_calibration.py --rgi_id "$rgi_id" --ensemble_size 50 \
     --forward_parallel "$forward_parallel" --iterations 5 --seed "$seed" \
     --inflation "$inflation" --num_bins 50
 fi
