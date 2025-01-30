@@ -68,6 +68,13 @@ class ObservationProvider:
         # Compute bin indices for 2000 surface
         self.variogram_model = Variogram_hugonnet(dim=2)
 
+        dhdt = self.usurf[1]
+        dhdt[self.icemask == 0] = None
+        plt.imshow(dhdt, origin='lower', cmap='RdBu', vmin=-5, vmax=5)
+        plt.colorbar()
+        plt.savefig('Scripts/Visualization/dhdt.png')
+        pass
+
     def get_next_observation(self, current_year, num_samples):
         # load observations
         next_index = np.where(self.time_period == current_year)[0][0] + 1
@@ -97,7 +104,7 @@ class ObservationProvider:
 
         return year, usurf_line, noise_matrix, noise_samples
 
-    def inital_usurf_ensemble(self, num_samples):
+    def inital_usurf(self, num_samples):
         index = 0
 
         # get data of next year
@@ -125,8 +132,8 @@ class ObservationProvider:
             np.zeros_like(usurf_err_masked),
             covariance_matrix, size=num_samples)
 
-        ensemble_usurf = np.empty((num_samples,)+ usurf_raster.shape)
-        for e,noise_sample in enumerate(noise_samples):
+        ensemble_usurf = np.empty((num_samples,) + usurf_raster.shape)
+        for e, noise_sample in enumerate(noise_samples):
             usurf_sample = copy.deepcopy(usurf_raster)
             usurf_sample[self.icemask == 1] += noise_sample
             ensemble_usurf[e] = usurf_sample
@@ -168,7 +175,6 @@ class ObservationProvider:
             bin_var = np.sum(covariance_matrix) / (num_pixels ** 2)
             combined_var = bin_var + usurf_bin_var
 
-            print(f'Bin {bin_id} variance: {bin_var}')
             bin_variance.append(combined_var)
 
         return bin_variance
@@ -233,7 +239,7 @@ class ObservationProvider:
         # Convert results to a NumPy array
         return np.array(average_usurf)
 
-    def get_observables_from_ensemble(self, EnKF_object):
+    def get_ensemble_observables(self, EnKF_object):
 
         ensemble_usurf = EnKF_object.ensemble_usurf
         observables = []

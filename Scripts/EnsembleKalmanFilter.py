@@ -33,6 +33,7 @@ class EnsembleKalmanFilter:
         geology_file = os.path.join(inversion_dir, 'geology-optimized.nc')
         with Dataset(geology_file, 'r') as geology_dataset:
             self.icemask_init = np.array(geology_dataset['icemask'])
+            self.bedrock = np.array(geology_dataset['topg'])
 
         # create placeholder for observable and hidden variables
         self.ensemble_usurf = np.empty(
