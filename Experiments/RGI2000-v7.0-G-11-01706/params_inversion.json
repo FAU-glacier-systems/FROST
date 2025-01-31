@@ -1,5 +1,5 @@
 {
-        "modules_preproc": ["load_ncdf"],
+        "modules_preproc": ["load_ncdf", "optimize"],
         "modules_process": ["iceflow"],
         "modules_postproc": [],
         "lncd_input_file": "../OGGM_shop/input_saved.nc",
