@@ -1,0 +1,9 @@
+name: frost_env
+dependencies:
+  - python=3.10
+  - pip
+  - pip:
+      - igm_model==2.2.2
+      - scikit-image
+      - gstools
+      - dash

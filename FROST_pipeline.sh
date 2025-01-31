@@ -45,7 +45,7 @@ if [ "$download" = true ]; then
     popd
 fi
 
-# 3. IGM inversion step (if --inversion is set)
+# 2. IGM inversion step (if --inversion is set)
 if [ "$inversion" = true ]; then
     echo "Starting IGM inversion..."
     pushd Scripts/Preprocess
@@ -53,7 +53,7 @@ if [ "$inversion" = true ]; then
     popd
 fi
 
-# 4. Calibration step (if --calibrate is set)
+# 3. Calibration step (if --calibrate is set)
 if [ "$calibrate" = true ]; then
     echo "Starting calibration..."
     python -u run_calibration.py --rgi_id "$rgi_id" --ensemble_size 50 \
