@@ -23,6 +23,7 @@ A short description of what your project does.
    python download_data.py --rgi_id RGI2000-v7.0-G-11-01706 --download_oggm --download_hugonnet
    cd ../..
       ```
+   If you want to calibrate other glaciers you have to provide all dhdt tiles from Hugonnet: https://www.sedoo.fr/theia-publication-products/?uuid=c428c5b9-df8f-4f86-9b75-e04c778e29b9
 
 2. IGM inversion for thickness and sliding
    ```bash
