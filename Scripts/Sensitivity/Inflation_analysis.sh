@@ -26,7 +26,7 @@ for seed in "${seeds[@]}"; do
     # Iterate over each inflation factor
     for inflation in "${inflation_factors[@]}"; do
         echo "Running with seed: $seed and inflation: $inflation"
-        python -u FROST_RUN.py --rgi_id "$rgi_id" --ensemble_size 50 \
+        python -u run_calibration.py --rgi_id "$rgi_id" --ensemble_size 50 \
         --forward_parallel "$forward_parallel" --iterations 5 \
         --seed "$seed" --inflation "$inflation"  --elevation_bin 50
     done
