@@ -98,6 +98,7 @@ def download_OGGM_shop(rgi_id):
     # Define the params to be saved in params.json
     json_file_path = os.path.join('..', '..', 'Experiments', rgi_id,
                                   'params_download.json')
+
     with open(json_file_path, 'r') as file:
         params = json.load(file)
 
