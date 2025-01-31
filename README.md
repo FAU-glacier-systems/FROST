@@ -1,6 +1,7 @@
-# My Python Project
+# FROST 
 
-A short description of what your project does.
+Framework for assimilating Remote-sensing Observations for Surface Mass Balance Tuning
+
 
 ## Installation
 
