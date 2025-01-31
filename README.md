@@ -20,8 +20,7 @@ A short description of what your project does.
 1. Download data e.g. Rhone Glacier (RGI2000-v7.0-G-11-01706 )
    ```bash
    cd Scripts/Preprocess
-   python download_data.py --rgi_id RGI2000-v7.0-G-11-01706 
-   --download_oggm --download_hugonnet
+   python download_data.py --rgi_id RGI2000-v7.0-G-11-01706 --download_oggm --download_hugonnet
    cd ../..
       ```
 
