@@ -154,7 +154,8 @@ def crop_hugonnet_to_glacier(rgi_region, date_range, oggm_shop_dataset):
     min_x, max_x = x_coords.min(), x_coords.max()
     min_y, max_y = y_coords.min(), y_coords.max()
 
-    zone_number = int(oggm_shop_dataset.pyproj_srs.split('+')[2].split("=")[1])
+    #zone_number = int(oggm_shop_dataset.pyproj_srs.split('+')[2].split("=")[1])
+    zone_number = 32 #TODO
     zone_letter = "N"  # TODO for south regions
     x_range = np.array([min_x, min_x, max_x, max_x])
     y_range = np.array([min_y, min_y, max_y, max_y])
