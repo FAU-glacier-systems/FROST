@@ -49,6 +49,7 @@ class ObservationProvider:
             self.x = ds['x'][:]
             self.y = ds['y'][:]
 
+        self.resolution = int(self.x[1]-self.x[0])
         # specify elevation bins based on the elevation of 2000
         self.num_bins = num_bins
         usurf2000_masked = self.usurf[0][self.icemask == 1]
@@ -167,7 +168,6 @@ class ObservationProvider:
             correlations = self.variogram_model.cor(distances)
 
             # Compute covariance matrix (vectorized)
-
             pixel_uncertainties = err_bin[:, np.newaxis] * err_bin[np.newaxis, :]
             covariance_matrix = correlations * pixel_uncertainties
 

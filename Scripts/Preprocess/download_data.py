@@ -154,8 +154,8 @@ def crop_hugonnet_to_glacier(rgi_region, date_range, oggm_shop_dataset):
     min_x, max_x = x_coords.min(), x_coords.max()
     min_y, max_y = y_coords.min(), y_coords.max()
 
-    #zone_number = int(oggm_shop_dataset.pyproj_srs.split('+')[2].split("=")[1])
-    zone_number = 32 #TODO
+    # zone_number = int(oggm_shop_dataset.pyproj_srs.split('+')[2].split("=")[1])
+    zone_number = 32  # TODO
     zone_letter = "N"  # TODO for south regions
     x_range = np.array([min_x, min_x, max_x, max_x])
     y_range = np.array([min_y, min_y, max_y, max_y])
@@ -219,6 +219,26 @@ def crop_hugonnet_to_glacier(rgi_region, date_range, oggm_shop_dataset):
     return filtered_map, filtered_err_map
 
 
+import numpy as np
+import scipy.interpolate
+
+
+def interpolate_nans(grid):
+    # Get x, y coordinates of valid values
+    x, y = np.indices(grid.shape)
+    valid_mask = ~np.isnan(grid)  # Mask of non-NaN values
+
+    # Interpolate NaN values using 'linear' method
+    grid_interpolated = scipy.interpolate.griddata(
+        (x[valid_mask], y[valid_mask]),  # Points with valid values
+        grid[valid_mask],  # Known values
+        (x, y),  # Grid of all points
+        method='linear'  # Linear interpolation
+    )
+
+    return grid_interpolated
+
+
 def download_hugonnet(rgi_id_dir, year_interval):
     oggm_shop_dir = os.path.join(rgi_id_dir, 'OGGM_shop')
 
@@ -279,6 +299,7 @@ def download_hugonnet(rgi_id_dir, year_interval):
 
         dhdt_index = math.floor((year - 2001) / data_interval)
         dhdt = dhdts[dhdt_index]
+        dhdt = interpolate_nans(dhdt)
         dhdt = np.where(icemask_2000 == 1, dhdt, 0)
         dhdt_change.append(dhdt)
 
@@ -288,6 +309,7 @@ def download_hugonnet(rgi_id_dir, year_interval):
 
         # compute uncertainty overtime
         dhdt_err = dhdts_err[dhdt_index]
+        dhdt_err = interpolate_nans(dhdt_err)
         dhdt_err = np.where(icemask_2000 == 1, dhdt_err, 0)
         dhdt_err_change.append(dhdt_err)
 
@@ -300,8 +322,7 @@ def download_hugonnet(rgi_id_dir, year_interval):
             usurf_err = dhdt_err * data_interval / 2
         else:
             usurf_err = ((dhdt_err_change[-2] * data_interval / 2
-                          + dhdt_err_change[-1] *data_interval / 2)) / 2
-
+                          + dhdt_err_change[-1] * data_interval / 2)) / 2
 
         usurf_err_change.append(usurf_err)
 
