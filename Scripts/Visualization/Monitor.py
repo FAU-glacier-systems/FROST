@@ -7,7 +7,7 @@ import pyproj
 
 
 class Monitor:
-    def __init__(self, EnKF_object, ObsProvider, output_dir):
+    def __init__(self, EnKF_object, ObsProvider, max_iterations, output_dir):
 
         self.rgi_id = EnKF_object.rgi_id
         self.ensemble_size = EnKF_object.ensemble_size
@@ -17,8 +17,11 @@ class Monitor:
         self.bin_map = ObsProvider.bin_map
         self.time_period = ObsProvider.time_period
         self.start_year = self.time_period[0]
+        self.resolution = ObsProvider.resolution
         self.time_period_repeat = np.repeat(self.time_period, 2)[1:]
         self.reference_smb = EnKF_object.reference_smb
+        self.max_iterations = max_iterations
+        self.max_iteration_axis = range(max_iterations + 1)
 
         self.colorscale = plt.get_cmap('tab20')
 
@@ -40,9 +43,12 @@ class Monitor:
                                'gradacc': 0.55}
 
         self.plot_style = dict(
-            mean_usurf=dict(y_label='Mean surface elevation in 2020 (m)'),
-            point1=dict(y_label='Mean surface elevation of bin 3 (m)'),
-            point2=dict(y_label=f'Mean surface elevation of bin -3 (m)'),
+            mean_usurf=dict(y_label='Mean surface elevation in 2019 (m)'),
+            point1=dict(y_label='Mean surface elevation\nof third bin from top('
+                                'm)'),
+            point2=dict(y_label=f'Mean surface elevation\nof third bin from '
+                                f'bottom ('
+                                f'm)'),
             ela=dict(y_label='Equilibrium Line  Altitude (m)'),
             gradabl=dict(y_label='Ablation Gradient\n(m a$^{-1}$ km$^{-1}$)'),
             gradacc=dict(y_label='Accumulated Gradient\n(m a$^{-1}$ km$^{-1}$)'),
@@ -81,14 +87,30 @@ class Monitor:
                        new_observation, uncertainty, iteration, year,
                        ensemble_observables):
 
-        fig, ax = plt.subplots(2, 4, figsize=(12, 6))
+        fig, ax = plt.subplots(2, 5, figsize=(15, 6))
 
         self.summarise_observables(ensemble_observables, new_observation,
                                    uncertainty)
 
         iteration_axis = range(iteration + 1)
         iteration_axis_repeat = np.repeat(iteration_axis, 2)[1:-1]
+
         # Plot observables
+
+        def set_axis_style(ax, show_x):
+            ax.set_ylabel(self.plot_style[key]['y_label'])
+            if show_x:
+                ax.set_xlabel("Iteration")
+            ax.set_xlim(-0.2, self.max_iterations + 0.2)
+            ax.spines['top'].set_visible(False)
+            ax.spines['right'].set_visible(False)
+            ax.spines['bottom'].set_visible(False)
+            ax.spines['left'].set_visible(False)
+            ax.grid(axis="y", color="lightgray", linestyle="-", zorder=0)
+            ax.grid(axis="x", color="lightgray", linestyle="-", zorder=0)
+            ax.xaxis.set_tick_params(bottom=False)
+            ax.yaxis.set_tick_params(left=False)
+
         for i, key in enumerate(self.ensemble_observables_log.keys()):
 
             for e in range(self.ensemble_size):
@@ -104,7 +126,7 @@ class Monitor:
             ax[0, i].plot(iteration_axis_repeat,
                           observation_log_repeat,
                           color=self.colorscale(0), marker='o', markersize=10,
-                          markevery=[-1], zorder=2, label='Observation'
+                          markevery=[-1], zorder=2, label='Observation',
                           )
 
             observable_var_log_values = self.observation_std_log[key]
@@ -117,8 +139,8 @@ class Monitor:
                                   std_plus,
                                   color=self.colorscale(1), alpha=0.5,
                                   label='Observation Uncertainty')
+            set_axis_style(ax[0, i], show_x=False)
 
-            ax[0, i].set_ylabel(self.plot_style[key]['y_label'])
         handles, labels = ax[0, 0].get_legend_handles_labels()
         by_label = dict(zip(labels, handles))
         fig.legend(by_label.values(), by_label.keys(), loc='upper center', ncol=4)
@@ -133,48 +155,103 @@ class Monitor:
                               color='gold', marker='o', markersize=10,
                               markevery=[-1], zorder=2, label='Ensemble Member')
 
-            ax[1, i].plot(iteration_axis,
+            ax[1, i].plot(self.max_iteration_axis,
                           [self.reference_smb[key] / self.density_factor[key] for
                            _ in
-                           range(len(
-                               smb_log_values))],
-                          color=self.colorscale(8), marker='o', markersize=10,
-                          markevery=[-1], zorder=2, label='Reference SMB'
+                           range(self.max_iterations + 1)],
+                          color=self.colorscale(8), zorder=2, label='Reference SMB'
                           )
-            ax[1, i].set_ylabel(self.plot_style[key]['y_label'])
-            ax[1, i].set_xlabel('Iterations')
+            set_axis_style(ax[1, i], show_x=True)
 
         handles, labels = ax[1, 0].get_legend_handles_labels()
         by_label = dict(zip(labels, handles))
         fig.legend(by_label.values(), by_label.keys(), loc='lower center', ncol=4)
 
+        # Define x and y ticks for both plots
+        x_ticks = np.arange(0, self.bin_map.shape[1],
+                            step=20)  # Adjust step as needed
+        y_ticks = np.arange(0, self.bin_map.shape[0], step=20)
+        x_labels = (x_ticks * self.resolution) / 1000  # Convert to km
+        y_labels = (y_ticks * self.resolution) / 1000
+
+        # Common function for setting axis properties
+        def set_axis_labels(ax, show_x=True, show_y=True):
+            if show_x:
+                ax.set_xlabel('(km)')
+            if show_y:
+                ax.set_ylabel('(km)')
+            ax.set_xticks(x_ticks)
+            ax.set_yticks(y_ticks)
+            ax.set_xticklabels([f"{label:.0f}" for label in x_labels])  # No decimals
+            ax.set_yticklabels([f"{label:.0f}" for label in y_labels])
+            ax.grid(axis="y", color="black", linestyle="--", zorder=-1, alpha=.2)
+            ax.grid(axis="x", color="black", linestyle="--", zorder=-1, alpha=.2)
+            ax.xaxis.set_tick_params(bottom=False)
+            ax.yaxis.set_tick_params(left=False)
+            ax.spines['top'].set_visible(False)
+            ax.spines['right'].set_visible(False)
+            ax.spines['bottom'].set_visible(False)
+            ax.spines['left'].set_visible(False)
+
+        # Observation Map
+        def map_observation(new_observation):
+            obs_mapped = np.full_like(self.bin_map, np.nan, dtype=np.float32)
+            for bin_id, value in enumerate(new_observation, start=1):
+                obs_mapped[self.bin_map == bin_id] = value
+            obs_mapped[self.bin_map == 0] = np.nan
+            return obs_mapped
+
+        obs_mapped = map_observation(new_observation)
+
         ax_obs_map = ax[0, 3]
-
-        obs_mapped = np.zeros_like(self.bin_map, dtype=np.float32)
-
-        for bin_id, value in enumerate(new_observation, start=1):
-            obs_mapped[self.bin_map == bin_id] = value
-
-        obs_mapped[self.bin_map == 0] = None
-
         img_obs = ax_obs_map.imshow(obs_mapped, origin='lower', cmap='Blues_r',
                                     vmin=new_observation[0],
-                                    vmax=new_observation[-1])
+                                    vmax=new_observation[-1], zorder=3)
+        plt.colorbar(img_obs, ax=ax_obs_map, orientation='vertical').set_label(
+            'Surface Elevation\nin 2019 (m)')
+        set_axis_labels(ax_obs_map, show_x=False)
 
-        cbar = plt.colorbar(img_obs, ax=ax_obs_map, orientation='vertical',
-                            label='Binned Surface Elevation (m)')
+        obs_std_mapped = map_observation(np.sqrt(np.diagonal(uncertainty)))
+        ax_obs_std_map = ax[0, 4]
+        img_obs_std = ax_obs_std_map.imshow(obs_std_mapped, origin='lower',
+                                            cmap='Blues', zorder=3)
+        plt.colorbar(img_obs_std, ax=ax_obs_std_map,
+                     orientation='vertical').set_label(
+            'Elevation Uncertainty\nin 2019 (m)')
+        set_axis_labels(ax_obs_std_map, show_x=False, show_y=False)
+
+        # Surface Mass Balance (SMB) Map
+        mean_smb_raster = np.mean(ensemble_smb_raster, axis=0)
+        mean_smb_raster[self.icemask_init == 0] = np.nan  # Mask ice-free areas
 
         ax_smb_map = ax[1, 3]
-        mean_smb_raster = np.mean(ensemble_smb_raster, axis=0)
-        mean_smb_raster[self.icemask_init == 0] = 0
         smb_img = ax_smb_map.imshow(mean_smb_raster, cmap='RdBu', vmin=-10, vmax=10,
-                                    origin='lower')
-        cbar = plt.colorbar(smb_img, ax=ax_smb_map, orientation='vertical',
-                            label='Estimated Surface Mass Balance (m a$^{-1}$)')
+                                    origin='lower', zorder=3)
+        plt.colorbar(smb_img, ax=ax_smb_map, orientation='vertical').set_label(
+            'Estimated Surface Mass Balance\n(m a$^{-1}$)')
+        set_axis_labels(ax_smb_map, show_x=True)
+
+        # Surface Mass Balance (SMB) Map
+        std_smb_raster = np.std(ensemble_smb_raster, axis=0)
+        std_smb_raster[self.icemask_init == 0] = np.nan  # Mask ice-free areas
+
+        ax_smb_std_map = ax[1, 4]
+
+        std_smb_img = ax_smb_std_map.imshow(std_smb_raster, cmap='YlOrBr',
+                                            origin='lower', zorder=3,
+                                            vmin=0,
+                                            vmax=1)
+        plt.colorbar(std_smb_img, ax=ax_smb_std_map,
+                     orientation='vertical').set_label(
+            'Surface Mass Balance\nUncertainty (m a$^{-1}$)')
+        set_axis_labels(ax_smb_std_map, show_x=True, show_y=False)
+
+        # FINISH AND SAVE
         fig.tight_layout()
         fig.subplots_adjust(top=0.92, bottom=0.15)
 
-        fig.savefig(os.path.join(self.monitor_dir, f"status_{iteration}_{year}.png"))
+        fig.savefig(os.path.join(self.monitor_dir, f"status_{iteration}_"
+                                                   f"{year}.png"), dpi=200)
         plt.close(fig)
 
     def visualise_3d(self, property_map, glacier_surface, bedrock, year, x, y):
@@ -282,7 +359,7 @@ class Monitor:
         # Output the WGS84 coordinate
 
         fig_dict = dict(
-            data=[ surface_fig],
+            data=[surface_fig],
 
             layout=dict(  # width=1800,
                 height=800,

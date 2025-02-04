@@ -186,6 +186,8 @@ class EnsembleKalmanFilter:
 
         cross_covariance = np.dot(ensemble_deviations_obs.T, deviations_smb) / (
                 self.ensemble_size - 1)
+        print("############## cross_covariance")
+        print(cross_covariance)
 
         kalman_gain = np.dot(cross_covariance.T, np.linalg.inv(ensemble_cov))
 

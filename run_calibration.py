@@ -1,6 +1,6 @@
 import argparse
 from Scripts.EnsembleKalmanFilter import EnsembleKalmanFilter
-from Scripts.ObservationHandler import ObservationProvider
+from Scripts.ObservationProvider import ObservationProvider
 from Scripts.Visualization.Monitor import Monitor
 import os
 
@@ -14,7 +14,7 @@ def main(rgi_id, ensemble_size, inflation, iterations, seed, num_bins,
           f'Seed: {seed}',
           f'Forward parallel: {forward_parallel}')
     output_dir = os.path.join('Experiments', rgi_id,
-                              f'Experiment_{seed}_{num_bins}_{ensemble_size}_{inflation}')
+                              f'Experiment_{ensemble_size}_{num_bins}_{inflation}_{seed}')
 
     # Initialise the Observation provider
     obs_provider = ObservationProvider(rgi_id=rgi_id,
@@ -34,7 +34,8 @@ def main(rgi_id, ensemble_size, inflation, iterations, seed, num_bins,
     # Initialise a monitor for visualising the process
     monitor = Monitor(EnKF_object=ensembleKF,
                       ObsProvider=obs_provider,
-                      output_dir=output_dir)
+                      output_dir=output_dir,
+                      max_iterations=iterations)
 
     ################# MAIN LOOP #####################################################
     for i in range(1, iterations + 1):
@@ -87,7 +88,7 @@ if __name__ == '__main__':
     parser.add_argument('--inflation', type=float, default=1.0,
                         help='Inflation rate for the model.')
 
-    parser.add_argument('--iterations', type=int, default=5,
+    parser.add_argument('--iterations', type=int, default=6,
                         help='Number of iterations')
 
     parser.add_argument("--forward_parallel", type=str, default="false",
