@@ -3,6 +3,7 @@ from Scripts.EnsembleKalmanFilter import EnsembleKalmanFilter
 from Scripts.ObservationProvider import ObservationProvider
 from Scripts.Visualization.Monitor import Monitor
 import os
+import numpy as np
 
 
 def main(rgi_id, ensemble_size, inflation, iterations, seed, num_bins,
@@ -13,22 +14,19 @@ def main(rgi_id, ensemble_size, inflation, iterations, seed, num_bins,
           f'Iterations: {iterations}',
           f'Seed: {seed}',
           f'Forward parallel: {forward_parallel}')
-    output_dir = os.path.join('Experiments', rgi_id,
+    output_dir = os.path.join('Experiments', rgi_id, 'geometry_update',
                               f'Experiment_{ensemble_size}_{num_bins}_{inflation}_{seed}')
 
     # Initialise the Observation provider
     obs_provider = ObservationProvider(rgi_id=rgi_id,
                                        num_bins=int(num_bins))
 
-    year, usurf_ensemble = obs_provider.inital_usurf(num_samples=ensemble_size)
-
     # Initialise an ensemble kalman filter object
     ensembleKF = EnsembleKalmanFilter(rgi_id=rgi_id,
                                       ensemble_size=ensemble_size,
                                       inflation=inflation,
                                       seed=seed,
-                                      start_year=year,
-                                      usurf_ensemble=usurf_ensemble,
+                                      start_year=2000,
                                       output_dir=output_dir)
 
     # Initialise a monitor for visualising the process
@@ -38,35 +36,48 @@ def main(rgi_id, ensemble_size, inflation, iterations, seed, num_bins,
                       max_iterations=iterations)
 
     ################# MAIN LOOP #####################################################
-    for i in range(1, iterations + 1):
+    total_iteration = 0
+    while True:
         # get new observation
         year, new_observation, noise_matrix, noise_samples \
             = obs_provider.get_next_observation(
             current_year=ensembleKF.current_year,
             num_samples=ensembleKF.ensemble_size)
+        if year is None: break
 
-        print(f'Forward pass ensemble to {year}')
-        ensembleKF.forward(year=year, forward_parallel=forward_parallel)
+        start_year = ensembleKF.current_year
+        start_usurf = obs_provider.inital_usurf(num_samples=ensemble_size,
+                                                year=start_year)
 
-        ensemble_observables = obs_provider.get_ensemble_observables(
-            EnKF_object=ensembleKF)
+        for i in range(1, iterations + 1):
+            total_iteration += 1
 
-        print("Update")
-        ensembleKF.update(new_observation=new_observation,
-                          noise_matrix=noise_matrix,
-                          noise_samples=noise_samples,
-                          modeled_observables=ensemble_observables)
+            ensembleKF.reset_time(ensemble_usurf=start_usurf, year=start_year)
 
-        print("Visualise")
-        monitor.plot_iteration(
-            ensemble_smb_log=ensembleKF.ensemble_smb_log,
-            ensemble_smb_raster=ensembleKF.ensemble_smb_raster,
-            new_observation=new_observation,
-            uncertainty=noise_matrix,
-            iteration=i,
-            year=year,
-            ensemble_observables=ensemble_observables)
-        ensembleKF.reset_time()
+            print(
+                f'Forward pass ensemble from {ensembleKF.current_year} to {year} iteration: {i}')
+            ensembleKF.forward(year=year, forward_parallel=forward_parallel)
+
+            ensemble_observables = obs_provider.get_ensemble_observables(
+                EnKF_object=ensembleKF)
+
+            np.random.shuffle(noise_samples)
+            print("Update")
+            ensembleKF.update(new_observation=new_observation,
+                              noise_matrix=noise_matrix,
+                              noise_samples=noise_samples,
+                              modeled_observables=ensemble_observables)
+
+            print("Visualise")
+            monitor.plot_iteration(
+                ensemble_smb_log=ensembleKF.ensemble_smb_log,
+                ensemble_smb_raster=ensembleKF.ensemble_smb_raster,
+                new_observation=new_observation,
+                uncertainty=noise_matrix,
+                iteration=total_iteration,
+                year=year,
+                ensemble_observables=ensemble_observables)
+
     #################################################################################
 
     ensembleKF.save_results(num_bins)

@@ -91,6 +91,9 @@ class Monitor:
 
         self.summarise_observables(ensemble_observables, new_observation,
                                    uncertainty)
+        if iteration > self.max_iterations:
+            self.max_iterations = iteration
+            self.max_iteration_axis = range(iteration + 1)
 
         iteration_axis = range(iteration + 1)
         iteration_axis_repeat = np.repeat(iteration_axis, 2)[1:-1]
@@ -146,15 +149,20 @@ class Monitor:
         fig.legend(by_label.values(), by_label.keys(), loc='upper center', ncol=4)
 
         # Plot surface mass balance parameters
+
         for i, key in enumerate(ensemble_smb_log.keys()):
+            key_smb_log = np.array(ensemble_smb_log[key])
+            key_mean_smb = np.mean(key_smb_log, axis=0)
             for e in range(self.ensemble_size):
-                smb_log_values = np.array(ensemble_smb_log[key][e])
+                smb_log_values = key_smb_log[e]
                 # Plot each ensemble member's time series
                 ax[1, i].plot(iteration_axis,
                               smb_log_values,
                               color='gold', marker='o', markersize=10,
                               markevery=[-1], zorder=2, label='Ensemble Member')
-
+            ax[1, i].plot(iteration_axis,
+                          key_mean_smb, color='orange', marker='o', markersize=10,
+                              markevery=[-1], zorder=2, label='Ensemble Mean')
             ax[1, i].plot(self.max_iteration_axis,
                           [self.reference_smb[key] / self.density_factor[key] for
                            _ in
@@ -250,8 +258,10 @@ class Monitor:
         fig.tight_layout()
         fig.subplots_adjust(top=0.92, bottom=0.15)
 
-        fig.savefig(os.path.join(self.monitor_dir, f"status_{iteration}_"
-                                                   f"{year}.png"), dpi=200)
+        fig.savefig(
+            os.path.join(self.monitor_dir, f"status_{iteration:03d}_{year}.png"),
+            dpi=200)
+
         plt.close(fig)
 
     def visualise_3d(self, property_map, glacier_surface, bedrock, year, x, y):

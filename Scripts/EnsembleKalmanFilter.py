@@ -7,11 +7,12 @@ import Scripts.IGM_wrapper as IGM_wrapper
 import shutil
 import concurrent.futures
 import json
+import matplotlib.pyplot as plt
 
 
 class EnsembleKalmanFilter:
     def __init__(self, rgi_id, ensemble_size, inflation, seed, start_year,
-                 output_dir, usurf_ensemble):
+                 output_dir):
 
         # save arguments
         self.rgi_id = rgi_id
@@ -56,12 +57,11 @@ class EnsembleKalmanFilter:
 
         # Initialise the Ensemble and create directories for each member to
         # parallize the forward simulation
-        for e, usurf in enumerate(usurf_ensemble):
+        for e in range(ensemble_size):
             print('Initialise ensemble member', e)
 
             # Copy the initial surface elevation
             # TODO create different starting geometries
-            self.ensemble_usurf[e] = usurf
 
             # Generate ensemble using the random generator
             member_smb = {
@@ -98,13 +98,14 @@ class EnsembleKalmanFilter:
             for e in range(self.ensemble_size):
                 self.ensemble_smb_log[key][e].append(self.ensemble_smb[e][key])
 
-    def reset_time(self):
+    def reset_time(self, ensemble_usurf, year):
         # resets the ensemble usurf
-        for e in range(self.ensemble_size):
-            self.ensemble_usurf[e] = self.ensemble_usurf_log[0][e]
+        # for e in range(self.ensemble_size):
+        #    self.ensemble_usurf[e] = self.ensemble_usurf_log[0][e]
 
         # self.ensemble_usurf_log = [self.ensemble_usurf]
-        self.current_year = self.start_year
+        self.ensemble_usurf = ensemble_usurf
+        self.current_year = year
         # for key in self.ensemble_smb_log:
         #    for e in range(self.ensemble_size):
         #        self.ensemble_smb_log[key][e] = [self.ensemble_smb[e][key]]
@@ -174,6 +175,9 @@ class EnsembleKalmanFilter:
         ensemble_cov = (
                 np.dot(ensemble_deviations_obs.T, ensemble_deviations_obs) / (
                 self.ensemble_size - 1) + noise_matrix)
+        plt.clf()
+        plt.imshow(ensemble_cov, cmap="Blues")
+        plt.savefig('Plots/covariance.png')
 
         # Convert self.ensemble_smb from list of dict into np.array
         keys = self.initial_smb.keys()
@@ -186,8 +190,6 @@ class EnsembleKalmanFilter:
 
         cross_covariance = np.dot(ensemble_deviations_obs.T, deviations_smb) / (
                 self.ensemble_size - 1)
-        print("############## cross_covariance")
-        print(cross_covariance)
 
         kalman_gain = np.dot(cross_covariance.T, np.linalg.inv(ensemble_cov))
 
