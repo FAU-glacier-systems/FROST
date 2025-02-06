@@ -49,7 +49,7 @@ class ObservationProvider:
             self.x = ds['x'][:]
             self.y = ds['y'][:]
 
-        self.resolution = int(self.x[1]-self.x[0])
+        self.resolution = int(self.x[1] - self.x[0])
         # specify elevation bins based on the elevation of 2000
         self.num_bins = num_bins
         usurf2000_masked = self.usurf[0][self.icemask == 1]
@@ -68,13 +68,6 @@ class ObservationProvider:
 
         # Compute bin indices for 2000 surface
         self.variogram_model = Variogram_hugonnet(dim=2)
-
-        dhdt = self.usurf[1]
-        dhdt[self.icemask == 0] = None
-        plt.imshow(dhdt, origin='lower', cmap='RdBu', vmin=-5, vmax=5)
-        plt.colorbar()
-        plt.savefig('Scripts/Visualization/dhdt.png')
-        pass
 
     def get_next_observation(self, current_year, num_samples):
         # load observations

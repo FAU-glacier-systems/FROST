@@ -44,10 +44,10 @@ class Monitor:
 
         self.plot_style = dict(
             mean_usurf=dict(y_label='Mean surface elevation in 2019 (m)'),
-            point1=dict(y_label='Mean surface elevation\nof third bin from top('
+            point1=dict(y_label='Mean surface elevation\nof third bin from bottom('
                                 'm)'),
             point2=dict(y_label=f'Mean surface elevation\nof third bin from '
-                                f'bottom ('
+                                f'top ('
                                 f'm)'),
             ela=dict(y_label='Equilibrium Line  Altitude (m)'),
             gradabl=dict(y_label='Ablation Gradient\n(m a$^{-1}$ km$^{-1}$)'),
@@ -147,14 +147,18 @@ class Monitor:
 
         # Plot surface mass balance parameters
         for i, key in enumerate(ensemble_smb_log.keys()):
+            key_smb_log = np.array(ensemble_smb_log[key])
+            key_mean_smb = np.mean(key_smb_log, axis=0)
             for e in range(self.ensemble_size):
-                smb_log_values = np.array(ensemble_smb_log[key][e])
+                smb_log_values = key_smb_log[e]
                 # Plot each ensemble member's time series
                 ax[1, i].plot(iteration_axis,
                               smb_log_values,
                               color='gold', marker='o', markersize=10,
                               markevery=[-1], zorder=2, label='Ensemble Member')
-
+            ax[1, i].plot(iteration_axis,
+                          key_mean_smb, color='orange', marker='o', markersize=10,
+                          markevery=[-1], zorder=2, label='Ensemble Mean')
             ax[1, i].plot(self.max_iteration_axis,
                           [self.reference_smb[key] / self.density_factor[key] for
                            _ in
@@ -250,8 +254,10 @@ class Monitor:
         fig.tight_layout()
         fig.subplots_adjust(top=0.92, bottom=0.15)
 
-        fig.savefig(os.path.join(self.monitor_dir, f"status_{iteration}_"
-                                                   f"{year}.png"), dpi=200)
+        fig.savefig(
+            os.path.join(self.monitor_dir, f"status_{iteration:03d}_{year}.png"),
+            dpi=200)
+
         plt.close(fig)
 
     def visualise_3d(self, property_map, glacier_surface, bedrock, year, x, y):
