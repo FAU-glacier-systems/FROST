@@ -44,11 +44,10 @@ class Monitor:
 
         self.plot_style = dict(
             mean_usurf=dict(y_label='Mean surface elevation in 2019 (m)'),
-            point1=dict(y_label='Mean surface elevation\nof third bin from top('
+            point1=dict(y_label='Mean surface elevation\nof third bin from bottom('
                                 'm)'),
-            point2=dict(y_label=f'Mean surface elevation\nof third bin from '
-                                f'bottom ('
-                                f'm)'),
+            point2=dict(
+                y_label=f'Mean surface elevation\nof third bin from top (m)'),
             ela=dict(y_label='Equilibrium Line  Altitude (m)'),
             gradabl=dict(y_label='Ablation Gradient\n(m a$^{-1}$ km$^{-1}$)'),
             gradacc=dict(y_label='Accumulated Gradient\n(m a$^{-1}$ km$^{-1}$)'),
@@ -162,7 +161,7 @@ class Monitor:
                               markevery=[-1], zorder=2, label='Ensemble Member')
             ax[1, i].plot(iteration_axis,
                           key_mean_smb, color='orange', marker='o', markersize=10,
-                              markevery=[-1], zorder=2, label='Ensemble Mean')
+                          markevery=[-1], zorder=2, label='Ensemble Mean')
             ax[1, i].plot(self.max_iteration_axis,
                           [self.reference_smb[key] / self.density_factor[key] for
                            _ in
