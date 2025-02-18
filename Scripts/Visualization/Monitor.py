@@ -44,7 +44,7 @@ class Monitor:
 
         self.plot_style = dict(
             mean_usurf=dict(y_label='Mean surface elevation in 2019 (m)'),
-            point1=dict(y_label='Mean surface elevation\nof third bin from bottom('
+            point1=dict(y_label='Mean surface elevation\nof third bin from front('
                                 'm)'),
             point2=dict(y_label=f'Mean surface elevation\nof third bin from '
                                 f'top ('
@@ -266,7 +266,7 @@ class Monitor:
         thicknes = glacier_surface - bedrock
         lat_range = x
         lon_range = y
-        property_map[thicknes <= 1] = None
+        property_map[thicknes < 0.001] = None
 
         color_scale = "RdBu"
         max_property_map = np.nanmax(property_map)
@@ -282,7 +282,7 @@ class Monitor:
         bedrock_border[:, -1] = min_bedrock
 
         # create time frames for slider
-        glacier_surface[thicknes < 1] = None
+        glacier_surface[thicknes < 0.001] = None
 
         glacier_bottom = copy.copy(bedrock)
         glacier_bottom[thicknes < 1] = None
@@ -293,18 +293,18 @@ class Monitor:
             x=lat_range,
             y=lon_range,
             colorscale=color_scale,
-            cmax=30,
-            # cmax=5,
-            cmin=-30,
-            # cmin=-5,
+            #cmax=30,
+            cmax=5.1,
+            #cmin=-30,
+            cmin=-5.1,
             surfacecolor=property_map,
             showlegend=False,
             name="glacier surface",
-            colorbar=dict(title="Surface Elevation Deviation (m)",
+            colorbar=dict(title="Surface Elevation Change (m/a)",
                           titleside="top", thickness=50, orientation="h", y=0.7,
                           len=0.5,
                           titlefont=dict(size=50), tickfont=dict(size=40),
-                          tickvals=[-30, 30], tickformat=".0f"
+                          tickvals=[-5.1, 5.1], tickformat=".0f"
                           # This limits decimal places to 3
                           ),
             showscale=True,
@@ -365,7 +365,7 @@ class Monitor:
         # Output the WGS84 coordinate
 
         fig_dict = dict(
-            data=[surface_fig],
+            data=[surface_fig, bedrock_fig ],
 
             layout=dict(  # width=1800,
                 height=800,

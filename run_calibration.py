@@ -37,6 +37,9 @@ def main(rgi_id, ensemble_size, inflation, iterations, seed, num_bins,
                       output_dir=output_dir,
                       max_iterations=iterations)
 
+    monitor.visualise_3d(obs_provider.dhdt[-1], obs_provider.usurf[-1],
+                         ensembleKF.bedrock, 2019, obs_provider.x, obs_provider.y)
+
     ################# MAIN LOOP #####################################################
     for i in range(1, iterations + 1):
         # get new observation
