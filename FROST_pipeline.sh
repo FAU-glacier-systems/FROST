@@ -58,5 +58,5 @@ if [ "$calibrate" = true ]; then
     echo "Starting calibration..."
     python -u run_calibration.py --rgi_id "$rgi_id" --ensemble_size 20 \
     --forward_parallel "$forward_parallel" --iterations 6 --seed "$seed" \
-    --inflation "$inflation" --num_bins 30
+    --inflation "$inflation" --num_bins 50
 fi
