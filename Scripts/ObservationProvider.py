@@ -32,7 +32,7 @@ class Variogram_hugonnet(gs.CovModel):
 
 
 class ObservationProvider:
-    def __init__(self, rgi_id, num_bins):
+    def __init__(self, rgi_id, elevation_step):
 
         # path to observation.nc file that stores the surface elevation
         observation_file = (os.path.join('Data', 'Glaciers', rgi_id,
@@ -50,23 +50,35 @@ class ObservationProvider:
             self.y = ds['y'][:]
 
         self.resolution = int(self.x[1] - self.x[0])
-        # specify elevation bins based on the elevation of 2000
-        self.num_bins = num_bins
+        self.elevation_step = elevation_step
         usurf2000_masked = self.usurf[0][self.icemask == 1]
-        self.bin_edges = np.linspace(usurf2000_masked.min(), usurf2000_masked.max(),
-                                     self.num_bins + 1)
+
+        # specify elevation bins based on the elevation of 2000
+        # Define bin edges based on the fixed step size
+        min_elev = np.floor(
+            usurf2000_masked.min() / self.elevation_step) * self.elevation_step
+        max_elev = np.ceil(
+            usurf2000_masked.max() / self.elevation_step) * self.elevation_step
+
+        self.bin_edges = np.arange(min_elev, max_elev + self.elevation_step,
+                                   self.elevation_step)
 
         # Compute bin indices for the 2000 surface
         self.bin_map = np.digitize(self.usurf[0], self.bin_edges)
-        self.bin_map[self.icemask == 0] = 0
+        self.bin_map[self.icemask == 0] = 0  # Mask out non-glacier areas
+
+        # Create bins
         self.bins = []
-        for bin_id in range(1, self.num_bins + 1):
+        for bin_id in range(1, len(self.bin_edges)):
             index_x, index_y = np.where(self.bin_map == bin_id)
             loc_x, loc_y = self.y[index_x], self.x[index_y]
             locations = np.column_stack((loc_x, loc_y))
+            print(len(locations))
+
             self.bins.append(locations)
 
         # Compute bin indices for 2000 surface
+        self.num_bins = len(self.bins)
         self.variogram_model = Variogram_hugonnet(dim=2)
 
     def get_next_observation(self, current_year, num_samples):
@@ -90,7 +102,7 @@ class ObservationProvider:
         bin_variance = self.compute_bin_variance(usurf_raster,
                                                  usurf_err_raster,
                                                  self.nan_mask)
-
+        print("Bin variance len", len(bin_variance))
         noise_matrix = self.compute_covariance_matrix(bin_variance)
 
         noise_samples = np.random.multivariate_normal(np.zeros_like(usurf_line),
@@ -223,7 +235,7 @@ class ObservationProvider:
 
         # Compute average 2020 surface for each bin
         average_usurf = []
-        for i in range(1, len(self.bin_edges)):
+        for i in range(1, self.num_bins + 1):
             # Mask for pixels in the current bin
             bin_pixels = usurf[np.logical_and(self.bin_map == i, ~ nan_mask)]
             avg = np.mean(bin_pixels)

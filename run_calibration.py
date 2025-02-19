@@ -5,7 +5,7 @@ from Scripts.Visualization.Monitor import Monitor
 import os
 
 
-def main(rgi_id, ensemble_size, inflation, iterations, seed, num_bins,
+def main(rgi_id, ensemble_size, inflation, iterations, seed, elevation_step,
          forward_parallel):
     print(f'Running calibration for glacier: {rgi_id}')
     print(f'Ensemble size: {ensemble_size}',
@@ -14,11 +14,11 @@ def main(rgi_id, ensemble_size, inflation, iterations, seed, num_bins,
           f'Seed: {seed}',
           f'Forward parallel: {forward_parallel}')
     output_dir = os.path.join('Experiments', rgi_id,
-                              f'Experiment_{ensemble_size}_{num_bins}_{inflation}_{seed}')
+                              f'Experiment_{ensemble_size}_{elevation_step}_{inflation}_{seed}')
 
     # Initialise the Observation provider
     obs_provider = ObservationProvider(rgi_id=rgi_id,
-                                       num_bins=int(num_bins))
+                                       elevation_step=int(elevation_step))
 
     year, usurf_ensemble = obs_provider.inital_usurf(num_samples=ensemble_size)
 
@@ -36,9 +36,6 @@ def main(rgi_id, ensemble_size, inflation, iterations, seed, num_bins,
                       ObsProvider=obs_provider,
                       output_dir=output_dir,
                       max_iterations=iterations)
-
-    monitor.visualise_3d(obs_provider.dhdt[-1], obs_provider.usurf[-1],
-                         ensembleKF.bedrock, 2019, obs_provider.x, obs_provider.y)
 
     ################# MAIN LOOP #####################################################
     for i in range(1, iterations + 1):
@@ -72,7 +69,7 @@ def main(rgi_id, ensemble_size, inflation, iterations, seed, num_bins,
         ensembleKF.reset_time()
     #################################################################################
 
-    ensembleKF.save_results(num_bins)
+    ensembleKF.save_results(elevation_step)
     print('Done')
 
 
@@ -99,8 +96,8 @@ if __name__ == '__main__':
 
     parser.add_argument('--seed', type=int, default=12345,
                         help='Random seed for the model.')
-    parser.add_argument('--num_bins', type=int, default=20,
-                        help='Elevation bin for observations.')
+    parser.add_argument('--elevation_step', type=int, default=50,
+                        help='Elevation step for observations.')
 
     # Parse arguments
     args = parser.parse_args()
@@ -116,4 +113,4 @@ if __name__ == '__main__':
          iterations=args.iterations,
          seed=args.seed,
          forward_parallel=forward_parallel,
-         num_bins=args.num_bins)
+         elevation_step=args.elevation_step)

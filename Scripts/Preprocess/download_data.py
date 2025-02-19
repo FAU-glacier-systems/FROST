@@ -102,13 +102,14 @@ def download_OGGM_shop(rgi_id):
     with open(json_file_path, 'r') as file:
         params = json.load(file)
 
+    params["oggm_RGI_ID"] = rgi_id
     # Check if the directory exists, and create it if not
     oggm_shop_dir = os.path.join(rgi_id_dir, 'OGGM_shop')
 
     if not os.path.exists(oggm_shop_dir):
         os.makedirs(oggm_shop_dir)
 
-        # Change directory to the correct location
+    # Change directory to the correct location
     original_dir = os.getcwd()
     os.chdir(oggm_shop_dir)
 
@@ -154,8 +155,8 @@ def crop_hugonnet_to_glacier(rgi_region, date_range, oggm_shop_dataset):
     min_x, max_x = x_coords.min(), x_coords.max()
     min_y, max_y = y_coords.min(), y_coords.max()
 
-    # zone_number = int(oggm_shop_dataset.pyproj_srs.split('+')[2].split("=")[1])
-    zone_number = 32  # TODO
+    zone_number = int(oggm_shop_dataset.pyproj_srs.split('+')[2].split("=")[1])
+    #zone_number = 32
     zone_letter = "N"  # TODO for south regions
     x_range = np.array([min_x, min_x, max_x, max_x])
     y_range = np.array([min_y, min_y, max_y, max_y])
