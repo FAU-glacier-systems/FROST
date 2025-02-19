@@ -4,6 +4,8 @@
 #SBATCH --job-name=frost
 #SBATCH --output=Experiments/Log/frost_%j.out
 #SBATCH --error=Experiments/Log/frost_%j.err
+export http_proxy=http://proxy:80
+export https_proxy=http://proxy:80
 module load python
 conda activate igm
 
@@ -16,7 +18,6 @@ calibrate=false
 forward_parallel=false
 seed=1
 inflation=1
-
 
 # Parse command-line arguments
 while [[ "$#" -gt 0 ]]; do
@@ -35,6 +36,12 @@ done
 
 # Display the selected rgi_id
 echo "Running pipeline for RGI ID: $rgi_id"
+
+# 0. create folders
+SOURCE_FOLDER="Experiments/default"
+DEST_FOLDER="Experiments/$rgi_id"
+mkdir "$DEST_FOLDER"
+cp "$SOURCE_FOLDER"/*.json "$DEST_FOLDER"
 
 # 1. Download data with OGGM_shop (if --download is set)
 if [ "$download" = true ]; then
@@ -56,7 +63,7 @@ fi
 # 3. Calibration step (if --calibrate is set)
 if [ "$calibrate" = true ]; then
     echo "Starting calibration..."
-    python -u run_calibration.py --rgi_id "$rgi_id" --ensemble_size 20 \
+    python -u run_calibration.py --rgi_id "$rgi_id" --ensemble_size 100 \
     --forward_parallel "$forward_parallel" --iterations 6 --seed "$seed" \
-    --inflation "$inflation" --num_bins 50
+    --inflation "$inflation" --elevation_step 30
 fi
