@@ -13,84 +13,61 @@ import utm
 
 
 def scale_raster(input_file, output_file, scale_factor):
-    # Load the NetCDF file
-    with Dataset(input_file, 'r') as input_dataset:
-        # Downscale coordinates
-        new_x = zoom(input_dataset.variables['x'][:], scale_factor, order=1)
-        new_y = zoom(input_dataset.variables['y'][:], scale_factor, order=1)
+    with Dataset(input_file, 'r') as src, Dataset(output_file, 'w') as dst:
+        # Copy dimensions and rescale x/y
+        new_dims = {}
+        for dim in src.dimensions:
+            new_size = int(len(src.dimensions[dim]) * scale_factor) if dim in ['x',
+                                                                               'y'] else len(
+                src.dimensions[dim])
+            dst.createDimension(dim, new_size if not src.dimensions[
+                dim].isunlimited() else None)
+            new_dims[dim] = new_size  # Store for later use
 
-        # Create output NetCDF file
-        with Dataset(output_file, 'w') as scaled_dataset:
-            # Create dimensions
-            scaled_dataset.createDimension('x', len(new_x))
-            scaled_dataset.createDimension('y', len(new_y))
+        # Rescale x/y coordinates using np.linspace() for accuracy
+        for coord in ['x', 'y']:
+            if coord in src.variables:
+                old_vals = src.variables[coord][:]
+                new_vals = np.linspace(old_vals[0], old_vals[-1],
+                                       new_dims[coord])  # Ensure exact shape
+                var = dst.createVariable(coord, 'f4', (coord,))
+                var[:] = new_vals
+                var.setncatts({attr: src.variables[coord].getncattr(attr) for attr in
+                               src.variables[coord].ncattrs()})
 
-            # Check if 'time' dimension exists
-            if 'time' in input_dataset.dimensions:
-                scaled_dataset.createDimension('time',
-                                               len(input_dataset.dimensions['time']))
-                time_var = scaled_dataset.createVariable('time', 'f4', ('time',))
-                time_var[:] = input_dataset.variables['time'][:]
-                time_var.setncatts(
-                    {attr: input_dataset.variables['time'].getncattr(attr)
-                     for attr in
-                     input_dataset.variables['time'].ncattrs()})
+        # Copy & rescale data variables
+        for var in src.variables:
+            if var in ['x', 'y']:
+                continue  # Already processed
 
-            # Create coordinate variables
-            x_var = scaled_dataset.createVariable('x', 'f4', ('x',))
-            y_var = scaled_dataset.createVariable('y', 'f4', ('y',))
-            x_var[:] = new_x
-            y_var[:] = new_y
+            var_data = src.variables[var][:]
+            var_dims = src.variables[var].dimensions
 
-            # Copy attributes for x and y
-            x_var.setncatts(
-                {attr: input_dataset.variables['x'].getncattr(attr) for attr in
-                 input_dataset.variables['x'].ncattrs()})
-            y_var.setncatts(
-                {attr: input_dataset.variables['y'].getncattr(attr) for attr in
-                 input_dataset.variables['y'].ncattrs()})
+            # Create variable in the new dataset
+            new_var = dst.createVariable(var, src.variables[var].datatype, var_dims)
 
-            # Copy other variables and downscale
-            for var_name in input_dataset.variables:
-                if var_name in ['x', 'y', 'time']:
-                    continue
+            # Rescale only variables with x/y dimensions
+            if 'x' in var_dims and 'y' in var_dims:
+                scale_factors = [
+                    new_dims[d] / var_data.shape[i] if d in ['x', 'y'] else 1 for
+                    i, d in enumerate(var_dims)]
+                rescaled_data = zoom(var_data, scale_factors, order=0)
 
-                var = input_dataset.variables[var_name]
-                dims = var.dimensions
+                # Explicitly reshape the rescaled data to match expected shape
+                rescaled_data = rescaled_data[:new_dims['y'],
+                                :new_dims['x']]  # Ensure perfect fit
+                new_var[:] = rescaled_data
+            else:
+                new_var[:] = var_data  # Copy non-x/y data directly
 
-                # Create a new variable in the output dataset
-                scaled_var = scaled_dataset.createVariable(var_name, var.datatype,
-                                                           dims)
+            # Copy attributes
+            new_var.setncatts({attr: src.variables[var].getncattr(attr) for attr in
+                               src.variables[var].ncattrs()})
 
-                # Downscale data if it has 'x' and 'y' dimensions
-                if 'x' in dims and 'y' in dims:
-                    scale_factors = [
-                        scale_factor if dim in ['y', 'x'] else 1
-                        for dim in dims
-                    ]
-                    scaled_data = zoom(var[:], scale_factors, order=0)
-                    scaled_var[:] = scaled_data
-                else:
-                    scaled_var[:] = var[:]
+        # Copy global attributes
+        dst.setncatts({attr: src.getncattr(attr) for attr in src.ncattrs()})
 
-                # Copy variable attributes
-                scaled_var.setncatts(
-                    {attr: var.getncattr(attr) for attr in var.ncattrs()})
-
-            # Copy global attributes (e.g., CRS, title, etc.)
-            scaled_dataset.setncatts(
-                {attr: input_dataset.getncattr(attr) for attr in
-                 input_dataset.ncattrs()})
-
-            # Handle CRS explicitly, if available
-            if 'crs' in input_dataset.variables:
-                crs_var = input_dataset.variables['crs']
-                scaled_crs = scaled_dataset.createVariable('crs', crs_var.datatype)
-                scaled_crs.setncatts(
-                    {attr: crs_var.getncattr(attr) for attr in crs_var.ncattrs()})
-                scaled_dataset.variables['crs'] = crs_var[:]
-
-    print(f"Scaled raster saved to {output_file} with metadata.")
+    print(f"Scaled raster saved to {output_file}.")
 
 
 # Function to handle the main logic
@@ -156,7 +133,7 @@ def crop_hugonnet_to_glacier(rgi_region, date_range, oggm_shop_dataset):
     min_y, max_y = y_coords.min(), y_coords.max()
 
     zone_number = int(oggm_shop_dataset.pyproj_srs.split('+')[2].split("=")[1])
-    #zone_number = 32
+    # zone_number = 32
     zone_letter = "N"  # TODO for south regions
     x_range = np.array([min_x, min_x, max_x, max_x])
     y_range = np.array([min_y, min_y, max_y, max_y])
