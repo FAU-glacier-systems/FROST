@@ -300,7 +300,7 @@ class Monitor:
             surfacecolor=property_map,
             showlegend=False,
             name="glacier surface",
-            colorbar=dict(title="Surface Elevation Change (m/a)",
+            colorbar=dict(title="Surface Mass Balance (m/a)",
                           titleside="top", thickness=50, orientation="h", y=0.7,
                           len=0.5,
                           titlefont=dict(size=50), tickfont=dict(size=40),

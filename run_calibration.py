@@ -3,6 +3,7 @@ from Scripts.EnsembleKalmanFilter import EnsembleKalmanFilter
 from Scripts.ObservationProvider import ObservationProvider
 from Scripts.Visualization.Monitor import Monitor
 import os
+import numpy as np
 
 
 def main(rgi_id, ensemble_size, inflation, iterations, seed, elevation_step,
@@ -37,6 +38,7 @@ def main(rgi_id, ensemble_size, inflation, iterations, seed, elevation_step,
                       output_dir=output_dir,
                       max_iterations=iterations)
 
+
     ################# MAIN LOOP #####################################################
     for i in range(1, iterations + 1):
         # get new observation
@@ -66,7 +68,12 @@ def main(rgi_id, ensemble_size, inflation, iterations, seed, elevation_step,
             iteration=i,
             year=year,
             ensemble_observables=ensemble_observables)
+        monitor.visualise_3d(obs_provider.dhdt[2],
+                             ensembleKF.ensemble_usurf[0], ensembleKF.bedrock, 2000,
+                             obs_provider.x, obs_provider.y)
+
         ensembleKF.reset_time()
+
     #################################################################################
 
     ensembleKF.save_results(elevation_step)
@@ -79,7 +86,8 @@ if __name__ == '__main__':
         description='Run glacier calibration experiments.')
 
     # Add arguments for parameters
-    parser.add_argument('--rgi_id', type=str, required=True,
+    parser.add_argument('--rgi_id', type=str,
+                        default="RGI2000-v7.0-G-11-01706",
                         help='RGI ID of the glacier for the model.')
 
     parser.add_argument('--ensemble_size', type=int, default=50,

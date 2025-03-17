@@ -15,7 +15,7 @@ download=false
 scale_factor=1
 inversion=false
 calibrate=false
-forward_parallel=false
+forward_parallel=true
 seed=1
 inflation=1
 
@@ -38,10 +38,10 @@ done
 echo "Running pipeline for RGI ID: $rgi_id"
 
 # 0. create folders
-SOURCE_FOLDER="Experiments/default"
-DEST_FOLDER="Experiments/$rgi_id"
-mkdir "$DEST_FOLDER"
-cp "$SOURCE_FOLDER"/*.json "$DEST_FOLDER"
+echo "Create_folder"
+pushd Scripts/Preprocess
+python -u create_folder.py --rgi_id "$rgi_id"
+popd
 
 # 1. Download data with OGGM_shop (if --download is set)
 if [ "$download" = true ]; then
@@ -63,7 +63,7 @@ fi
 # 3. Calibration step (if --calibrate is set)
 if [ "$calibrate" = true ]; then
     echo "Starting calibration..."
-    python -u run_calibration.py --rgi_id "$rgi_id" --ensemble_size 100 \
+    python -u run_calibration.py --rgi_id "$rgi_id" --ensemble_size 50 \
     --forward_parallel "$forward_parallel" --iterations 6 --seed "$seed" \
-    --inflation "$inflation" --elevation_step 30
+    --inflation "$inflation" --elevation_step 50
 fi
