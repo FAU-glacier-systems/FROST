@@ -1,4 +1,7 @@
 #!/bin/bash -l
+# Copyright (C) 2024-2026 Oskar Herrmann
+# Published under the GNU GPL (Version 3), check the LICENSE file
+
 #SBATCH --nodes=1
 #SBATCH --time=0:59:00
 #SBATCH --job-name=frost

@@ -1,3 +1,8 @@
+#!/usr/bin python3
+
+# Copyright (C) 2024-2026 Oskar Herrmann
+# Published under the GNU GPL (Version 3), check the LICENSE file
+
 import argparse
 from Scripts.EnsembleKalmanFilter import EnsembleKalmanFilter
 from Scripts.ObservationProvider import ObservationProvider
@@ -18,12 +23,14 @@ def main(rgi_id, ensemble_size, inflation, iterations, seed, elevation_step,
                               f'Experiment_{ensemble_size}_{elevation_step}_{inflation}_{seed}')
 
     # Initialise the Observation provider
+    print("Initializing Observation Provider")
     obs_provider = ObservationProvider(rgi_id=rgi_id,
                                        elevation_step=int(elevation_step))
-
+    print("Initializing Usurf 2000")
     year, usurf_ensemble = obs_provider.inital_usurf(num_samples=ensemble_size)
 
     # Initialise an ensemble kalman filter object
+    print("Initializing Ensemble Kalman Filter")
     ensembleKF = EnsembleKalmanFilter(rgi_id=rgi_id,
                                       ensemble_size=ensemble_size,
                                       inflation=inflation,
@@ -33,6 +40,7 @@ def main(rgi_id, ensemble_size, inflation, iterations, seed, elevation_step,
                                       output_dir=output_dir)
 
     # Initialise a monitor for visualising the process
+
     monitor = Monitor(EnKF_object=ensembleKF,
                       ObsProvider=obs_provider,
                       output_dir=output_dir,

@@ -1,9 +1,13 @@
+#!/usr/bin python3
+
+# Copyright (C) 2024-2026 Oskar Herrmann
+# Published under the GNU GPL (Version 3), check the LICENSE file
+
 import json
 import os
 import subprocess
 from netCDF4 import Dataset
 import numpy as np
-
 
 os.environ['PYTHONWARNINGS'] = "ignore"
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
@@ -11,13 +15,12 @@ os.environ['TF_XLA_FLAGS'] = '--tf_xla_auto_jit=2 --tf_xla_cpu_global_jit'
 os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
 
 
-
 def forward(member_id, rgi_dir, usurf, smb, year_interval):
     # Define the logic for a single forward computation
     ela = smb['ela']
-    grad_abl = smb['gradabl']/1000
-    grad_acc = smb['gradacc']/1000
-    print(f"Forward ensemble member {member_id} with SMB: "+str(smb))
+    grad_abl = smb['gradabl'] / 1000
+    grad_acc = smb['gradacc'] / 1000
+    print(f"Forward ensemble member {member_id} with SMB: " + str(smb))
     igm_params = {"modules_preproc": ["load_ncdf"],
                   "modules_process": ["smb_simple", "iceflow", "time",
                                       "thk"],
@@ -49,11 +52,10 @@ def forward(member_id, rgi_dir, usurf, smb, year_interval):
         input_dataset.variables['thk'][:] = thickness
 
     ################################## RUN IGM ######################################
-    subprocess.run(["igm_run"], cwd=member_dir,)
+    subprocess.run(["igm_run"], cwd=member_dir, )
     #################################################################################
 
     output_file = os.path.join(member_dir, "output.nc")
-
 
     with Dataset(output_file, 'r') as new_ds:
         new_usurf = np.array(new_ds['usurf'][-1])

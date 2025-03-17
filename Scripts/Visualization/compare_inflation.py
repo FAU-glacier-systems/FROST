@@ -1,3 +1,9 @@
+#!/usr/bin python3
+
+# Copyright (C) 2024-2026 Oskar Herrmann
+# Published under the GNU GPL (Version 3), check the LICENSE file
+
+
 import json
 import os
 import matplotlib.pyplot as plt
@@ -13,7 +19,6 @@ for glacier_name in glacier_list:
                                   'inflation_robustness')
     experiment_dirs = os.listdir(experiment_dir)
 
-
     inflation_data = {
         'inflation': [],
         'seed': [],
@@ -23,7 +28,7 @@ for glacier_name in glacier_list:
         'final_std_ela': [],
         'final_std_grad_abl': [],
         'final_std_grad_acc': [],
-        #'num_bins': []
+        # 'num_bins': []
 
     }
     for exp_dir in experiment_dirs:
@@ -42,7 +47,7 @@ for glacier_name in glacier_list:
             print(exp_dir, result_file)
             inflation_data['seed'].append(result['seed'])
             inflation_data['inflation'].append(result['inflation'])
-            #inflation_data['num_bins'].append(result['num_bins'])
+            # inflation_data['num_bins'].append(result['num_bins'])
             inflation_data['final_mean_ela'].append(result['final_mean'][0])
             inflation_data['final_mean_grad_abl'].append(result['final_mean'][1])
             inflation_data['final_mean_grad_acc'].append(result['final_mean'][2])
