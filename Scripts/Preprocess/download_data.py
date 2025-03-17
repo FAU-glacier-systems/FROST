@@ -1,77 +1,163 @@
+#!/usr/bin python3
+
+# Copyright (C) 2024-2026 Oskar Herrmann, Johannes J. Fuerst
+# Published under the GNU GPL (Version 3), check the LICENSE file
+
+# import required packages
 import argparse
 import json
 import subprocess
 import os
+import utm
+import math
+import numpy as np
+from netCDF4 import Dataset
+from scipy.ndimage import zoom
+import scipy.interpolate
 import rasterio
 from rasterio.windows import from_bounds
-import math
-from netCDF4 import Dataset
-import numpy as np
-from scipy.ndimage import zoom
 from rasterio.merge import merge
-import utm
+
+"""
+TODOs:
+- make netCDF file names variables (input_saved.nc, observations.nc)
+- check if scale_raster produces equidistant grids???
+- constant timeline for obs.: make flexible and link to timeline in observation.nc
+"""
 
 
 def scale_raster(input_file, output_file, scale_factor):
-    with Dataset(input_file, 'r') as src, Dataset(output_file, 'w') as dst:
-        # Copy dimensions and rescale x/y
-        new_dims = {}
-        for dim in src.dimensions:
-            new_size = int(len(src.dimensions[dim]) * scale_factor) if dim in ['x',
-                                                                               'y'] else len(
-                src.dimensions[dim])
-            dst.createDimension(dim, new_size if not src.dimensions[
-                dim].isunlimited() else None)
-            new_dims[dim] = new_size  # Store for later use
+    """
+    script to spatially up- or downsample the OGGMshop standard netCDF file
 
-        # Rescale x/y coordinates using np.linspace() for accuracy
-        for coord in ['x', 'y']:
-            if coord in src.variables:
-                old_vals = src.variables[coord][:]
-                new_vals = np.linspace(old_vals[0], old_vals[-1],
-                                       new_dims[coord])  # Ensure exact shape
-                var = dst.createVariable(coord, 'f4', (coord,))
-                var[:] = new_vals
-                var.setncatts({attr: src.variables[coord].getncattr(attr) for attr in
-                               src.variables[coord].ncattrs()})
+    Authors: Oskar Herrmann, Johannes J. Fuerst
 
-        # Copy & rescale data variables
-        for var in src.variables:
-            if var in ['x', 'y']:
-                continue  # Already processed
+    Args:
+           input_file(str)     - refers to directory & filename of standard OGGMshop netCDF
+           scale_factor(float) - values smaller than 1 result in dx_out > dx_in
+                                 and vice versa
+           output_file(str)    - output is written in same directory as input;
+                                 also in netCDF format
+                                 file is already within this routine
 
-            var_data = src.variables[var][:]
-            var_dims = src.variables[var].dimensions
+    Returns:
+           none
+    """
 
-            # Create variable in the new dataset
-            new_var = dst.createVariable(var, src.variables[var].datatype, var_dims)
+    # Load the NetCDF file
+    with Dataset(input_file, 'r') as input_dataset:
+        # Downscale coordinates
+        new_x = zoom(input_dataset.variables['x'][:], scale_factor, order=1)
+        new_y = zoom(input_dataset.variables['y'][:], scale_factor, order=1)
 
-            # Rescale only variables with x/y dimensions
-            if 'x' in var_dims and 'y' in var_dims:
-                scale_factors = [
-                    new_dims[d] / var_data.shape[i] if d in ['x', 'y'] else 1 for
-                    i, d in enumerate(var_dims)]
-                rescaled_data = zoom(var_data, scale_factors, order=0)
+        # Create output NetCDF file
+        with Dataset(output_file, 'w') as scaled_dataset:
+            # Create dimensions
+            scaled_dataset.createDimension('x', len(new_x))
+            scaled_dataset.createDimension('y', len(new_y))
 
-                # Explicitly reshape the rescaled data to match expected shape
-                rescaled_data = rescaled_data[:new_dims['y'],
-                                :new_dims['x']]  # Ensure perfect fit
-                new_var[:] = rescaled_data
-            else:
-                new_var[:] = var_data  # Copy non-x/y data directly
+            # Check if 'time' dimension exists
+            if 'time' in input_dataset.dimensions:
+                scaled_dataset.createDimension('time',
+                                               len(input_dataset.dimensions['time']))
+                time_var = scaled_dataset.createVariable('time', 'f4', ('time',))
+                time_var[:] = input_dataset.variables['time'][:]
+                time_var.setncatts(
+                    {attr: input_dataset.variables['time'].getncattr(attr)
+                     for attr in
+                     input_dataset.variables['time'].ncattrs()})
 
-            # Copy attributes
-            new_var.setncatts({attr: src.variables[var].getncattr(attr) for attr in
-                               src.variables[var].ncattrs()})
+            # Create coordinate variables
+            x_var = scaled_dataset.createVariable('x', 'f4', ('x',))
+            y_var = scaled_dataset.createVariable('y', 'f4', ('y',))
+            x_var[:] = new_x
+            y_var[:] = new_y
 
-        # Copy global attributes
-        dst.setncatts({attr: src.getncattr(attr) for attr in src.ncattrs()})
+            # Copy attributes for x and y
+            x_var.setncatts(
+                {attr: input_dataset.variables['x'].getncattr(attr) for attr in
+                 input_dataset.variables['x'].ncattrs()})
+            y_var.setncatts(
+                {attr: input_dataset.variables['y'].getncattr(attr) for attr in
+                 input_dataset.variables['y'].ncattrs()})
 
-    print(f"Scaled raster saved to {output_file}.")
+            # Copy other variables and downscale
+            for var_name in input_dataset.variables:
+                if var_name in ['x', 'y', 'time']:
+                    continue
+
+                var = input_dataset.variables[var_name]
+                dims = var.dimensions
+
+                # Create a new variable in the output dataset
+                scaled_var = scaled_dataset.createVariable(var_name, var.datatype,
+                                                           dims)
+
+                # Downscale data if it has 'x' and 'y' dimensions
+                if 'x' in dims and 'y' in dims:
+                    scale_factors = [
+                        scale_factor if dim in ['y', 'x'] else 1
+                        for dim in dims
+                    ]
+                    scaled_data = zoom(var[:], scale_factors, order=0)
+                    scaled_var[:] = scaled_data
+                else:
+                    scaled_var[:] = var[:]
+
+                # Copy variable attributes
+                scaled_var.setncatts(
+                    {attr: var.getncattr(attr) for attr in var.ncattrs()})
+
+            # Copy global attributes (e.g., CRS, title, etc.)
+            scaled_dataset.setncatts(
+                {attr: input_dataset.getncattr(attr) for attr in
+                 input_dataset.ncattrs()})
+
+            # Get global pyproj attribute
+            dst_proj = scaled_dataset.pyproj_crs
+            # adjust dxdx values§
+            dst_proj2 = str(
+                scaled_dataset.pyproj_crs.split('dxdy')[0]) + "dxdy\': [" + str(
+                1.0 / scale_factor * (input_dataset.variables['x'][1] -
+                                      input_dataset.variables['x'][
+                                          0])) + ', -' + str(1.0 / scale_factor * (
+                        input_dataset.variables['y'][1] -
+                        input_dataset.variables['y'][0])) + '],' + "\'pixel " + str(
+                scaled_dataset.pyproj_crs.split('pixel')[1])
+            # adjust nxny values
+            dst_proj3 = str(dst_proj2.split('nxny')[0]) + "nxny\': [" + str(
+                len(scaled_dataset.variables['x'][:])) + ', ' + str(
+                len(scaled_dataset.variables['y'][:])) + ']' + str(
+                "\'dxdy" + str(dst_proj2.split('dxdy')[1]))
+            scaled_dataset.setncattr('pyproj_crs', str(dst_proj3))
+
+            # Handle CRS explicitly, if available
+            if 'crs' in input_dataset.variables:
+                crs_var = input_dataset.variables['crs']
+                scaled_crs = scaled_dataset.createVariable('crs', crs_var.datatype)
+                scaled_crs.setncatts(
+                    {attr: crs_var.getncattr(attr) for attr in crs_var.ncattrs()})
+                scaled_dataset.variables['crs'] = crs_var[:]
+
+    print(f"Scaled raster saved to {output_file} with metadata.")
 
 
 # Function to handle the main logic
 def download_OGGM_shop(rgi_id):
+    """
+    wrapper to call 'igm_run'
+    - JSON file needs to specify the oggm_shop routine of IGM
+    - function generates generic OGGMshop netcdf
+
+    Authors: Oskar Herrmann
+
+    Args:
+           rgi_id(str)    - specify glacier ID
+
+    Returns:
+           none
+    """
+
     # Define the params to be saved in params.json
     json_file_path = os.path.join('..', '..', 'Experiments', rgi_id,
                                   'params_download.json')
@@ -97,34 +183,29 @@ def download_OGGM_shop(rgi_id):
     # Run the igm_run command
     subprocess.run(['igm_run', '--param_file', 'params.json'])
 
-    with Dataset('input_saved.nc', 'r') as scaled_dataset:
-        x = scaled_dataset.variables['x'][:]
-        resolution = abs(x[1] - x[2])
-        if resolution != 100:
-            scale_factor = resolution / 100
-            scale_raster('input_saved.nc', 'input_scaled.nc', scale_factor)
-            os.remove('input_saved.nc')
-            os.rename('input_scaled.nc', 'input_saved.nc')
-
     os.chdir(original_dir)
 
 
-def crop_hugonnet_to_glacier(rgi_region, date_range, oggm_shop_dataset):
+def crop_hugonnet_to_glacier(rgi_region, date_range, hugonnet_dir, oggm_shop_dir,
+                             oggm_shop_dataset):
     """
     Fuse multiple dh/dt tiles and crop to a specified OGGM dataset area.
 
+    Authors: Oskar Herrmann, Johannes J. Fuerst
+
     Args:
         date_range (str): The date range for the dh/dt dataset.
+        oggm_shop_dir (str): relative directory of OGGM dataset
         oggm_shop_dataset (xarray.Dataset): OGGM dataset with spatial coordinates.
 
     Returns:
         np.ndarray: Cropped and filtered dh/dt map.
     """
+
     # Define the folder containing dh/dt files
-    folder_name = f'{rgi_region}_rgi60_{date_range}'
-    dhdt_folder = os.path.join('..', '..', 'Data', 'Hugonnet', folder_name, 'dhdt')
-    dhdt_err_folder = os.path.join('..', '..', 'Data', 'Hugonnet', folder_name,
-                                   'dhdt_err')
+    dhdt_folder = os.path.join(hugonnet_dir, 'dhdt')
+    dhdt_err_folder = os.path.join(hugonnet_dir, 'dhdt_err')
+    print('... retrieving Hugonnet data from: ', hugonnet_dir)
 
     # Extract UTM coordinates from the NetCDF file (adjust according to your dataset)
     x_coords = oggm_shop_dataset['x'][:]
@@ -132,28 +213,62 @@ def crop_hugonnet_to_glacier(rgi_region, date_range, oggm_shop_dataset):
     min_x, max_x = x_coords.min(), x_coords.max()
     min_y, max_y = y_coords.min(), y_coords.max()
 
-    zone_number = int(oggm_shop_dataset.pyproj_srs.split('+')[2].split("=")[1])
-    # zone_number = 32
-    zone_letter = "N"  # TODO for south regions
-    x_range = np.array([min_x, min_x, max_x, max_x])
-    y_range = np.array([min_y, min_y, max_y, max_y])
+    # Use netCDF file from OGGMshop and extract projection details
+    # (no idea what happens if another DEM source is taken - instead of SRTM)
+    zone_number = int(oggm_shop_dataset.epsg.split(':')[1][3:5])
 
-    lat_lon_corner = utm.to_latlon(x_range, y_range, zone_number, zone_letter)
+    # Determine if glacier is in northern or southern hemisphere
+    # for that use y-corner coordinate from OGGM projection details
+    if float(oggm_shop_dataset.pyproj_crs.split(':')[2].split(']')[0].split(',')[
+                 1]) > 0:
+        zone_letter = "N"
+    else:
+        zone_letter = "S"
+
+    # Determine if glacier is in western or eastern longitude range
+    if zone_number <= 30:
+        east_west = "W"
+    else:
+        east_west = "E"
+
+    # Determine maximum and minimum values for longitude and latitude
+    x_range = np.array([min_x, min_x, max_x, max_x])
+    # ATTENTION: Hugonnet uses 'S' labels for UTM so all y-values are positive for Huggonet
+    if zone_letter == "S":
+        # ATTENTION: Hugonnet uses 'S' label for UTM zone (EPSG:327??) in southern hemisphere
+        # so all y-values are positive
+        # (I do not understand why values have to be put negative and no subtraction from 1.0e7 as defined for UTM-South)
+        y_range = np.array([-1.0 * max_y, -1.0 * max_y, -1.0 * min_y, -1.0 * min_y])
+    else:
+        y_range = np.array([min_y, min_y, max_y, max_y])
+
+    # OGGM file format uses exclusive northern hemisphere UTM (EPSG:326??)
+    # --> y-coordinate is negative for southern hemisphere
+    lat_lon_corner = utm.to_latlon(x_range, y_range, zone_number, "N")
     lat_lon_corner = np.abs(lat_lon_corner)
     min_lat, max_lat = min(lat_lon_corner[0]), max(lat_lon_corner[0])
     min_lon, max_lon = min(lat_lon_corner[1]), max(lat_lon_corner[1])
+
+    # If glacier is in the southern hemispher or in western territory
+    # a correction of the tile number by one is necessary
+    if zone_letter == "S":
+        min_lat += 1
+        max_lat += 1
+
+    if east_west == "W":
+        min_lon += 1
+        max_lon += 1
 
     # Create a list to store overlapping tile names
     tile_names = []
 
     # Iterate over possible tiles
-
     for lat in range(int(min_lat), int(max_lat) + 1):
         for lon in range(int(min_lon), int(max_lon) + 1):
             # Construct the tile name
-            tile_name = f'N{lat:02d}E{lon:03d}'
+            tile_name = f'{zone_letter}{lat:02d}{east_west}{lon:03d}'
             tile_names.append(tile_name)
-    print(tile_names)
+
     # Collect all dh/dt files for the specified tiles
     dhdt_files = [os.path.join(dhdt_folder, f'{tile}_{date_range}_dhdt.tif') for tile
                   in tile_names]
@@ -161,47 +276,176 @@ def crop_hugonnet_to_glacier(rgi_region, date_range, oggm_shop_dataset):
                                    f'{tile}_{date_range}_dhdt_err.tif')
                       for tile in tile_names]
 
-    # Open all the dh/dt tiles and merge them
-    datasets = [rasterio.open(file) for file in dhdt_files]
-    datasets_err = [rasterio.open(file) for file in dhdt_err_files]
+    # Merge dh/dt tiles across UTMzone and crop accordingly for output
+    dst_array = tile_merge_reproject(dhdt_files, oggm_shop_dataset)
+    dst_err_array = tile_merge_reproject(dhdt_err_files, oggm_shop_dataset)
 
-    merged_map, merged_transform = merge(datasets)
-    merged_err_map, merged_err_transform = merge(datasets_err)
-
-    # Define the window to crop the merged dataset using these bounds
-    window = from_bounds(min_x, min_y, max_x, max_y, merged_transform)
-
-    # Ensure window indices are integers, and handle off-by-one errors
-    row_off = round(window.row_off)  # Ensure the row offset is an integer
-    col_off = round(window.col_off)  # Ensure the column offset is an integer
-    height = len(y_coords)  # Ensure height is integer and within bounds
-    width = len(x_coords)
-
-    # Crop the merged map using the calculated window
-    cropped_map = merged_map[0,
-                  row_off:row_off + height,
-                  col_off:col_off + width]
-
-    cropped_err_map = merged_err_map[0,
-                      row_off:row_off + height,
-                      col_off:col_off + width]
+    # Re-assign
+    cropped_map = np.squeeze(dst_array)
+    cropped_err_map = np.squeeze(dst_err_array)
 
     # Replace invalid values (-9999) with NaN
     filtered_map = np.where(cropped_map == -9999, np.nan, cropped_map)
     filtered_err_map = np.where(cropped_err_map == -9999, np.nan, cropped_err_map)
 
-    # Close all open datasets
-    for dataset in datasets:
-        dataset.close()
-
     return filtered_map, filtered_err_map
 
 
-import numpy as np
-import scipy.interpolate
+def tile_merge_reproject(flist, oggm_shop_dataset):
+    """
+    Script to collect all geoTIF tiles for a certain glacier
+    - check all coordinate reference systems (CRS)
+    - reproject all tiles into same CRS
+    - merge all reprojected tiles
+    - crop to target region (as defined by OGGMshop standard netCDF)
+    (
+     large portion of the routines is taken from OGGM routine 'hugonnet_maps.py',
+     particularly from function 'hugonnet_to_gdir'
+    )
+
+    Authors: Oskar Herrmann, Johannes J. Fuerst
+
+    Args:
+           flist(str)         - file list of all relevant tiles for a specific glacier
+           oggm_shop_dataset  - OGGM dataset loaded from a netCDF
+
+    Returns:
+           none
+    """
+
+    from packaging.version import Version
+    from rasterio.warp import reproject, Resampling, calculate_default_transform
+    from rasterio import MemoryFile
+    from oggm import cfg, utils, workflow, tasks, graphics
+    try:
+        # rasterio V > 1.0
+        from rasterio.merge import merge as merge_tool
+    except ImportError:
+        from rasterio.tools.merge import merge as merge_tool
+
+    # A glacier area can cover more than one tile:
+    if len(flist) == 1:
+        dem_dss = [rasterio.open(flist[0])]  # if one tile, just open it
+        file_crs = dem_dss[0].crs
+        dhdt_data = rasterio.band(dem_dss[0], 1)
+        if Version(rasterio.__version__) >= Version('1.0'):
+            src_transform = dem_dss[0].transform
+        else:
+            src_transform = dem_dss[0].affine
+        nodata = dem_dss[0].meta.get('nodata', None)
+    else:
+        dem_dss = [rasterio.open(s) for s in flist]  # list of rasters
+
+        # make sure all files have the same crs and reproject if needed;
+        # defining the target crs to the one most commonly used, minimizing
+        # the number of files for reprojection
+        crs_list = np.array([dem_ds.crs.to_string() for dem_ds in dem_dss])
+        unique_crs, crs_counts = np.unique(crs_list, return_counts=True)
+        file_crs = rasterio.crs.CRS.from_string(
+            unique_crs[np.argmax(crs_counts)])
+
+        if len(unique_crs) != 1:
+            # more than one crs, we need to do reprojection
+            memory_files = []
+            for i, src in enumerate(dem_dss):
+                if file_crs != src.crs:
+                    transform, width, height = calculate_default_transform(
+                        src.crs, file_crs, src.width, src.height, *src.bounds)
+                    kwargs = src.meta.copy()
+                    kwargs.update({
+                        'crs': file_crs,
+                        'transform': transform,
+                        'width': width,
+                        'height': height
+                    })
+
+                    reprojected_array = np.empty(shape=(src.count, height, width),
+                                                 dtype=src.dtypes[0])
+                    # just for completeness; even the data only has one band
+                    for band in range(1, src.count + 1):
+                        reproject(source=rasterio.band(src, band),
+                                  destination=reprojected_array[band - 1],
+                                  src_transform=src.transform,
+                                  src_crs=src.crs,
+                                  dst_transform=transform,
+                                  dst_crs=file_crs,
+                                  resampling=Resampling.nearest)
+
+                    memfile = MemoryFile()
+                    with memfile.open(**kwargs) as mem_dst:
+                        mem_dst.write(reprojected_array)
+                    memory_files.append(memfile)
+                else:
+                    memfile = MemoryFile()
+                    with memfile.open(**src.meta) as mem_src:
+                        mem_src.write(src.read())
+                    memory_files.append(memfile)
+
+            with rasterio.Env():
+                datasets_to_merge = [memfile.open() for memfile in memory_files]
+                nodata = datasets_to_merge[0].meta.get('nodata', None)
+                dhdt_data, src_transform = merge_tool(datasets_to_merge,
+                                                      nodata=nodata)
+        else:
+            # only one single crs occurring, no reprojection needed
+            nodata = dem_dss[0].meta.get('nodata', None)
+            dhdt_data, src_transform = merge_tool(dem_dss, nodata=nodata)
+
+    # Read global attributes from OGGMshop netcdf (as written by IGM oggm_shop.py)
+    dst_array = np.zeros(np.shape(oggm_shop_dataset['usurf'][:]))
+    dst_crs = oggm_shop_dataset.epsg
+    dst_transform = rasterio.transform.from_origin(float(
+        oggm_shop_dataset.pyproj_crs.split(':')[2].split('[')[1].split(',')[0]),
+                                                   float(
+                                                       oggm_shop_dataset.pyproj_crs.split(
+                                                           ':')[2].split(']')[
+                                                           0].split(',')[1]),
+                                                   abs(float(
+                                                       oggm_shop_dataset.pyproj_crs.split(
+                                                           ':')[4].split('[')[
+                                                           1].split(',')[0])),
+                                                   abs(float(
+                                                       oggm_shop_dataset.pyproj_crs.split(
+                                                           ':')[4].split(']')[
+                                                           0].split(',')[1])))
+
+    resampling = Resampling.bilinear
+
+    # crop an reproject to target netCDF
+    with MemoryFile() as dest:
+        reproject(
+            # Source parameters
+            source=dhdt_data,
+            src_crs=file_crs,
+            src_transform=src_transform,
+            src_nodata=nodata,
+            # Destination parameters
+            destination=dst_array,
+            dst_transform=dst_transform,
+            dst_crs=dst_crs,
+            dst_nodata=np.nan,
+            # Configuration
+            resampling=resampling)
+        dest.write(dst_array)
+
+    for dem_ds in dem_dss:
+        dem_ds.close()
+
+    return dst_array
 
 
 def interpolate_nans(grid):
+    """
+    Script to bilinearly interpolate NaNs in input field
+
+    Authors: Oskar Herrmann
+
+    Args:
+           grid(numpy array)              - file list of all relevant tiles for a specific glacier
+
+    Returns:
+           grid_interpolated(numpy array) - same array as input (created by scipy)
+    """
     # Get x, y coordinates of valid values
     x, y = np.indices(grid.shape)
     valid_mask = ~np.isnan(grid)  # Mask of non-NaN values
@@ -217,20 +461,40 @@ def interpolate_nans(grid):
     return grid_interpolated
 
 
-def download_hugonnet(rgi_id_dir, year_interval):
+def download_hugonnet(rgi_id_dir, year_interval, hugonnet_directory):
+    """
+    Script to bilinearly interpolate NaNs in input field
+    - it creates a netCDF file (observations.nc)
+
+    Authors: Oskar Herrmann
+
+    Args:
+           rgi_id_dir(str)    - relative directory of IGM input folder
+                                (expectation is filename 'input_saved.nc'; TO DO)
+           year_interval(int) - time interval of Hugonnet input files (5 or 20 years)
+           hugonnet_firectory (str) - absolute or relative path to Hugonnet dat on local drive
+
+    Returns:
+           none
+    """
+
+    # Retrieve relative directory path for OGGMshop
     oggm_shop_dir = os.path.join(rgi_id_dir, 'OGGM_shop')
 
+    # Join directory and filename
     oggm_shop_file = os.path.join(oggm_shop_dir, 'input_saved.nc')
 
-    # load file form oggm_shop
+    # Load file from oggm_shop and retrieve relevant variables
     oggm_shop_dataset = Dataset(oggm_shop_file, 'r')
     icemask_2000 = oggm_shop_dataset['icemask'][:]
     usurf_2000 = oggm_shop_dataset['usurf'][:]
     thk_2000 = oggm_shop_dataset['thkinit'][:]
 
-    # list folder names depending on time period
+    # List folder names depending on time period
     rgi_region = rgi_id_dir.split('/')[-1].split("-")[3]
 
+    # Define time difference between obserations
+    # (still constant) TODO: make flexible and link to timeline in observation.nc
     data_interval = 5
     if data_interval == 20:
         folder_names = [rgi_region + '_rgi60_2000-01-01_2020-01-01']
@@ -246,17 +510,29 @@ def download_hugonnet(rgi_id_dir, year_interval):
             'Invalid time period: {}. Please choose either 5 or 20.'.format(
                 year_interval))
 
-    # load dhdts data sets
+    # Load dhdts data sets
     dhdts = []
     dhdts_err = []
     for folder_name in folder_names:
-        # load dhdt
+        # Load dhdt
         date_range = folder_name.split('_', 2)[-1]
 
+        # Set local file path to Hugonnet data, if default is set
+        if hugonnet_directory == '../../Data/Hugonnet/':
+            rgi_region = rgi_id_dir.split('/')[-1].split("-")[3]
+            fname = f'{rgi_region}_rgi60_{date_range}'
+            hugonnet_dir = os.path.join('..', '..', 'Data', 'Hugonnet', fname)
+        else:
+            hugonnet_dir = str(hugonnet_directory)
+
         ### MERGE TILES AND CROP to oggmshop area ###
+        print('Hugonnet dh/dt filename : ', folder_name)
         cropped_dhdt, cropped_dhdt_err = crop_hugonnet_to_glacier(rgi_region,
                                                                   date_range,
+                                                                  hugonnet_dir,
+                                                                  oggm_shop_dir,
                                                                   oggm_shop_dataset)
+
         dhdt_masked = cropped_dhdt[::-1] * icemask_2000
         dhdts.append(dhdt_masked)
 
@@ -277,7 +553,10 @@ def download_hugonnet(rgi_id_dir, year_interval):
 
         dhdt_index = math.floor((year - 2001) / data_interval)
         dhdt = dhdts[dhdt_index]
-        dhdt = interpolate_nans(dhdt)
+
+        # check if an interpolation is required (only if both NaNs and actually valid values exist)
+        if np.nansum(~np.isnan(dhdt)) > 0 and np.nansum(np.isnan(dhdt)) > 0:
+            dhdt = interpolate_nans(dhdt)
         dhdt = np.where(icemask_2000 == 1, dhdt, 0)
         dhdt_change.append(dhdt)
 
@@ -287,7 +566,11 @@ def download_hugonnet(rgi_id_dir, year_interval):
 
         # compute uncertainty overtime
         dhdt_err = dhdts_err[dhdt_index]
-        dhdt_err = interpolate_nans(dhdt_err)
+
+        # check if an interpolation is required (only if both NaNs and actually valid values exist)
+        if np.nansum(~np.isnan(dhdt_err)) > 0 and np.nansum(np.isnan(dhdt_err)) > 0:
+            dhdt_err = interpolate_nans(dhdt_err)
+
         dhdt_err = np.where(icemask_2000 == 1, dhdt_err, 0)
         dhdt_err_change.append(dhdt_err)
 
@@ -354,6 +637,12 @@ def download_hugonnet(rgi_id_dir, year_interval):
         dhdt_err_var[:] = dhdt_err_change
         velsurf_mag_var[:] = velo
 
+        # Write globale attribute in OGGMshop netCDF file
+        dst_crs = oggm_shop_dataset.epsg
+        dst_proj = oggm_shop_dataset.pyproj_crs
+        merged_dataset.setncattr('pyproj_crs', str(dst_proj))
+        merged_dataset.setncattr('epsg', str(dst_crs))
+
 
 if __name__ == '__main__':
     # Parse command-line arguments
@@ -368,6 +657,12 @@ if __name__ == '__main__':
                         help='The RGI ID of the glacier to be calibrated '
                              '(default: RGI2000-v7.0-G-11-01706).')
 
+    # Add argument for specific target resolution
+    parser.add_argument('--target_resolution', type=float,
+                        default=100.0,
+                        help='user-specific resolution for IGM run [meters] '
+                             '(defaul: 100m)')
+
     # Add argument for scale factor
     parser.add_argument('--scale_factor', type=float,
                         default=1.0,
@@ -378,6 +673,13 @@ if __name__ == '__main__':
                         help='Flag to control execution of download_OGGM_shop.')
     parser.add_argument('--download_hugonnet', action='store_true',
                         help='Flag to control execution of download_Hugonnet.')
+
+    # Add argument to specify user directory for Hugonnet elevation changes
+    parser.add_argument('--hugonnet_directory', type=str,
+                        default='../../Data/Hugonnet/',
+                        # default='/home/vault/gwgi/gwgi17/projects/FRAGILE/input/dhdt/',
+                        help='User-specific directory on your local file system '
+                             '(default: ../../Data/Hugonnet/).')
 
     # select between 5-year or 20-year dhdt
     parser.add_argument('--year_interval', type=int, default=20,
@@ -400,8 +702,66 @@ if __name__ == '__main__':
 
         print(f"  RGI directory: {rgi_id_dir}")
         print(f"  Year interval: {args.year_interval}")
-        download_hugonnet(rgi_id_dir, args.year_interval)
+        download_hugonnet(rgi_id_dir, args.year_interval, args.hugonnet_directory)
         print("Hugonnet data download completed.")
+
+    # Rescale all output netCDF to a given target resolution
+    if args.target_resolution:
+        print(
+            f"  Scale output netCDF to target resolution: {args.target_resolution}")
+        target_resolution = float(args.target_resolution)
+        with Dataset(os.path.join(rgi_id_dir, 'OGGM_shop', 'input_saved.nc'),
+                     'r') as scaled_dataset:
+            x = scaled_dataset.variables['x'][:]
+            resolution = abs(x[1] - x[2])
+        if resolution != target_resolution:
+            scale_factor = resolution / target_resolution
+            print('  Scale factor : ', scale_factor)
+            scale_raster(
+                os.path.join(rgi_id_dir, 'OGGM_shop', 'input_saved.nc'),
+                os.path.join(rgi_id_dir, 'OGGM_shop', 'input_scaled.nc'),
+                scale_factor)
+            os.rename(os.path.join(rgi_id_dir, 'OGGM_shop', 'input_saved.nc'),
+                      os.path.join(rgi_id_dir, 'OGGM_shop', 'input_saved_OGGM.nc'))
+            os.rename(os.path.join(rgi_id_dir, 'OGGM_shop', 'input_scaled.nc'),
+                      os.path.join(rgi_id_dir, 'OGGM_shop', 'input_saved.nc'))
+
+            scale_raster(
+                os.path.join(rgi_id_dir, 'observations.nc'),
+                os.path.join(rgi_id_dir, 'observations_scaled.nc'),
+                scale_factor)
+            os.rename(os.path.join(rgi_id_dir, 'observations.nc'),
+                      os.path.join(rgi_id_dir, 'observations_OGGM.nc'))
+            os.rename(os.path.join(rgi_id_dir, 'observations_scaled.nc'),
+                      os.path.join(rgi_id_dir, 'observations.nc'))
+            # scale_raster('input_saved.nc', 'input_scaled.nc', scale_factor)
+        else:
+            # Make back-up file for original OGGM netCDF
+            # Source and destination
+            src = os.path.join(rgi_id_dir, 'observations.nc')
+            dst = os.path.join(rgi_id_dir, 'observations_OGGM.nc')
+
+            # Check the operating system and use the respective command
+            if os.name == 'nt':  # Windows
+                cmd = f'copy "{src}" "{dst}"'
+            else:  # Unix/Linux
+                cmd = f'cp "{src}" "{dst}"'
+
+            # Copy File
+            os.system(cmd)
+
+            # Source and destination
+            src = os.path.join(rgi_id_dir, 'OGGM_shop', 'input_saved.nc')
+            dst = os.path.join(rgi_id_dir, 'OGGM_shop', 'input_saved_OGGM.nc')
+
+            # Check the operating system and use the respective command
+            if os.name == 'nt':  # Windows
+                cmd = f'copy "{src}" "{dst}"'
+            else:  # Unix/Linux
+                cmd = f'cp "{src}" "{dst}"'
+
+            # Copy File
+            os.system(cmd)
 
     print(f"  Scale factor: {args.scale_factor}")
 
@@ -414,3 +774,4 @@ if __name__ == '__main__':
         scale_raster(os.path.join(rgi_id_dir, 'observations.nc'),
                      os.path.join(rgi_id_dir, 'observations_scaled.nc'),
                      args.scale_factor)
+
