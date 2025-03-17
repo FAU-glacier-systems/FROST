@@ -26,6 +26,89 @@ TODOs:
 """
 
 
+def main(rgi_id,
+         target_resolution,
+         download_oggm_shop_flag,
+         download_hugonnet_flag,
+         hugonnet_directory,
+         year_interval):  # Parse command-line arguments
+
+    # Define the path using os.path.join
+    rgi_id_dir = os.path.join('..', '..', 'Data', 'Glaciers', rgi_id)
+
+    # Call functions based on flags
+    if download_oggm_shop_flag:
+        print(f"Downloading OGGM shop data for RGI ID: {rgi_id}...")
+        download_OGGM_shop(rgi_id_dir, rgi_id)
+        print("OGGM shop data download completed.")
+
+    if download_hugonnet_flag:
+        print(f"Downloading Hugonnet data with the following parameters:")
+
+        print(f"  RGI directory: {rgi_id_dir}")
+        print(f"  Year interval: {year_interval}")
+        download_hugonnet(rgi_id_dir, year_interval, hugonnet_directory)
+        print("Hugonnet data download completed.")
+
+    # Rescale all output netCDF to a given target resolution
+    if args.target_resolution:
+        print(
+            f"  Scale output netCDF to target resolution: {target_resolution}")
+        target_resolution = float(target_resolution)
+        with Dataset(os.path.join(rgi_id_dir, 'OGGM_shop', 'input_saved.nc'),
+                     'r') as scaled_dataset:
+            x = scaled_dataset.variables['x'][:]
+            resolution = abs(x[1] - x[2])
+        if resolution != target_resolution:
+            scale_factor = resolution / target_resolution
+            print('  Scale factor : ', scale_factor)
+            scale_raster(
+                os.path.join(rgi_id_dir, 'OGGM_shop', 'input_saved.nc'),
+                os.path.join(rgi_id_dir, 'OGGM_shop', 'input_scaled.nc'),
+                scale_factor)
+            os.rename(os.path.join(rgi_id_dir, 'OGGM_shop', 'input_saved.nc'),
+                      os.path.join(rgi_id_dir, 'OGGM_shop', 'input_saved_OGGM.nc'))
+            os.rename(os.path.join(rgi_id_dir, 'OGGM_shop', 'input_scaled.nc'),
+                      os.path.join(rgi_id_dir, 'OGGM_shop', 'input_saved.nc'))
+
+            scale_raster(
+                os.path.join(rgi_id_dir, 'observations.nc'),
+                os.path.join(rgi_id_dir, 'observations_scaled.nc'),
+                scale_factor)
+            os.rename(os.path.join(rgi_id_dir, 'observations.nc'),
+                      os.path.join(rgi_id_dir, 'observations_OGGM.nc'))
+            os.rename(os.path.join(rgi_id_dir, 'observations_scaled.nc'),
+                      os.path.join(rgi_id_dir, 'observations.nc'))
+            # scale_raster('input_saved.nc', 'input_scaled.nc', scale_factor)
+        else:
+            # Make back-up file for original OGGM netCDF
+            # Source and destination
+            src = os.path.join(rgi_id_dir, 'observations.nc')
+            dst = os.path.join(rgi_id_dir, 'observations_OGGM.nc')
+
+            # Check the operating system and use the respective command
+            if os.name == 'nt':  # Windows
+                cmd = f'copy "{src}" "{dst}"'
+            else:  # Unix/Linux
+                cmd = f'cp "{src}" "{dst}"'
+
+            # Copy File
+            os.system(cmd)
+
+            # Source and destination
+            src = os.path.join(rgi_id_dir, 'OGGM_shop', 'input_saved.nc')
+            dst = os.path.join(rgi_id_dir, 'OGGM_shop', 'input_saved_OGGM.nc')
+
+            # Check the operating system and use the respective command
+            if os.name == 'nt':  # Windows
+                cmd = f'copy "{src}" "{dst}"'
+            else:  # Unix/Linux
+                cmd = f'cp "{src}" "{dst}"'
+
+            # Copy File
+            os.system(cmd)
+
+
 def scale_raster(input_file, output_file, scale_factor):
     """
     script to spatially up- or downsample the OGGMshop standard netCDF file
@@ -121,8 +204,8 @@ def scale_raster(input_file, output_file, scale_factor):
                 1.0 / scale_factor * (input_dataset.variables['x'][1] -
                                       input_dataset.variables['x'][
                                           0])) + ', -' + str(1.0 / scale_factor * (
-                        input_dataset.variables['y'][1] -
-                        input_dataset.variables['y'][0])) + '],' + "\'pixel " + str(
+                    input_dataset.variables['y'][1] -
+                    input_dataset.variables['y'][0])) + '],' + "\'pixel " + str(
                 scaled_dataset.pyproj_crs.split('pixel')[1])
             # adjust nxny values
             dst_proj3 = str(dst_proj2.split('nxny')[0]) + "nxny\': [" + str(
@@ -143,7 +226,7 @@ def scale_raster(input_file, output_file, scale_factor):
 
 
 # Function to handle the main logic
-def download_OGGM_shop(rgi_id):
+def download_OGGM_shop(rgi_id_dir, rgi_id):
     """
     wrapper to call 'igm_run'
     - JSON file needs to specify the oggm_shop routine of IGM
@@ -316,7 +399,6 @@ def tile_merge_reproject(flist, oggm_shop_dataset):
     from packaging.version import Version
     from rasterio.warp import reproject, Resampling, calculate_default_transform
     from rasterio import MemoryFile
-    from oggm import cfg, utils, workflow, tasks, graphics
     try:
         # rasterio V > 1.0
         from rasterio.merge import merge as merge_tool
@@ -396,18 +478,18 @@ def tile_merge_reproject(flist, oggm_shop_dataset):
     dst_crs = oggm_shop_dataset.epsg
     dst_transform = rasterio.transform.from_origin(float(
         oggm_shop_dataset.pyproj_crs.split(':')[2].split('[')[1].split(',')[0]),
-                                                   float(
-                                                       oggm_shop_dataset.pyproj_crs.split(
-                                                           ':')[2].split(']')[
-                                                           0].split(',')[1]),
-                                                   abs(float(
-                                                       oggm_shop_dataset.pyproj_crs.split(
-                                                           ':')[4].split('[')[
-                                                           1].split(',')[0])),
-                                                   abs(float(
-                                                       oggm_shop_dataset.pyproj_crs.split(
-                                                           ':')[4].split(']')[
-                                                           0].split(',')[1])))
+        float(
+            oggm_shop_dataset.pyproj_crs.split(
+                ':')[2].split(']')[
+                0].split(',')[1]),
+        abs(float(
+            oggm_shop_dataset.pyproj_crs.split(
+                ':')[4].split('[')[
+                1].split(',')[0])),
+        abs(float(
+            oggm_shop_dataset.pyproj_crs.split(
+                ':')[4].split(']')[
+                0].split(',')[1])))
 
     resampling = Resampling.bilinear
 
@@ -495,7 +577,7 @@ def download_hugonnet(rgi_id_dir, year_interval, hugonnet_directory):
 
     # Define time difference between obserations
     # (still constant) TODO: make flexible and link to timeline in observation.nc
-    data_interval = 5
+    data_interval = 20
     if data_interval == 20:
         folder_names = [rgi_region + '_rgi60_2000-01-01_2020-01-01']
 
@@ -645,7 +727,6 @@ def download_hugonnet(rgi_id_dir, year_interval, hugonnet_directory):
 
 
 if __name__ == '__main__':
-    # Parse command-line arguments
     parser = argparse.ArgumentParser(
         description='This script generates params.json for downloading data with '
                     'oggm shop as the igm module and runs igm_run.'
@@ -663,21 +744,16 @@ if __name__ == '__main__':
                         help='user-specific resolution for IGM run [meters] '
                              '(defaul: 100m)')
 
-    # Add argument for scale factor
-    parser.add_argument('--scale_factor', type=float,
-                        default=1.0,
-                        help='1.0 mean 100m resolution, 0.5 mean 200m resolution, ')
-
     # Add flags to control function execution
     parser.add_argument('--download_oggm_shop', action='store_true',
                         help='Flag to control execution of download_OGGM_shop.')
+
     parser.add_argument('--download_hugonnet', action='store_true',
                         help='Flag to control execution of download_Hugonnet.')
 
     # Add argument to specify user directory for Hugonnet elevation changes
     parser.add_argument('--hugonnet_directory', type=str,
                         default='../../Data/Hugonnet/',
-                        # default='/home/vault/gwgi/gwgi17/projects/FRAGILE/input/dhdt/',
                         help='User-specific directory on your local file system '
                              '(default: ../../Data/Hugonnet/).')
 
@@ -688,90 +764,10 @@ if __name__ == '__main__':
     # Parse arguments
     args = parser.parse_args()
 
-    # Define the path using os.path.join
-    rgi_id_dir = os.path.join('..', '..', 'Data', 'Glaciers', args.rgi_id)
-
-    # Call functions based on flags
-    if args.download_oggm_shop:
-        print(f"Downloading OGGM shop data for RGI ID: {args.rgi_id}...")
-        download_OGGM_shop(args.rgi_id)
-        print("OGGM shop data download completed.")
-
-    if args.download_hugonnet:
-        print(f"Downloading Hugonnet data with the following parameters:")
-
-        print(f"  RGI directory: {rgi_id_dir}")
-        print(f"  Year interval: {args.year_interval}")
-        download_hugonnet(rgi_id_dir, args.year_interval, args.hugonnet_directory)
-        print("Hugonnet data download completed.")
-
-    # Rescale all output netCDF to a given target resolution
-    if args.target_resolution:
-        print(
-            f"  Scale output netCDF to target resolution: {args.target_resolution}")
-        target_resolution = float(args.target_resolution)
-        with Dataset(os.path.join(rgi_id_dir, 'OGGM_shop', 'input_saved.nc'),
-                     'r') as scaled_dataset:
-            x = scaled_dataset.variables['x'][:]
-            resolution = abs(x[1] - x[2])
-        if resolution != target_resolution:
-            scale_factor = resolution / target_resolution
-            print('  Scale factor : ', scale_factor)
-            scale_raster(
-                os.path.join(rgi_id_dir, 'OGGM_shop', 'input_saved.nc'),
-                os.path.join(rgi_id_dir, 'OGGM_shop', 'input_scaled.nc'),
-                scale_factor)
-            os.rename(os.path.join(rgi_id_dir, 'OGGM_shop', 'input_saved.nc'),
-                      os.path.join(rgi_id_dir, 'OGGM_shop', 'input_saved_OGGM.nc'))
-            os.rename(os.path.join(rgi_id_dir, 'OGGM_shop', 'input_scaled.nc'),
-                      os.path.join(rgi_id_dir, 'OGGM_shop', 'input_saved.nc'))
-
-            scale_raster(
-                os.path.join(rgi_id_dir, 'observations.nc'),
-                os.path.join(rgi_id_dir, 'observations_scaled.nc'),
-                scale_factor)
-            os.rename(os.path.join(rgi_id_dir, 'observations.nc'),
-                      os.path.join(rgi_id_dir, 'observations_OGGM.nc'))
-            os.rename(os.path.join(rgi_id_dir, 'observations_scaled.nc'),
-                      os.path.join(rgi_id_dir, 'observations.nc'))
-            # scale_raster('input_saved.nc', 'input_scaled.nc', scale_factor)
-        else:
-            # Make back-up file for original OGGM netCDF
-            # Source and destination
-            src = os.path.join(rgi_id_dir, 'observations.nc')
-            dst = os.path.join(rgi_id_dir, 'observations_OGGM.nc')
-
-            # Check the operating system and use the respective command
-            if os.name == 'nt':  # Windows
-                cmd = f'copy "{src}" "{dst}"'
-            else:  # Unix/Linux
-                cmd = f'cp "{src}" "{dst}"'
-
-            # Copy File
-            os.system(cmd)
-
-            # Source and destination
-            src = os.path.join(rgi_id_dir, 'OGGM_shop', 'input_saved.nc')
-            dst = os.path.join(rgi_id_dir, 'OGGM_shop', 'input_saved_OGGM.nc')
-
-            # Check the operating system and use the respective command
-            if os.name == 'nt':  # Windows
-                cmd = f'copy "{src}" "{dst}"'
-            else:  # Unix/Linux
-                cmd = f'cp "{src}" "{dst}"'
-
-            # Copy File
-            os.system(cmd)
-
-    print(f"  Scale factor: {args.scale_factor}")
-
-    if args.scale_factor != 1.0:
-        scale_raster(
-            os.path.join(rgi_id_dir, 'OGGM_shop', 'input_saved.nc'),
-            os.path.join(rgi_id_dir, 'OGGM_shop', 'input_scaled.nc'),
-            args.scale_factor)
-
-        scale_raster(os.path.join(rgi_id_dir, 'observations.nc'),
-                     os.path.join(rgi_id_dir, 'observations_scaled.nc'),
-                     args.scale_factor)
-
+    main(rgi_id=args.rgi_id,
+         target_resolution=args.target_resolution,
+         download_oggm_shop_flag=args.download_oggm_shop,
+         download_hugonnet_flag=args.download_hugonnet,
+         hugonnet_directory=args.hugonnet_directory,
+         year_interval=args.year_interval
+         )

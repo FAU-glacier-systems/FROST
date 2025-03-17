@@ -1,3 +1,8 @@
+#!/usr/bin python3
+
+# Copyright (C) 2024-2026 Oskar Herrmann
+# Published under the GNU GPL (Version 3), check the LICENSE file
+
 from statistics import correlation
 
 import numpy as np
@@ -73,8 +78,6 @@ class ObservationProvider:
             index_x, index_y = np.where(self.bin_map == bin_id)
             loc_x, loc_y = self.y[index_x], self.x[index_y]
             locations = np.column_stack((loc_x, loc_y))
-            print(len(locations))
-
             self.bins.append(locations)
 
         # Compute bin indices for 2000 surface

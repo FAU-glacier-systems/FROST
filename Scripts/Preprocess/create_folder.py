@@ -1,3 +1,8 @@
+#!/usr/bin python3
+
+# Copyright (C) 2024-2026 Oskar Herrmann
+# Published under the GNU GPL (Version 3), check the LICENSE file
+
 import os
 import shutil
 import json
