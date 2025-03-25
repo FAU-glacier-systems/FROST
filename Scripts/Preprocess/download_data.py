@@ -740,7 +740,6 @@ if __name__ == '__main__':
 
     # Add argument for specific target resolution
     parser.add_argument('--target_resolution', type=float,
-                        default=100.0,
                         help='user-specific resolution for IGM run [meters] '
                              '(defaul: 100m)')
 

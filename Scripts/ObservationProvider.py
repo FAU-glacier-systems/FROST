@@ -37,62 +37,111 @@ class Variogram_hugonnet(gs.CovModel):
 
 
 class ObservationProvider:
+    """
+    The ObservationProvider manages the observations stored in the `observations.nc`
+    file and provides the data in a structured format. It processes surface elevation
+    data, assigns elevation bins, and computes uncertainty in glacier elevation changes.
+
+    Authors: Oskar Herrmann
+
+    Args:
+        rgi_id (str)          - Specify glacier ID
+        elevation_step (int)   - Specify elevation step size for binning
+
+    Attributes:
+        dhdt (ndarray)        - Surface elevation change rate (dH/dt)
+        dhdt_err (ndarray)    - Uncertainty of dH/dt measurements
+        icemask (ndarray)     - Binary mask indicating glacier coverage (1 = glacier)
+        usurf (ndarray)       - Observed surface elevation
+        usurf_err (ndarray)   - Uncertainty in surface elevation
+        time_period (ndarray) - Array indicating time periods of observations
+        x (ndarray)           - X-coordinates (longitude)
+        y (ndarray)           - Y-coordinates (latitude)
+        resolution (int)      - Spatial resolution (grid cell size)
+        bin_edges (ndarray)   - Computed elevation bin boundaries
+        bin_map (ndarray)     - Map assigning grid cells to elevation bins
+        bins (list)           - List of spatial locations grouped by elevation bins
+        num_bins (int)        - Total number of elevation bins
+        variogram_model       - Variogram model for spatial correlation analysis
+
+    Returns:
+        None
+    """
+
     def __init__(self, rgi_id, elevation_step):
+        """
+        Initializes the ObservationProvider by loading glacier observation data
+        from a NetCDF file and computing elevation bins.
 
-        # path to observation.nc file that stores the surface elevation
-        observation_file = (os.path.join('Data', 'Glaciers', rgi_id,
-                                         'observations.nc'))
+        Args:
+            rgi_id (str)          - Specify glacier ID
+            elevation_step (int)   - Specify elevation step size for binning
 
-        # load important values form the observation file
+        Returns:
+            None
+        """
+
+        # Path to the NetCDF file containing glacier observation data
+        observation_file = os.path.join('Data', 'Glaciers', rgi_id,
+                                        'observations.nc')
+
+        # Load important values from the observation file
         with Dataset(observation_file, 'r') as ds:
-            self.dhdt = ds['dhdt'][:]
-            self.dhdt_err = ds['dhdt_err'][:]
-            self.icemask = np.array(ds['icemask'][:][0])
-            self.usurf = ds['usurf'][:]
-            self.usurf_err = ds['usurf_err'][:]
-            self.time_period = np.array(ds['time'][:]).astype(int)
-            self.x = ds['x'][:]
-            self.y = ds['y'][:]
+            self.dhdt = ds['dhdt'][:]  # Surface elevation change rate (dH/dt)
+            self.dhdt_err = ds['dhdt_err'][:]  # Uncertainty of dH/dt
+            self.icemask = np.array(ds['icemask'][:][0])  # Binary glacier mask
+            self.usurf = ds['usurf'][:]  # Surface elevation
+            self.usurf_err = ds['usurf_err'][:]  # Uncertainty in surface elevation
+            self.time_period = np.array(ds['time'][:]).astype(
+                int)  # Time period array
+            self.x = ds['x'][:]  # X-coordinates (longitude)
+            self.y = ds['y'][:]  # Y-coordinates (latitude)
 
+        # Compute the spatial resolution from the coordinate grid
         self.resolution = int(self.x[1] - self.x[0])
         self.elevation_step = elevation_step
+
+        # Masked surface elevation for glacier areas (year 2000)
         usurf2000_masked = self.usurf[0][self.icemask == 1]
 
-        # specify elevation bins based on the elevation of 2000
-        # Define bin edges based on the fixed step size
+        # Define bin edges based on a fixed elevation step size
         min_elev = np.floor(
             usurf2000_masked.min() / self.elevation_step) * self.elevation_step
         max_elev = np.ceil(
             usurf2000_masked.max() / self.elevation_step) * self.elevation_step
-
         self.bin_edges = np.arange(min_elev, max_elev + self.elevation_step,
                                    self.elevation_step)
 
-        # Compute bin indices for the 2000 surface
+        # Compute bin indices for the surface elevation of 2000
         self.bin_map = np.digitize(self.usurf[0], self.bin_edges)
         self.bin_map[self.icemask == 0] = 0  # Mask out non-glacier areas
 
-        # Create bins
+        # Initialize bins to store grid locations for each elevation bin
         self.bins = []
-        for bin_id in range(1, len(self.bin_edges)):
-            index_x, index_y = np.where(self.bin_map == bin_id)
-            loc_x, loc_y = self.y[index_x], self.x[index_y]
-            locations = np.column_stack((loc_x, loc_y))
-            self.bins.append(locations)
+        for bin_id in range(1, len(self.bin_edges)):  # Bins are indexed from 1
+            index_x, index_y = np.where(
+                self.bin_map == bin_id)  # Get indices for this bin
+            loc_x, loc_y = self.y[index_x], self.x[
+                index_y]  # Convert indices to coordinates
+            locations = np.column_stack(
+                (loc_x, loc_y))  # Store as an array of (lat, lon) pairs
+            self.bins.append(locations)  # Append bin locations to the list
 
-        # Compute bin indices for 2000 surface
+        # Store the total number of bins
         self.num_bins = len(self.bins)
+
+        # Initialize the variogram model for spatial correlation analysis
         self.variogram_model = Variogram_hugonnet(dim=2)
 
     def get_next_observation(self, current_year, num_samples):
         # load observations
         next_index = np.where(self.time_period == current_year)[0][0] + 1
-        next_index = 4  # TODO
+        #next_index = 1  # TODO
         if next_index >= len(self.time_period):
             return None, None, None, None
 
         # get data of next year
-        year = self.time_period[next_index]
+        year = int(self.time_period[next_index])
         usurf_raster = self.usurf[next_index]
         usurf_err_raster = self.usurf_err[next_index]
         self.nan_mask = np.isnan(usurf_raster)
@@ -113,7 +162,7 @@ class ObservationProvider:
 
         return year, usurf_line, noise_matrix, noise_samples
 
-    def inital_usurf(self, num_samples):
+    def initial_usurf(self, num_samples):
         index = 0
 
         # get data of next year

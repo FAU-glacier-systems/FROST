@@ -13,6 +13,27 @@ import numpy as np
 
 def main(rgi_id, ensemble_size, inflation, iterations, seed, elevation_step,
          forward_parallel):
+    """
+    main function to run the calibration, handles the interaction between
+    observation, ensemble and visualization. It saves the results in the experiment
+    folder as a json file that contain the final ensemble, its mean and standard
+    deviation.
+
+    Authors: Oskar Herrmann
+
+    Args:
+           rgi_id(str)           - glacier ID
+           ensemble_size(int)    - ensemble size
+           inflation(float)      - inflation factor
+           iterations(int)       - number of iterations
+           seed(int)             - random seed
+           elevation_step(int)   - elevation step
+           forward_parallel(int) - forward parallel
+
+    Returns:
+           none
+    """
+
     print(f'Running calibration for glacier: {rgi_id}')
     print(f'Ensemble size: {ensemble_size}',
           f'Inflation: {inflation}',
@@ -27,7 +48,7 @@ def main(rgi_id, ensemble_size, inflation, iterations, seed, elevation_step,
     obs_provider = ObservationProvider(rgi_id=rgi_id,
                                        elevation_step=int(elevation_step))
     print("Initializing Usurf 2000")
-    year, usurf_ensemble = obs_provider.inital_usurf(num_samples=ensemble_size)
+    year, usurf_ensemble = obs_provider.initial_usurf(num_samples=ensemble_size)
 
     # Initialise an ensemble kalman filter object
     print("Initializing Ensemble Kalman Filter")
@@ -40,12 +61,10 @@ def main(rgi_id, ensemble_size, inflation, iterations, seed, elevation_step,
                                       output_dir=output_dir)
 
     # Initialise a monitor for visualising the process
-
     monitor = Monitor(EnKF_object=ensembleKF,
                       ObsProvider=obs_provider,
                       output_dir=output_dir,
                       max_iterations=iterations)
-
 
     ################# MAIN LOOP #####################################################
     for i in range(1, iterations + 1):
@@ -76,9 +95,9 @@ def main(rgi_id, ensemble_size, inflation, iterations, seed, elevation_step,
             iteration=i,
             year=year,
             ensemble_observables=ensemble_observables)
-        monitor.visualise_3d(obs_provider.dhdt[2],
-                             ensembleKF.ensemble_usurf[0], ensembleKF.bedrock, 2000,
-                             obs_provider.x, obs_provider.y)
+        # monitor.visualise_3d(obs_provider.dhdt[2],
+        #                      ensembleKF.ensemble_usurf[0], ensembleKF.bedrock, 2000,
+        #                      obs_provider.x, obs_provider.y)
 
         ensembleKF.reset_time()
 
@@ -98,7 +117,7 @@ if __name__ == '__main__':
                         default="RGI2000-v7.0-G-11-01706",
                         help='RGI ID of the glacier for the model.')
 
-    parser.add_argument('--ensemble_size', type=int, default=50,
+    parser.add_argument('--ensemble_size', type=int, default=64,
                         help='number of ensemble members for the model.')
 
     parser.add_argument('--inflation', type=float, default=1.0,
