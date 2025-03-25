@@ -1,24 +1,65 @@
-#!/usr/bin python3
+#!/usr/bin/env python3
 
 # Copyright (C) 2024-2026 Oskar Herrmann
 # Published under the GNU GPL (Version 3), check the LICENSE file
 
 import os
 from netCDF4 import Dataset
-import copy
 import numpy as np
 from concurrent.futures import ThreadPoolExecutor
 import Scripts.IGM_wrapper as IGM_wrapper
 import shutil
 import concurrent.futures
 import json
+from pathlib import Path
 
 
 class EnsembleKalmanFilter:
+    """
+    Implements an Ensemble Kalman Filter (EnKF) for glacier surface mass balance (SMB)
+    calibration using forward modeling and observations.
+
+    Authors: Oskar Herrmann
+
+    Args:
+        rgi_id (str)          - Glacier ID
+        ensemble_size (int)   - Number of ensemble members
+        inflation (float)     - Inflation factor for Kalman updates
+        seed (int)            - Random seed for reproducibility
+        start_year (int)      - Start year for the simulation
+        output_dir (str)      - Path to output directory
+        usurf_ensemble (list) - Initial surface elevation ensemble
+
+    Attributes:
+        ensemble_usurf (ndarray)      - Ensemble of surface elevations
+        ensemble_smb_raster (ndarray) - SMB raster for each ensemble member
+        ensemble_smb (list)           - List of SMB parameters for each member
+        ensemble_usurf_log (list)     - Log of surface elevation updates
+        ensemble_smb_log (dict)       - Log of SMB updates per key
+        current_year (int)            - Current simulation year
+        reference_smb (dict)          - Reference SMB values
+    """
+
     def __init__(self, rgi_id, ensemble_size, inflation, seed, start_year,
                  output_dir, usurf_ensemble):
+        """
+        Initializes the Ensemble Kalman Filter by loading required data and setting up
+        the initial ensemble.
 
-        # save arguments
+        Args:
+            rgi_id (str)         - Glacier ID
+            ensemble_size (int)  - Number of ensemble members
+            inflation (float)    - Inflation factor for Kalman updates
+            seed (int)           - Random seed for reproducibility
+            start_year (int)     - Start year for the simulation
+            output_dir (str)     - Path to output directory
+            usurf_ensemble (list) - Initial surface elevation ensemble
+
+        Returns:
+            None
+        """
+
+        # Store arguments
         self.rgi_id = rgi_id
         self.rgi_id_dir = os.path.join('Data', 'Glaciers', rgi_id)
         self.ensemble_size = ensemble_size
@@ -28,136 +69,113 @@ class EnsembleKalmanFilter:
         self.current_year = start_year
         self.output_dir = output_dir
 
-        # create a folder to store the in- and output of the ensemble members
-        ensemble_dir = os.path.join('Data', 'Glaciers', rgi_id, 'Ensemble')
-        if not os.path.exists(ensemble_dir):
-            os.makedirs(ensemble_dir)
+        # Create ensemble directory if not existing
+        ensemble_dir = os.path.join(self.rgi_id_dir, 'Ensemble')
+        os.makedirs(ensemble_dir, exist_ok=True)
 
-        # load geology file
+        # Load geology file (bedrock and initial icemask)
         inversion_dir = os.path.join(self.rgi_id_dir, 'Inversion')
         geology_file = os.path.join(inversion_dir, 'geology-optimized.nc')
         with Dataset(geology_file, 'r') as geology_dataset:
             self.icemask_init = np.array(geology_dataset['icemask'])
             self.bedrock = np.array(geology_dataset['topg'])
 
-        # create placeholder for observable and hidden variables
-        self.ensemble_usurf = np.empty(
-            (self.ensemble_size,) + self.icemask_init.shape)
+        # Initialize placeholders for observable and hidden variables
+        self.ensemble_usurf = np.empty((ensemble_size,) + self.icemask_init.shape)
         self.ensemble_smb_raster = np.empty(
-            (self.ensemble_size,) + self.icemask_init.shape)
+            (ensemble_size,) + self.icemask_init.shape)
 
-        # Load parameter file with glacier specific values
+        # Load glacier-specific parameters
         params_file_path = os.path.join('Experiments', rgi_id,
                                         'params_calibration.json')
-        # Load properties of initial ensemble
         with open(params_file_path, 'r') as file:
             params = json.load(file)
             self.initial_smb = params['initial_smb']
             self.initial_spread = params['initial_spread']
             self.reference_smb = params['reference_smb']
 
+        # Initialize random generator and SMB ensemble
         rng = np.random.default_rng(seed=seed)
         self.ensemble_smb = []
 
-        # Initialise the Ensemble and create directories for each member to
-        # parallize the forward simulation
+        # Initialize each ensemble member
         for e, usurf in enumerate(usurf_ensemble):
-            print('Initialise ensemble member', e)
+            print(f'Initializing ensemble member {e}')
 
-            # Copy the initial surface elevation
-            # TODO create different starting geometries
-            self.ensemble_usurf[e] = usurf
+            self.ensemble_usurf[e] = usurf  # Copy initial surface elevation
 
-            # Generate ensemble using the random generator
+            # Sample SMB parameters for each member
             member_smb = {
                 key: rng.normal(self.initial_smb[key], self.initial_spread[key])
-                for key in self.initial_smb
-            }
+                for key in self.initial_smb}
             self.ensemble_smb.append(member_smb)
 
-            # Create directory for folder if it does not exist
+            # Create member directory
             member_dir = os.path.join(ensemble_dir, f'Member_{e}')
-            if not os.path.exists(member_dir):
-                os.makedirs(member_dir)
+            os.makedirs(member_dir, exist_ok=True)
 
-            # copy geology file as initial input.nc
-            member_input_file = os.path.join(member_dir, "input.nc")
-            shutil.copy2(geology_file, member_input_file)
+            # Copy geology file as the initial input.nc
+            shutil.copy2(geology_file, os.path.join(member_dir, "input.nc"))
 
-            # copy iceflow-model
+            # Copy iceflow-model directory
             member_iceflow_dir = os.path.join(member_dir, "iceflow-model")
-            if os.path.exists(member_iceflow_dir):
-                shutil.rmtree(member_iceflow_dir)
+            shutil.rmtree(member_iceflow_dir, ignore_errors=True)
             shutil.copytree(os.path.join(inversion_dir, "iceflow-model"),
                             member_iceflow_dir)
 
-        ####################### logging #############################################
-        self.ensemble_usurf_log = []
-        self.ensemble_usurf_log.append(self.ensemble_usurf)
-
-        self.ensemble_smb_log = {'ela': [[] for _ in range(self.ensemble_size)],
-                                 'gradabl': [[] for _ in range(self.ensemble_size)],
-                                 'gradacc': [[] for _ in range(self.ensemble_size)]}
-
+        # Logging initialization
+        self.ensemble_usurf_log = [self.ensemble_usurf]
+        self.ensemble_smb_log = {key: [[] for _ in range(self.ensemble_size)] for key
+                                 in self.initial_smb}
         for key in self.ensemble_smb_log:
             for e in range(self.ensemble_size):
                 self.ensemble_smb_log[key][e].append(self.ensemble_smb[e][key])
 
     def reset_time(self):
-        # resets the ensemble usurf
-        for e in range(self.ensemble_size):
-            self.ensemble_usurf[e] = self.ensemble_usurf_log[0][e]
-
-        # self.ensemble_usurf_log = [self.ensemble_usurf]
+        """
+        Resets the ensemble surface elevation to its initial state.
+        """
+        self.ensemble_usurf = np.copy(self.ensemble_usurf_log[0])
         self.current_year = self.start_year
-        # for key in self.ensemble_smb_log:
-        #    for e in range(self.ensemble_size):
-        #        self.ensemble_smb_log[key][e] = [self.ensemble_smb[e][key]]
 
     def forward(self, year, forward_parallel):
-        # forwards the ensemble to the given year
-        year_interval = int(year) - self.current_year
+        """
+        Advances the ensemble members forward in time.
+
+        Args:
+            year (int)              - Target year to advance to
+            forward_parallel (bool) - Whether to use parallel execution
+
+        Returns:
+            None
+        """
+        year_interval = year - self.current_year
+        workers = os.cpu_count()  # Default worker count
+        print(f"Default max workers: {workers}")
         if forward_parallel:
 
-            # Create a thread pool
             with ThreadPoolExecutor() as executor:
-                # Submit tasks to the thread pool
-                # Prepare the list of futures for parallel execution
                 futures = [
-                    executor.submit(
-                        IGM_wrapper.forward,  # The function to call
-                        member_id,  # Member ID
-                        self.rgi_id_dir,  # Directory for RGI ID
-                        usurf,  # Surface elevation
-                        smb,  # Surface mass balance
-                        year_interval  # Time interval
-                    )
-                    for member_id, (usurf, smb) in enumerate(
-                        zip(self.ensemble_usurf, self.ensemble_smb)
-                        # Pair usurf and smb for each ensemble member
-                    )
+                    executor.submit(IGM_wrapper.forward, member_id, self.rgi_id_dir,
+                                    usurf, smb, year_interval)
+                    for member_id, (usurf, smb) in
+                    enumerate(zip(self.ensemble_usurf, self.ensemble_smb))
                 ]
 
-                # Initialize storage for results
-                id_order = []
                 new_usurf_ensemble = np.empty_like(self.ensemble_usurf)
                 new_smb_raster_ensemble = np.empty_like(self.ensemble_smb_raster)
-                # Wait for all tasks to complete
+
                 for future in concurrent.futures.as_completed(futures):
-                    member_id, new_usurf, new_smb_raster = future.result()  # Unpack
-                    # the returned values
-                    id_order.append(member_id)
+                    member_id, new_usurf, new_smb_raster = future.result()
                     new_usurf_ensemble[member_id] = new_usurf
                     new_smb_raster_ensemble[member_id] = new_smb_raster
-                print("################# id Order")
-                print(id_order)
 
         else:
-
             new_usurf_ensemble = np.empty_like(self.ensemble_usurf)
             new_smb_raster_ensemble = np.empty_like(self.ensemble_smb_raster)
-            for member_id, (usurf, smb) in enumerate(zip(self.ensemble_usurf,
-                                                         self.ensemble_smb)):
+
+            for member_id, (usurf, smb) in enumerate(
+                    zip(self.ensemble_usurf, self.ensemble_smb)):
                 member_id, new_usurf, new_smb_raster = IGM_wrapper.forward(member_id,
                                                                            self.rgi_id_dir,
                                                                            usurf,
@@ -191,8 +209,6 @@ class EnsembleKalmanFilter:
 
         cross_covariance = np.dot(ensemble_deviations_obs.T, deviations_smb) / (
                 self.ensemble_size - 1)
-        print("############## cross_covariance")
-        print(cross_covariance)
 
         kalman_gain = np.dot(cross_covariance.T, np.linalg.inv(ensemble_cov))
 
