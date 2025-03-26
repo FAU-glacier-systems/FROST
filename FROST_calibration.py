@@ -11,8 +11,8 @@ import os
 import numpy as np
 
 
-def main(rgi_id, ensemble_size, inflation, iterations, seed, elevation_step,
-         forward_parallel):
+def main(rgi_id, synthetic, ensemble_size, inflation, iterations, seed,
+         elevation_step, forward_parallel, results_dir, obs_uncertainty):
     """
     main function to run the calibration, handles the interaction between
     observation, ensemble and visualization. It saves the results in the experiment
@@ -23,12 +23,15 @@ def main(rgi_id, ensemble_size, inflation, iterations, seed, elevation_step,
 
     Args:
            rgi_id(str)           - glacier ID
+           synthetic(bool)       - switch to synthetic observations
+           obs_uncertainty(float)- factor of synthetic observation uncertainty
            ensemble_size(int)    - ensemble size
            inflation(float)      - inflation factor
            iterations(int)       - number of iterations
            seed(int)             - random seed
            elevation_step(int)   - elevation step
            forward_parallel(int) - forward parallel
+           results_dir(str)      - results directory
 
     Returns:
            none
@@ -39,14 +42,17 @@ def main(rgi_id, ensemble_size, inflation, iterations, seed, elevation_step,
           f'Inflation: {inflation}',
           f'Iterations: {iterations}',
           f'Seed: {seed}',
+          f'Elevation step: {elevation_step}',
+          f'Observation uncertainty: {obs_uncertainty}',
+          f'Synthetic: {synthetic}'
           f'Forward parallel: {forward_parallel}')
-    output_dir = os.path.join('Experiments', rgi_id,
-                              f'Experiment_{ensemble_size}_{elevation_step}_{inflation}_{seed}')
 
     # Initialise the Observation provider
     print("Initializing Observation Provider")
     obs_provider = ObservationProvider(rgi_id=rgi_id,
-                                       elevation_step=int(elevation_step))
+                                       elevation_step=int(elevation_step),
+                                       obs_uncertainty=obs_uncertainty,
+                                       synthetic=synthetic)
     print("Initializing Usurf 2000")
     year, usurf_ensemble = obs_provider.initial_usurf(num_samples=ensemble_size)
 
@@ -58,12 +64,12 @@ def main(rgi_id, ensemble_size, inflation, iterations, seed, elevation_step,
                                       seed=seed,
                                       start_year=year,
                                       usurf_ensemble=usurf_ensemble,
-                                      output_dir=output_dir)
+                                      output_dir=results_dir)
 
     # Initialise a monitor for visualising the process
     monitor = Monitor(EnKF_object=ensembleKF,
                       ObsProvider=obs_provider,
-                      output_dir=output_dir,
+                      output_dir=results_dir,
                       max_iterations=iterations)
 
     ################# MAIN LOOP #####################################################
@@ -117,6 +123,12 @@ if __name__ == '__main__':
                         default="RGI2000-v7.0-G-11-01706",
                         help='RGI ID of the glacier for the model.')
 
+    parser.add_argument("--synthetic", type=str, default="false",
+                        help="Change to synthetic observations.")
+
+    parser.add_argument("--forward_parallel", type=str, default="false",
+                        help="Enable forward parallel processing")
+
     parser.add_argument('--ensemble_size', type=int, default=64,
                         help='number of ensemble members for the model.')
 
@@ -126,26 +138,32 @@ if __name__ == '__main__':
     parser.add_argument('--iterations', type=int, default=6,
                         help='Number of iterations')
 
-    parser.add_argument("--forward_parallel", type=str, default="false",
-                        help="Enable forward parallel processing")
-
-    parser.add_argument('--seed', type=int, default=12345,
-                        help='Random seed for the model.')
     parser.add_argument('--elevation_step', type=int, default=50,
                         help='Elevation step for observations.')
 
+    parser.add_argument("--obs_uncertainty", type=int, default="1",
+                        help="Factor for the synthetic observation uncertainty")
+
+    parser.add_argument('--seed', type=int, default=12345,
+                        help='Random seed for the model.')
+
+    parser.add_argument('--results_dir', type=str, default='',
+                        help='path to the results directory.')
+
     # Parse arguments
     args = parser.parse_args()
-    if args.forward_parallel == "false":
-        forward_parallel = False
-    else:
-        forward_parallel = True
+    forward_parallel = False if args.forward_parallel == "false" else True
+    synthetic = False if args.synthetic == "false" else True
 
     # Call the main function with the parsed arguments
     main(rgi_id=args.rgi_id,
+         synthetic=args.synthetic,
          ensemble_size=args.ensemble_size,
          inflation=args.inflation,
          iterations=args.iterations,
          seed=args.seed,
          forward_parallel=forward_parallel,
-         elevation_step=args.elevation_step)
+         elevation_step=args.elevation_step,
+         obs_uncertainty=args.obs_uncertainty,
+         results_dir=args.results_dir
+         )

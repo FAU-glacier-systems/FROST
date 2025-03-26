@@ -68,7 +68,7 @@ class ObservationProvider:
         None
     """
 
-    def __init__(self, rgi_id, elevation_step):
+    def __init__(self, rgi_id, elevation_step, obs_uncertainty, synthetic):
         """
         Initializes the ObservationProvider by loading glacier observation data
         from a NetCDF file and computing elevation bins.
@@ -82,13 +82,17 @@ class ObservationProvider:
         """
 
         # Path to the NetCDF file containing glacier observation data
-        observation_file = os.path.join('Data', 'Glaciers', rgi_id,
-                                        'observations.nc')
+        if synthetic:
+            observation_file = os.path.join('Data', 'Glaciers', rgi_id,
+                                            'SyntheticData', 'observations_synth.nc')
+        else:
+            observation_file = os.path.join('Data', 'Glaciers', rgi_id,
+                                            'observations.nc')
 
         # Load important values from the observation file
         with Dataset(observation_file, 'r') as ds:
-            self.dhdt = ds['dhdt'][:]  # Surface elevation change rate (dH/dt)
-            self.dhdt_err = ds['dhdt_err'][:]  # Uncertainty of dH/dt
+            # self.dhdt = ds['dhdt'][:]  # Surface elevation change rate (dH/dt)
+            # self.dhdt_err = ds['dhdt_err'][:]  # Uncertainty of dH/dt
             self.icemask = np.array(ds['icemask'][:][0])  # Binary glacier mask
             self.usurf = ds['usurf'][:]  # Surface elevation
             self.usurf_err = ds['usurf_err'][:]  # Uncertainty in surface elevation
@@ -100,6 +104,8 @@ class ObservationProvider:
         # Compute the spatial resolution from the coordinate grid
         self.resolution = int(self.x[1] - self.x[0])
         self.elevation_step = elevation_step
+        self.obs_uncertainty = obs_uncertainty
+        self.synthetic = synthetic
 
         # Masked surface elevation for glacier areas (year 2000)
         usurf2000_masked = self.usurf[0][self.icemask == 1]
@@ -136,7 +142,7 @@ class ObservationProvider:
     def get_next_observation(self, current_year, num_samples):
         # load observations
         next_index = np.where(self.time_period == current_year)[0][0] + 1
-        #next_index = 1  # TODO
+        # next_index = 1  # TODO
         if next_index >= len(self.time_period):
             return None, None, None, None
 
@@ -151,18 +157,20 @@ class ObservationProvider:
 
         # compute uncertainty of the average bin value and standard deviation of
         # the bins
-        bin_variance = self.compute_bin_variance(usurf_raster,
-                                                 usurf_err_raster,
+        bin_variance = self.compute_bin_variance(usurf_raster, usurf_err_raster,
                                                  self.nan_mask)
-        print("Bin variance len", len(bin_variance))
+
         noise_matrix = self.compute_covariance_matrix(bin_variance)
 
+        print("Bin variance len", len(bin_variance))
+
         noise_samples = np.random.multivariate_normal(np.zeros_like(usurf_line),
-                                                      noise_matrix, size=num_samples)
+                                                      noise_matrix,
+                                                      size=num_samples)
 
         return year, usurf_line, noise_matrix, noise_samples
 
-    def initial_usurf(self, num_samples):
+    def initial_usurf(self, num_samples, sample=False):
         index = 0
 
         # get data of next year
@@ -171,30 +179,37 @@ class ObservationProvider:
         usurf_err_raster = self.usurf_err[index]
         usurf_err_masked = usurf_err_raster[self.icemask == 1]
 
-        index_x, index_y = np.where(self.icemask)
-        loc_x, loc_y = self.y[index_x], self.x[index_y]
-        locations = np.column_stack((loc_x, loc_y))
-
-        # Compute pairwise distances between all points in bin1 and bin2
-        distances = np.linalg.norm(
-            locations[:, None, :] - locations[None, :, :], axis=2
-        )  # Shape: (n1, n2)
-
-        # Apply the correlation function to each distance
-        correlations = self.variogram_model.cor(distances)
-        pixel_uncertainties = usurf_err_masked[:, np.newaxis] * usurf_err_masked[
-                                                                np.newaxis, :]
-        covariance_matrix = correlations * pixel_uncertainties
-
-        noise_samples = np.random.multivariate_normal(
-            np.zeros_like(usurf_err_masked),
-            covariance_matrix, size=num_samples)
-
         ensemble_usurf = np.empty((num_samples,) + usurf_raster.shape)
-        for e, noise_sample in enumerate(noise_samples):
-            usurf_sample = copy.deepcopy(usurf_raster)
-            usurf_sample[self.icemask == 1] += noise_sample
-            ensemble_usurf[e] = usurf_sample
+
+        if sample:
+            index_x, index_y = np.where(self.icemask)
+            loc_x, loc_y = self.y[index_x], self.x[index_y]
+            locations = np.column_stack((loc_x, loc_y))
+
+            # Compute pairwise distances between all points in bin1 and bin2
+            distances = np.linalg.norm(
+                locations[:, None, :] - locations[None, :, :], axis=2
+            )  # Shape: (n1, n2)
+
+            # Apply the correlation function to each distance
+            correlations = self.variogram_model.cor(distances)
+            pixel_uncertainties = usurf_err_masked[:, np.newaxis] * usurf_err_masked[
+                                                                    np.newaxis, :]
+            covariance_matrix = correlations * pixel_uncertainties
+
+            noise_samples = np.random.multivariate_normal(
+                np.zeros_like(usurf_err_masked),
+                covariance_matrix, size=num_samples)
+
+            for e, noise_sample in enumerate(noise_samples):
+                usurf_sample = copy.deepcopy(usurf_raster)
+                usurf_sample[self.icemask == 1] += noise_sample
+                ensemble_usurf[e] = usurf_sample
+
+        else:
+            for e in range(num_samples):
+                usurf_sample = copy.deepcopy(usurf_raster)
+                ensemble_usurf[e] = usurf_sample
 
         return int(year), ensemble_usurf
 
@@ -203,10 +218,12 @@ class ObservationProvider:
 
         for bin_id in range(1, self.num_bins + 1):
             # Filter pixels belonging to the current bin and not masked
+
             mask = np.logical_and(self.bin_map == bin_id, ~nan_mask)
             err_bin = usurf_err_raster[mask]
             usurf_bin = usurf_raster[mask]
-            usurf_bin_var = np.var(usurf_bin)
+            usurf_bin_var = np.var(usurf_bin)  # delat/2
+
             index_x, index_y = np.where(mask)
             loc_x, loc_y = self.y[index_x], self.x[index_y]
             locations = np.column_stack((loc_x, loc_y))
@@ -226,7 +243,11 @@ class ObservationProvider:
 
             # Compute covariance matrix (vectorized)
             pixel_uncertainties = err_bin[:, np.newaxis] * err_bin[np.newaxis, :]
-            covariance_matrix = correlations * pixel_uncertainties
+            if self.synthetic:
+                covariance_matrix = (correlations * pixel_uncertainties *
+                                     self.obs_uncertainty ** 2)
+            else:
+                covariance_matrix = (correlations * pixel_uncertainties)
 
             # Variance of the bin mean
             bin_var = np.sum(covariance_matrix) / (num_pixels ** 2)
@@ -247,6 +268,7 @@ class ObservationProvider:
         :return: Average pairwise correlation between the bins.
         """
         # Compute pairwise distances between all points in bin1 and bin2
+
         distances = np.linalg.norm(
             bin1_coords[:, None, :] - bin2_coords[None, :, :], axis=2
         )  # Shape: (n1, n2)
@@ -256,6 +278,7 @@ class ObservationProvider:
 
         # Average the correlations
         return correlations.mean()
+
 
     def compute_covariance_matrix(self, bin_variance):
         """
@@ -282,6 +305,7 @@ class ObservationProvider:
 
         return cov_matrix
 
+
     def average_elevation_bin(self, usurf, nan_mask):
         # Apply mask to both surfaces
 
@@ -296,8 +320,8 @@ class ObservationProvider:
         # Convert results to a NumPy array
         return np.array(average_usurf)
 
-    def get_ensemble_observables(self, EnKF_object):
 
+    def get_ensemble_observables(self, EnKF_object):
         ensemble_usurf = EnKF_object.ensemble_usurf
         observables = []
         for usurf in ensemble_usurf:
@@ -305,6 +329,7 @@ class ObservationProvider:
             # observables.append(usurf[self.obs_locations[:, 0],
         # self.obs_locations[:, 1]])
         return np.array(observables)
+
 
     def get_new_geometrie(self, year):
         index = np.where(self.time_period == year)[0][0]

@@ -44,8 +44,9 @@ class Monitor:
         self.observation_std_log = {key: [] for key in self.keys}
 
         self.density_factor = {'ela': 1,
-                               'gradabl': 0.91,
-                               'gradacc': 0.55}
+                               'gradabl': 1,#0.91,
+                               'gradacc': 1,#0.55
+                               }
 
         self.plot_style = dict(
             mean_usurf=dict(y_label='Mean surface elevation in 2019 (m)'),
@@ -265,23 +266,6 @@ class Monitor:
 
         plt.close(fig)
         plt.clf()
-    #### prototype
-        from netCDF4 import Dataset
-        print(os.getcwd())
-        observation_file = os.path.join('Data', 'Glaciers', self.rgi_id,
-                                        'observations.nc')
-        with Dataset(observation_file, 'r') as ds:
-            dhdt = ds['dhdt'][:][1]
-            dhdt_err = ds['dhdt_err'][:][1]
-            icemask = ds['icemask'][:][1]
-            usurf = ds['usurf'][:][0]
-            x = ds['x'][:]
-            y = ds['y'][:]
-        # dhdt = smb + divflux
-        divflux =  dhdt - mean_smb_raster
-        plt.imshow(divflux, origin='lower', cmap='RdBu', vmin=-10, vmax=10)
-        plt.savefig('EnKF_difflux')
-        plt.clf()
 
     def visualise_3d(self, property_map, glacier_surface, bedrock, year, x, y):
         # choose property that is displayed on the glacier surface
@@ -316,9 +300,9 @@ class Monitor:
             x=lat_range,
             y=lon_range,
             colorscale=color_scale,
-            #cmax=30,
+            # cmax=30,
             cmax=5.1,
-            #cmin=-30,
+            # cmin=-30,
             cmin=-5.1,
             surfacecolor=property_map,
             showlegend=False,
@@ -388,7 +372,7 @@ class Monitor:
         # Output the WGS84 coordinate
 
         fig_dict = dict(
-            data=[surface_fig, bedrock_fig ],
+            data=[surface_fig, bedrock_fig],
 
             layout=dict(  # width=1800,
                 height=800,
@@ -448,5 +432,3 @@ class Monitor:
 
         fig.write_image(f"Plots/glacier_surface_{year}.png", width=1500,
                         height=1200, scale=0.75)
-
-
