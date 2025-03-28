@@ -11,7 +11,7 @@ module load python
 conda activate igm
 
 # Default value for rgi_id
-rgi_id="RGI2000-v7.0-G-11-01706_v3"
+rgi_id="RGI2000-v7.0-G-11-01706_v2"
 download=false
 inversion=false
 synth_obs=false
@@ -69,20 +69,21 @@ if [ "$calibrate" = true ]; then
     pushd ../..
     seeds=(1 2 3 4 5 6 7 8 9 10)
     ensemble_size=32
-    iterationss=(1 2 5 8 10)
+    iterations=8
     elevation_step=25
     obs_uncertainty=20
-    init_offset=20
     synthetic=true
+    init_offsets=(20 40 60 80 100)
+    results_dir="ensemble_size"
 
     # Iterate over each seed
     for seed in "${seeds[@]}"; do
         # Iterate over each inflation factor
-        for iterations in "${iterationss[@]}"; do
-            echo "Starting calibration with iteration=$iterations..."
-            padded_iteration=$(printf "%03d" "$iterations")
+        for init_offset in "${init_offsets[@]}"; do
+            echo "Starting calibration with ensemble_size=$init_offset..."
+            padded_ensemble_size=$(printf "%03d" "$init_offset")
             padded_seed=$(printf "%03d" "$seed")
-            results_dir="Experiments/${rgi_id}/iterations/${padded_iteration}/Seed_${padded_seed}"
+            results_dir="Experiments/${rgi_id}/init_offset/${padded_ensemble_size}/Seed_${padded_seed}"
 
             cmd="python -u FROST_calibration.py \
                   --rgi_id \"$rgi_id\" \
@@ -92,8 +93,8 @@ if [ "$calibrate" = true ]; then
                   --iterations \"$iterations\" \
                   --seed \"$seed\" \
                   --elevation_step \"$elevation_step\" \
+                  --init_offset \"$init_offset\" \
                   --obs_uncertainty \"$obs_uncertainty\" \
-                  --init_offset \"$init_offset \
                   --results_dir \"$results_dir\""
 
             echo "$cmd"

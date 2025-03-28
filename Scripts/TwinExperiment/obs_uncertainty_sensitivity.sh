@@ -3,7 +3,7 @@
 # Published under the GNU GPL (Version 3), check the LICENSE file
 
 #SBATCH --nodes=1
-#SBATCH --time=1:59:00
+#SBATCH --time=7:59:00
 #SBATCH --job-name=frost
 #SBATCH --output=Experiments/Log/frost_%j.out
 #SBATCH --error=Experiments/Log/frost_%j.err
@@ -11,11 +11,11 @@ module load python
 conda activate igm
 
 # Default value for rgi_id
-rgi_id="RGI2000-v7.0-G-11-01706"
+rgi_id="RGI2000-v7.0-G-11-01706_v4"
 download=false
 inversion=false
 synth_obs=false
-calibrate=false
+calibrate=true
 forward_parallel=true
 seed=1
 
@@ -35,7 +35,7 @@ done
 echo "Running pipeline for RGI ID: $rgi_id"
 # 0. create folders
 pushd  ../Preprocess
-python -u create_folder.py --rgi_id "$rgi_id"
+#python -u create_folder.py --rgi_id "$rgi_id"
 popd
 
 # 1. Download data with OGGM_shop (if --download is set)
@@ -67,11 +67,12 @@ fi
 if [ "$calibrate" = true ]; then
     # Define seeds and inflation factors
     pushd ../..
-    seeds=(1 2 3 4 5)
-    ensemble_size=50
-    iterations=6
-    elevation_step=50
-    obs_uncertainties=(5 10 20 40 60)
+    seeds=(1 2 3 4 5 6 7 8 9 10)
+    ensemble_size=32
+    iterations=8
+    elevation_step=25
+    ini_offset=20
+    obs_uncertainties=(5 10 20 40 80)
     synthetic=true
 
     # Iterate over each seed
@@ -92,6 +93,7 @@ if [ "$calibrate" = true ]; then
                   --seed \"$seed\" \
                   --elevation_step \"$elevation_step\" \
                   --obs_uncertainty \"$obs_uncertainty\" \
+                  --ini_offset \"$ini_offset\" \
                   --results_dir \"$results_dir\""
 
             echo "$cmd"

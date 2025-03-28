@@ -11,7 +11,7 @@ import os
 import numpy as np
 
 
-def main(rgi_id, synthetic, ensemble_size, inflation, iterations, seed,
+def main(rgi_id, synthetic, ensemble_size, inflation, iterations, seed, init_offset,
          elevation_step, forward_parallel, results_dir, obs_uncertainty):
     """
     main function to run the calibration, handles the interaction between
@@ -64,6 +64,7 @@ def main(rgi_id, synthetic, ensemble_size, inflation, iterations, seed,
                                       seed=seed,
                                       start_year=year,
                                       usurf_ensemble=usurf_ensemble,
+                                      init_offset=init_offset,
                                       output_dir=results_dir)
 
     # Initialise a monitor for visualising the process
@@ -109,7 +110,9 @@ def main(rgi_id, synthetic, ensemble_size, inflation, iterations, seed,
 
     #################################################################################
 
-    ensembleKF.save_results(elevation_step)
+    ensembleKF.save_results(elevation_step=elevation_step,
+                            iterations=iterations,
+                            obs_uncertainty=obs_uncertainty)
     print('Done')
 
 
@@ -147,6 +150,9 @@ if __name__ == '__main__':
     parser.add_argument('--seed', type=int, default=12345,
                         help='Random seed for the model.')
 
+    parser.add_argument('--init_offset', type=int, default=0,
+                        help='Random seed for the model.')
+
     parser.add_argument('--results_dir', type=str, default='',
                         help='path to the results directory.')
 
@@ -165,5 +171,6 @@ if __name__ == '__main__':
          forward_parallel=forward_parallel,
          elevation_step=args.elevation_step,
          obs_uncertainty=args.obs_uncertainty,
-         results_dir=args.results_dir
+         results_dir=args.results_dir,
+         init_offset=args.init_offset
          )

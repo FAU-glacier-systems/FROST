@@ -1,15 +1,19 @@
-RGI_ID="RGI2000-v7.0-G-11-01706"
-SHORT_ID="${RGI_ID: -8}"
+name="elevation_step"
+sbatch --output="../../Experiments/Log/${name}.out" --job-name="${name}" \
+--error="../../Experiments/Log/${name}.err" elevation_step_sensitivity.sh
 
-sbatch --output="../../Experiments/Log/${SHORT_ID}.out" \
---job-name="${SHORT_ID}" \
---error="../../Experiments/Log/${SHORT_ID}.err" elevation_step_sensitivity.sh \
---rgi_id "$RGI_ID" --calibrate
+name="init_offset"
+sbatch --output="../../Experiments/Log/${name}.out" --job-name="${name}" \
+--error="../../Experiments/Log/${name}.err" initial_offset_sensitivity.sh
 
-#sbatch --output="../../Experiments/Log/${SHORT_ID}.out" --job-name="${SHORT_ID}" \
-#--error="../../Experiments/Log/${SHORT_ID}.err" obs_uncertainty_sensitivity.sh \
-#--rgi_id "$RGI_ID" --calibrate
-#
-#sbatch --output="../../Experiments/Log/${SHORT_ID}.out" --job-name="${SHORT_ID}" \
-#--error="../../Experiments/Log/${SHORT_ID}.err" obs_uncertainty_sensitivity.sh \
-#--rgi_id "$RGI_ID" --calibrate
+name="obs_uncertainty"
+sbatch --output="../../Experiments/Log/${name}.out" --job-name="${name}" \
+--error="../../Experiments/Log/${name}.err" obs_uncertainty_sensitivity.sh
+
+name="ensemble_size"
+sbatch --output="../../Experiments/Log/${name}.out" --job-name="${name}" \
+--error="../../Experiments/Log/${name}.err" ensemble_size_sensitivity.sh
+
+name="iterations"
+sbatch --output="../../Experiments/Log/${name}.out" --job-name="${name}" \
+--error="../../Experiments/Log/${name}.err" iterations_sensitivity.sh
