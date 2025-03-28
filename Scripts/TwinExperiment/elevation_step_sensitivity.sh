@@ -3,7 +3,7 @@
 # Published under the GNU GPL (Version 3), check the LICENSE file
 
 #SBATCH --nodes=1
-#SBATCH --time=4:59:00
+#SBATCH --time=7:59:00
 #SBATCH --job-name=frost
 #SBATCH --output=Experiments/Log/frost_%j.out
 #SBATCH --error=Experiments/Log/frost_%j.err
@@ -67,11 +67,12 @@ fi
 if [ "$calibrate" = true ]; then
     # Define seeds and inflation factors
     pushd ../..
-    seeds=(1 2 3 4 5)
-    ensemble_size=50
-    iterations=6
+    seeds=(1 2 3 4 5 6 7 8 9 10)
+    ensemble_size=32
+    iterations=8
     elevation_steps=(5 10 25 50 100)
     obs_uncertainty=20
+    init_offset=20
     synthetic=true
 
     # Iterate over each seed
@@ -92,6 +93,7 @@ if [ "$calibrate" = true ]; then
                   --seed \"$seed\" \
                   --elevation_step \"$elevation_step\" \
                   --obs_uncertainty \"$obs_uncertainty\" \
+                  --init_offset \"$init_offset\" \
                   --results_dir \"$results_dir\""
 
             echo "$cmd"

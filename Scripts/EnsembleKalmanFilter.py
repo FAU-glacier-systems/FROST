@@ -41,7 +41,7 @@ class EnsembleKalmanFilter:
     """
 
     def __init__(self, rgi_id, ensemble_size, inflation, seed, start_year,
-                 output_dir, usurf_ensemble):
+                 output_dir, usurf_ensemble, init_offset=0):
         """
         Initializes the Ensemble Kalman Filter by loading required data and setting up
         the initial ensemble.
@@ -93,6 +93,17 @@ class EnsembleKalmanFilter:
             self.initial_smb = params['initial_smb']
             self.initial_spread = params['initial_spread']
             self.reference_smb = params['reference_smb']
+
+        self.init_offset = init_offset
+        if not init_offset == 0:
+            sign = np.random.choice([-1, 1], 3)
+            self.initial_smb['ela'] += 500 * init_offset / 100 * sign[0]
+            self.initial_smb['gradabl'] += 5 * init_offset / 100 * sign[1]
+            self.initial_smb['gradacc'] += 5 * init_offset / 100 * sign[2]
+
+            self.initial_spread['ela'] = init_offset * 10
+            self.initial_spread['gradabl'] = init_offset  * 0.2
+            self.initial_spread['gradacc'] = init_offset  * 0.2
 
         # Initialize random generator and SMB ensemble
         rng = np.random.default_rng(seed=seed)
@@ -250,7 +261,7 @@ class EnsembleKalmanFilter:
 
         self.ensemble_smb = inflated_ensemble_smb
 
-    def save_results(self, num_bins):
+    def save_results(self, elevation_step, iterations, obs_uncertainty):
         self.params = dict()
 
         keys = self.initial_smb.keys()
@@ -266,10 +277,13 @@ class EnsembleKalmanFilter:
         # information
         self.params['initial_smb'] = self.initial_smb
         self.params['initial_spread'] = self.initial_spread
+        self.params['init_offset'] = self.init_offset
         self.params['reference_smb'] = self.reference_smb
         self.params['ensemble_size'] = self.ensemble_size
         self.params['inflation'] = self.inflation
-        self.params['num_bins'] = num_bins
+        self.params['elevation_step'] = elevation_step
+        self.params['iterations'] = iterations
+        self.params['obs_uncertainty'] = obs_uncertainty
         self.params['seed'] = self.seed
 
         from pathlib import Path
@@ -279,7 +293,7 @@ class EnsembleKalmanFilter:
 
         # Use / operator to join paths
         output_path = self.output_dir / (
-            f"result_seed_{self.seed}_{self.inflation}_{num_bins}.json"
+            f"result.json"
 
             # Write to the file
         )
