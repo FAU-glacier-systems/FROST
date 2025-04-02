@@ -101,9 +101,9 @@ class EnsembleKalmanFilter:
             self.initial_smb['gradabl'] += 5 * init_offset / 100 * sign[1]
             self.initial_smb['gradacc'] += 5 * init_offset / 100 * sign[2]
 
-            self.initial_spread['ela'] = init_offset * 10
-            self.initial_spread['gradabl'] = init_offset  * 0.2
-            self.initial_spread['gradacc'] = init_offset  * 0.2
+            self.initial_spread['ela'] = 500
+            self.initial_spread['gradabl'] = 5
+            self.initial_spread['gradacc'] = 5
 
         # Initialize random generator and SMB ensemble
         rng = np.random.default_rng(seed=seed)

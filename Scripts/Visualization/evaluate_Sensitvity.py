@@ -10,9 +10,9 @@ def plot_results():
     fig_para, ax_para = plt.subplots(nrows=5, ncols=2, figsize=(10, 12))
 
     # run for every hyperparameters
-    for fig_num, hyperparameter in enumerate(['elevation_step',
-                                              'ensemble_size',
+    for fig_num, hyperparameter in enumerate(['ensemble_size',
                                               'iterations',
+                                              'elevation_step',
                                               'obs_uncertainty',
                                               'init_offset'
                                               ]):
@@ -92,8 +92,8 @@ def plot_results():
             MAX_spread_total = np.append(MAX_spread_total, MAX_spread)
 
         # Normalise
-        #MAX_para_total = [50, 5, 5]
-        #MAX_spread_total = [50, 5, 5]
+        MAX_para_total = [200, 5, 5]
+        MAX_spread_total = [30, 5, 5]
         print(int(MAX_para_total[0]))
 
         max_gradient = np.max(MAX_para_total[1:])
@@ -258,9 +258,9 @@ def plot_results():
                 color=colormap[x * 3], marker=marker[x], label=label,
                 zorder=10 + (-abs(x - 1)))
         # ax[i,j].plot(np.arange(1, len(bin_centers) + 1), bin_medians, color=median_color)
-        #ax_para[fig_num, 0].set_yscale('log')
+        ax_para[fig_num, 0].set_yscale('log')
         grad_axis_para = ax_para[fig_num, 0].secondary_yaxis('right')
-        #grad_axis_para.set_yscale('log')
+        grad_axis_para.set_yscale('log')
         grad_axis_para.set_ylabel('Gradient Error (m a$^{-1}$ km$^{-1}$)')
         ax_para[fig_num, 0].set_ylabel('ELA Error (m)')
 
@@ -271,14 +271,14 @@ def plot_results():
         ax_para[fig_num, 1].set_ylabel('ELA Spread (m)')
 
         yticks_positions_log = np.logspace(-3, 0, 4)
-        yticks_positions_lin = np.arange(-0.5, 1.1, 0.25)
+        yticks_positions_lin = np.arange(0, 1.1, 0.25)
 
-        ax_para[fig_num, 0].set_yticks(yticks_positions_lin,
+        ax_para[fig_num, 0].set_yticks(yticks_positions_log,
                                        ['%.1f' % (MAX_para_total[0] * pos) for pos in
-                                        yticks_positions_lin])
-        grad_axis_para.set_yticks(yticks_positions_lin,
+                                        yticks_positions_log])
+        grad_axis_para.set_yticks(yticks_positions_log,
                                   ['%.3f' % (e * max_gradient) for e in
-                                   yticks_positions_lin])
+                                   yticks_positions_log])
         ax_para[fig_num, 1].set_yticks(yticks_positions_lin,
                                        ['%.1f' % (MAX_spread_total[0] * pos) for pos
                                         in yticks_positions_lin])
@@ -300,7 +300,7 @@ def plot_results():
             ax_para[fig_num, num].grid(axis="y", color="lightgray", linestyle="-")
             ax_para[fig_num, num].grid(axis="x", color="lightgray", linestyle="-",
                                        which='minor')
-            ax_para[fig_num, num].set_ylim(10 ** -3.1, 1.2)
+            ax_para[fig_num, num].set_ylim(-0.03, 1.03)
             ax_para[fig_num, num].set_xlim(-0.75, len(bin_list_para) * 3 - 0.25)
             ax_para[fig_num, num].set_xticks(
                 np.arange(-0.5, len(bin_list_para) * 3, 3), minor=True)
@@ -319,29 +319,40 @@ def plot_results():
                 ax_para[fig_num, num].set_xlabel(
                     "Observation Interval ($dt$) [years]")
             elif hyperparameter == 'ensemble_size':
-                ax_para[fig_num, num].set_xlabel('Ensemble Size')
+                ax_para[fig_num, num].set_xlabel('$n$: Ensemble Size')
             elif hyperparameter == 'process_noise':
                 ax_para[fig_num, num].set_xlabel('Process Noise ($Q$)')
-            elif hyperparameter == 'initial_offset':
-                ax_para[fig_num, num].set_xlabel('Initial Offset')
+            elif hyperparameter == 'init_offset':
+                ax_para[fig_num, num].set_xlabel('$o$: Initial Offset')
             elif hyperparameter == 'initial_uncertainty':
                 ax_para[fig_num, num].set_xlabel('Initial Uncertainty')
             elif hyperparameter == 'specal_noise':
                 ax_para[fig_num, num].set_xlabel('Specal Noise')
+            elif hyperparameter == 'iterations':
+                ax_para[fig_num, num].set_xlabel('$i$: Iterations')
             elif hyperparameter == 'bias':
                 ax_para[fig_num, num].set_xlabel('Elevation Bias')
             elif hyperparameter == 'elevation_step':
-                ax_para[fig_num, num].set_xlabel('Elevation Bin Step (m)')
-            elif hyperparameter == 'observation_uncertainty':
+                ax_para[fig_num, num].set_xlabel('$s$: Elevation Bin Step (m)')
+            elif hyperparameter == 'obs_uncertainty':
                 ax_para[fig_num, num].set_xlabel(
-                    'Elevation Change Uncertainty (m a$^{-1}$)')
+                    '$u$: Observation Uncertainty (m a$^{-1}$)')
             else:
                 ax_para[fig_num, num].set_xlabel(hyperparameter)
 
+    import string
+    axes = ax_para.flatten()  # Flatten for easy iteration
+
+    labels_subplot = [f"{letter})" for letter in string.ascii_lowercase[:len(axes)]]
+
+    for ax, label in zip(axes, labels_subplot):
+        # Add label to lower-left corner (relative coordinates)
+        ax.text(-0.21, 1, label, transform=ax.transAxes,
+                fontsize=12, va='bottom', ha='left', fontweight='bold')
     fig_para.legend(handles, labels, loc='upper center', ncol=3)
     fig_para.tight_layout()
-    fig_para.subplots_adjust(top=0.97, bottom=0.04)
-    # fig_para.savefig(f'MAE_ext.pdf', format="pdf")
+    fig_para.subplots_adjust(top=0.95, bottom=0.04)
+    fig_para.savefig(f'../../Plots/MAE_ext.pdf', format="pdf")
     fig_para.savefig(f'../../Plots/MAE_ext.png', format="png", dpi=300)
 
 
