@@ -93,7 +93,7 @@ if [ "$calibrate" = true ]; then
                   --seed \"$seed\" \
                   --elevation_step \"$elevation_step\" \
                   --obs_uncertainty \"$obs_uncertainty\" \
-                  --init_offset \"$init_offset \
+                  --init_offset \"$init_offset \" \
                   --results_dir \"$results_dir\""
 
             echo "$cmd"

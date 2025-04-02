@@ -71,7 +71,7 @@ if [ "$calibrate" = true ]; then
     ensemble_size=32
     iterations=8
     elevation_step=25
-    ini_offset=20
+    init_offset=20
     obs_uncertainties=(5 10 20 40 80)
     synthetic=true
 
@@ -93,7 +93,7 @@ if [ "$calibrate" = true ]; then
                   --seed \"$seed\" \
                   --elevation_step \"$elevation_step\" \
                   --obs_uncertainty \"$obs_uncertainty\" \
-                  --ini_offset \"$ini_offset\" \
+                  --init_offset \"$init_offset\" \
                   --results_dir \"$results_dir\""
 
             echo "$cmd"

@@ -3,7 +3,7 @@
 # Published under the GNU GPL (Version 3), check the LICENSE file
 
 #SBATCH --nodes=1
-#SBATCH --time=7:59:00
+#SBATCH --time=2:59:00
 #SBATCH --job-name=frost
 #SBATCH --output=Experiments/Log/frost_%j.out
 #SBATCH --error=Experiments/Log/frost_%j.err
@@ -69,7 +69,7 @@ if [ "$calibrate" = true ]; then
     pushd ../..
     seeds=(1 2 3 4 5 6 7 8 9 10)
     ensemble_sizes=(8 16 32 64 128)
-    iterations=8
+    iterations=10
     elevation_step=25
     obs_uncertainty=20
     init_offset=20
@@ -94,7 +94,7 @@ if [ "$calibrate" = true ]; then
                   --seed \"$seed\" \
                   --elevation_step \"$elevation_step\" \
                   --obs_uncertainty \"$obs_uncertainty\" \
-                  --init_offset \"$init_offset \
+                  --init_offset \"$init_offset \" \
                   --results_dir \"$results_dir\""
 
             echo "$cmd"
