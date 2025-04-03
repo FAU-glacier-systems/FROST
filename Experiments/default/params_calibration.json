@@ -6,6 +6,11 @@
     "gradacc": 3.9,
     "accmax": 2
   },
+  "reference_variability": {
+    "ela": 100,
+    "gradabl": 1,
+    "gradacc": 1
+  },
   "initial_smb": {
     "ela": 3056,
     "gradabl": 7.6,

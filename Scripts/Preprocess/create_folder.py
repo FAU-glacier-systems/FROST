@@ -33,6 +33,10 @@ def main(rgi_id):
         exit(1)
 
     # Extract values from the CSV row
+    ela_var = float(row["Annual Variability ELA"].values[0])
+    gradabl_var = float(row["Annual Variability Ablation Gradient"].values[0])
+    gradacc_var = float(row["Annual Variability Accumulation Gradient"].values[0])
+
     ela = float(row["Mean ELA"].values[0])
     gradabl = float(row["Mean Ablation Gradient"].values[0])
     gradacc = float(row["Mean Accumulation Gradient"].values[0])
@@ -50,6 +54,10 @@ def main(rgi_id):
             data["reference_smb"]["ela"] = ela
             data["reference_smb"]["gradabl"] = gradabl
             data["reference_smb"]["gradacc"] = gradacc
+            data["reference_variability"]["ela"] = ela_var
+            data["reference_variability"]["gradabl"] = gradabl_var
+            data["reference_variability"]["gradacc"] = gradacc_var
+
 
         # Write the updated JSON file
         with open(json_file, "w") as f:

@@ -16,7 +16,7 @@ class GlacierAnalysis:
         self.results = self.initialize_results()
         self.process_glaciers()
         self.results_df = pd.DataFrame(self.results)
-        self.save_results("glacier_analysis_results.csv")
+        self.save_results("../../Data/GLAMOS/glacier_analysis_results.csv")
         self.plot_results()
 
     def load_data(self, file_path):
@@ -34,7 +34,9 @@ class GlacierAnalysis:
         return {"Glacier Name": [], "Mean ELA": [], "Mean Ablation Gradient": [],
                 "Mean Accumulation Gradient": [],
                 "ELAS": [], "ablation gradients": [], "accumulation gradients": [],
-                "Years with ELA": []}
+                "Years with ELA": [], "Annual Variability ELA": [], "Annual Variability "
+                                                                 "Ablation Gradient": [],
+                "Annual Variability Accumulation Gradient": []}
 
     def get_ela_and_specific_mb(self, glacier_df):
         elas, specific_mass_balances = [], []
@@ -84,17 +86,22 @@ class GlacierAnalysis:
                 self.df_glamos_bin['glacier name'] == glacier_name]
             abl_gradients, acc_gradients = self.extract_gradients(glacier_df_bin,
                                                                   elas)
+
             self.store_results(glacier_name, elas, abl_gradients, acc_gradients)
 
     def store_results(self, glacier_name, elas, abl_gradients, acc_gradients):
         self.results["Glacier Name"].append(glacier_name)
         self.results["Mean ELA"].append(np.nanmean(elas))
+        self.results["Annual Variability ELA"].append(np.nanstd(elas))
         self.results["ELAS"].append(elas)
         self.results["Mean Ablation Gradient"].append(np.nanmean(abl_gradients))
+        self.results["Annual Variability Ablation Gradient"].append(
+            np.nanstd(abl_gradients))
         self.results["Years with ELA"].append(np.sum(~np.isnan(elas)))
-
         self.results["ablation gradients"].append(abl_gradients)
         self.results["Mean Accumulation Gradient"].append(np.nanmean(acc_gradients))
+        self.results["Annual Variability Accumulation Gradient"].append(
+            np.nanstd(acc_gradients))
         self.results["accumulation gradients"].append(acc_gradients)
 
     def save_results(self, filename):
@@ -135,7 +142,6 @@ class GlacierAnalysis:
                                       np.nanstd(filtered_df[mean_key])))
         if show_legend:
             ax.legend(loc="upper left", bbox_to_anchor=(1, 1))
-
 
 
 if __name__ == "__main__":

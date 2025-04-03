@@ -10,6 +10,10 @@ import matplotlib.pyplot as plt
 import xarray as xr
 import json
 import matplotlib.gridspec as gridspec
+import os
+from netCDF4 import Dataset
+
+from Scripts.Visualization.visualise_inversion import resolution
 
 
 def extract_gradients(ela, mb, elevation):
@@ -37,11 +41,10 @@ def extract_gradients(ela, mb, elevation):
 def compute_specific_mass_balance_from_ela(ela, gradabl, gradacc, usurf, icemask):
     maxacc = 100
     mb = []
-    for surf in zip(usurf):
+    for surf in usurf:
         smb = surf - ela
         smb *= np.where(np.less(smb, 0), gradabl, gradacc)
         smb = np.clip(smb, -100, maxacc)
-        smb = np.where((smb < 0) | (icemask >= 1), smb, -10)
         mb.append(np.sum(smb[icemask >= 1]) / np.sum(icemask >= 1))
 
     return np.mean(mb)
@@ -60,6 +63,7 @@ def get_ela_and_specific_mb(glacier_2000_total, time):
                 glacier_2000_total['end date of observation'] ==
                 keys_for_specific_year[0]]
             mass_balance = float(entry['annual mass balance'].iloc[0])
+
             specific_mass_balances.append(mass_balance / 1000)
 
             ela = int(entry['equilibrium line altitude'])
@@ -84,18 +88,16 @@ def create_elevation_bins(ela, gradabl, gradacc, elevation):
 
 def main(params):
     ### GET GEODETIC SPECIFIC MASS BALANCE ####
-    time = np.arange(2000, 2020)
+    time = np.arange(2006, 2020)
     hugonnet_nc = xr.open_dataset(params['file_path_hugonnet'])
-    dhdt = np.array(hugonnet_nc['dhdt'])[0]
-    dhdt_error = np.array(hugonnet_nc['usurf_err'])[1]
-    usurf = np.array(hugonnet_nc['usurf'])[0]
+    dhdt = np.array(hugonnet_nc['dhdt'])[1]
     icemask = np.array(hugonnet_nc['icemask'])[0]
 
     # compute specific mass balance
     dhdt[icemask == 0] = 0
-    dhdt_error[icemask == 0] = 0
+    resolution = int(hugonnet_nc['x'][1]) - int(hugonnet_nc['x'][0])
     hugonnet_mass_balance = np.sum(dhdt) / np.sum(icemask)
-    hugonnet_mass_error = np.sum(dhdt_error) / np.sum(icemask)
+    hugonnet_mass_error = np.array([0.154, 0.154])
     hugonnet_mass_balance *= 0.91  # conversion to water equivalent
 
     ### COMPUTE SPECIFIC MASS BALANCE OF ENSEMBLE
@@ -107,16 +109,23 @@ def main(params):
         results['final_mean'])
     ensemble_mean_abl *= params['ablation_density']
     ensemble_mean_acc *= params['accumulation_density']
+    ensemble_mean_acc *= params['accumulation_density']
 
     mbs = []
 
+    output_file = os.path.join("../Final_run", "output.nc")
+    with Dataset(output_file, 'r') as new_ds:
+        usurf = np.array(new_ds['usurf'])  # Final surface elevation
+
     for ensemble_member in ensemble:
         member_ela = ensemble_member[0]
-        grad_abl = ensemble_member[
-                       1] * 0.91  # hugonnet uses 0.91 so we are going to use
-        grad_acc = ensemble_member[2] * 0.91  # it here too
-        mbs.append(compute_specific_mass_balance_from_ela(member_ela, grad_abl,
-                                                          grad_acc, usurf, icemask))
+        grad_abl = ensemble_member[1] * 0.91 # hugonnet uses 0.91 so we are going to
+        # use
+        grad_acc = ensemble_member[2] * 0.91 # it here too
+        mbs.append(
+            compute_specific_mass_balance_from_ela(member_ela, grad_abl / 1000,
+                                                   grad_acc / 1000, usurf,
+                                                   icemask))
 
     mean_mb = np.mean(mbs)
     std_mb = np.std(mbs)
@@ -164,7 +173,8 @@ def main(params):
     ELA, specific_mass_balances = get_ela_and_specific_mb(glacier_2000_aggregated,
                                                           time)
     avg_ela = np.nanmean(np.array(ELA))
-
+    std_ela = np.nanstd(np.array(ELA))
+    print(std_ela)
     # extract gradients
     elevation_group_df = glacier_2000_binned.groupby('upper elevation of bin')
     elevation_series = elevation_group_df['upper elevation of bin'].mean()
@@ -179,21 +189,22 @@ def main(params):
     binned_mass_balance /= 1000
     ######################################################
 
-    fig = plt.figure(figsize=(12, 5))
+    fig = plt.figure(figsize=(10, 4.5))
     gs = gridspec.GridSpec(1, 2,
                            width_ratios=[6, 4])  # Adjust the width ratios as needed
     a0 = fig.add_subplot(gs[0])
     a1 = fig.add_subplot(gs[1])
+    fig.subplots_adjust(left=0.07, right=0.99, wspace=0.2)  # Tune as needed
 
     ### plot left figure ###
     a0.set_title('Elevation dependent Annual Mass Balance of ' + glacier_name)
     # plot background elevation change bin
     scatter_bins = a0.scatter(date, elevation - 50, c=binned_mass_balance,
-                              cmap='seismic_r', vmin=-10, vmax=10,
-                              marker='s', s=300, zorder=2)
+                              cmap='seismic_r', vmin=-6, vmax=6,
+                              marker='s', s=250, zorder=2)
     fig.colorbar(scatter_bins, ax=a0, label='Mass Balance (m w.e. a$^{-1}$)')
     a0.scatter(np.array(time) - 0.03, ELA, alpha=0.3, c='black',
-               label="Equilibrium Line Altitude", marker='_', s=300,
+               label="Equilibrium Line Altitude", marker='_', s=250,
                zorder=3)
 
     # create mean elevation_bins of GLAMOS
@@ -201,38 +212,38 @@ def main(params):
                                                          avg_grad_acc, elevation)
     a0.scatter([2023] * len(elevation_mb), elevation_bins, c=elevation_mb,
                cmap='seismic_r',
-               vmin=-10, vmax=10,
+               vmin=-6, vmax=6,
                marker='s', s=300, zorder=2)
-    a0.scatter([2023], avg_ela, alpha=0.3, c='black', marker='_', s=300, zorder=3)
+    a0.scatter([2023], avg_ela, alpha=0.3, c='black', marker='_', s=250, zorder=3)
 
     y_range = max(elevation.values) - min(elevation.values)
 
     a0.text(2024, avg_ela - y_range / 10, f'$s_{{ELA}}$: {int(avg_ela)}',
             rotation=90, color='black')
-    a0.text(2024, min(elevation), f'$\gamma_{{abl}}$: {avg_grad_abl:.4f}',
+    a0.text(2024, min(elevation), f'$\gamma_{{abl}}$: {avg_grad_abl * 1000:.2f}',
             rotation=90, color='red')
     a0.text(2024, max(elevation) - y_range / 4,
-            f'$\gamma_{{acc}}$: {avg_grad_acc:.4f}', rotation=90,
+            f'$\gamma_{{acc}}$: {avg_grad_acc * 1000:.2f}', rotation=90,
             label='Mean Accumulation Gradient', color='blue')
 
     # create mean elevation_bins of ENSEMBLE
     elevation_bins, elevation_mb = create_elevation_bins(ensemble_mean_ela,
-                                                         ensemble_mean_abl,
-                                                         ensemble_mean_acc,
+                                                         ensemble_mean_abl / 1000,
+                                                         ensemble_mean_acc / 1000,
                                                          elevation)
     a0.scatter([2026] * len(elevation_mb), elevation_bins, c=elevation_mb,
                cmap='seismic_r',
-               vmin=-10, vmax=10,
+               vmin=-6, vmax=6,
                marker='s', s=300, zorder=2)
-    a0.scatter([2026], ensemble_mean_ela, alpha=0.3, c='black', marker='_', s=300,
+    a0.scatter([2026], ensemble_mean_ela, alpha=0.3, c='black', marker='_', s=250,
                zorder=3)
     a0.text(2027, ensemble_mean_ela - y_range / 10,
             f'$s_{{ELA}}$: {int(ensemble_mean_ela)}', rotation=90, color='black')
-    a0.text(2027, min(elevation), f'$\gamma_{{abl}}$: {ensemble_mean_abl:.4f}',
+    a0.text(2027, min(elevation), f'$\gamma_{{abl}}$: {ensemble_mean_abl:.2f}',
             rotation=90,
             label='Mean Ablation Gradient', color='red')
     a0.text(2027, max(elevation) - y_range / 4,
-            f'$\gamma_{{acc}}$: {ensemble_mean_acc:.4f}', rotation=90,
+            f'$\gamma_{{acc}}$: {ensemble_mean_acc:.2f}', rotation=90,
             label='Mean Accumulation Gradient', color='blue')
 
     a0.set_xticks(list(np.array(time)[::4]) + [2023, 2026],
@@ -241,6 +252,7 @@ def main(params):
     a0.set_xlabel('Year of Measurement')
     a0.set_ylabel('Elevation (m)')
     a0.legend(loc='upper left')
+    a0.set_xlim(2006, 2028)
 
     ### plot right figure ###
     a1.set_title('Specific Mass Balance of ' + params['glacier_name'])
@@ -274,12 +286,12 @@ def main(params):
                     alpha=0.1, zorder=0, )
     a1.text(2025, mean_mb + 0.03, f'{mean_mb:.4f}', color='C1', zorder=10)
 
-    a1.set_xticks(list(np.array(time)[::4]) + [2028, 2035],
-                  list(np.array(time)[::4]) + ['EnKF\n Mean', 'Geodetic\n Mean'])
+    a1.set_xticks(list(np.array(time)[::6]) + [2028, 2035],
+                  list(np.array(time)[::6]) + ['EnKF\n Mean', 'Geodetic\n Mean'])
 
     a1.set_ylabel('Mass Balance (m w.e. a$^{-1}$)')
     a1.set_ylim(-2.1, 1.1)
-    a1.set_xlabel('Year')
+    a1.set_xlabel('Year                                         ')
     a1.legend(loc='upper left')
 
     for axi in [a0, a1]:
@@ -292,6 +304,10 @@ def main(params):
         axi.xaxis.set_tick_params(bottom=False)
         axi.yaxis.set_tick_params(left=False)
 
+    a0.text(-0.2, 1.1, "a)", transform=a0.transAxes,
+            fontsize=12, va='bottom', ha='left', fontweight='bold')
+    a1.text(-0.2, 1.1, "b)", transform=a1.transAxes,
+            fontsize=12, va='bottom', ha='left', fontweight='bold')
     plt.tight_layout()
     plt.savefig(params['output_dir'] + 'specific_mass_balance.pdf', format='pdf')
     plt.savefig(params['output_dir'] + 'specific_mass_balance.png', format='png',

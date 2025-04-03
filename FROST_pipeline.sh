@@ -3,7 +3,7 @@
 # Published under the GNU GPL (Version 3), check the LICENSE file
 
 #SBATCH --nodes=1
-#SBATCH --time=00:29:59
+#SBATCH --time=00:19:59
 #SBATCH --job-name=frost
 #SBATCH --output=Experiments/Log/frost_%j.out
 #SBATCH --error=Experiments/Log/frost_%j.err
@@ -68,6 +68,7 @@ fi
 if [ "$calibrate" = true ]; then
     echo "Starting calibration..."
     python -u FROST_calibration.py --rgi_id "$rgi_id" --ensemble_size 64 \
-    --forward_parallel "$forward_parallel" --iterations 10 --seed "$seed" \
-    --inflation "$inflation"
+    --forward_parallel "$forward_parallel" --iterations 6 --seed "$seed" \
+    --inflation "$inflation" --results_dir "Experiments/${rgi_id}/hpc_hugonnet" \
+    --init_offset 50 --elevation_step 50 --synthetic false
 fi
