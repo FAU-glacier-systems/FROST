@@ -662,7 +662,7 @@ def download_hugonnet(rgi_id_dir, year_interval, hugonnet_directory):
         # usurf_err_new = dhdt_err * year_interval / 2
 
         if not usurf_err_change:
-            usurf_err = dhdt_err * data_interval / 2
+            usurf_err = dhdt_err * np.sqrt(year_interval)
         else:
             usurf_err = ((dhdt_err_change[-2] * data_interval / 2
                           + dhdt_err_change[-1] * data_interval / 2)) / 2
@@ -719,6 +719,8 @@ def download_hugonnet(rgi_id_dir, year_interval, hugonnet_directory):
         dhdt_err_var[:] = dhdt_err_change
         velsurf_mag_var[:] = velo
 
+
+
         # Write globale attribute in OGGMshop netCDF file
         dst_crs = oggm_shop_dataset.epsg
         dst_proj = oggm_shop_dataset.pyproj_crs
@@ -741,7 +743,7 @@ if __name__ == '__main__':
     # Add argument for specific target resolution
     parser.add_argument('--target_resolution', type=float,
                         help='user-specific resolution for IGM run [meters] '
-                             '(defaul: 100m)')
+                             '(default: 100m)')
 
     # Add flags to control function execution
     parser.add_argument('--download_oggm_shop', action='store_true',

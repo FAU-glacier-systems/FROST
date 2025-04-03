@@ -3,7 +3,7 @@
 # Published under the GNU GPL (Version 3), check the LICENSE file
 
 #SBATCH --nodes=1
-#SBATCH --time=7:59:00
+#SBATCH --time=5:59:00
 #SBATCH --job-name=frost
 #SBATCH --output=Experiments/Log/frost_%j.out
 #SBATCH --error=Experiments/Log/frost_%j.err
@@ -35,7 +35,7 @@ done
 echo "Running pipeline for RGI ID: $rgi_id"
 # 0. create folders
 pushd  ../Preprocess
-#python -u create_folder.py --rgi_id "$rgi_id"
+python -u create_folder.py --rgi_id "$rgi_id"
 popd
 
 # 1. Download data with OGGM_shop (if --download is set)
@@ -74,7 +74,6 @@ if [ "$calibrate" = true ]; then
     obs_uncertainty=20
     synthetic=true
     init_offsets=(20 40 60 80 100)
-    results_dir="ensemble_size"
 
     # Iterate over each seed
     for seed in "${seeds[@]}"; do

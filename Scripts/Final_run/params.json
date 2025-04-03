@@ -1,0 +1,20 @@
+{
+        "modules_preproc": ["load_ncdf"],
+        "modules_process": ["smb_simple", "iceflow", "time", "thk"],
+        "modules_postproc": ["write_ncdf", "print_info"],
+        "smb_simple_array": [
+            ["time", "gradabl", "gradacc", "ela", "accmax"],
+            [0, 0.00892, 0.00267, 2964, 100],
+            [20, 0.00892, 0.00267, 2964, 100]
+        ],
+        "iflo_emulator": "../../Data/Glaciers/RGI2000-v7.0-G-11-01706/Inversion/iceflow-model",
+        "lncd_input_file": "../../Data/Glaciers/RGI2000-v7.0-G-11-01706/Inversion/geology-optimized.nc",
+        "wncd_output_file": "output.nc",
+        "wncd_vars_to_save": ["topg","usurf",  "thk", "smb","velbar_mag",
+            "velsurf_mag", "uvelsurf","vvelsurf","wvelsurf", "divflux"
+        ],
+        "time_start": 0,
+        "time_end": 20,
+        "time_save": 1,
+        "iflo_retrain_emulator_freq": 0
+    }

@@ -6,7 +6,7 @@
 import argparse
 from Scripts.EnsembleKalmanFilter import EnsembleKalmanFilter
 from Scripts.ObservationProvider import ObservationProvider
-from Scripts.Visualization.Monitor import Monitor
+from Scripts.Visualization.Monitor_split import Monitor
 import os
 import numpy as np
 
@@ -44,7 +44,9 @@ def main(rgi_id, synthetic, ensemble_size, inflation, iterations, seed, init_off
           f'Seed: {seed}',
           f'Elevation step: {elevation_step}',
           f'Observation uncertainty: {obs_uncertainty}',
-          f'Synthetic: {synthetic}'
+          f'Synthetic: {synthetic}',
+          f'Initial offset: {init_offset}'
+          f'Results directory: {results_dir}'
           f'Forward parallel: {forward_parallel}')
 
     # Initialise the Observation provider
@@ -71,7 +73,8 @@ def main(rgi_id, synthetic, ensemble_size, inflation, iterations, seed, init_off
     monitor = Monitor(EnKF_object=ensembleKF,
                       ObsProvider=obs_provider,
                       output_dir=results_dir,
-                      max_iterations=iterations)
+                      max_iterations=iterations,
+                      synthetic=synthetic)
 
     ################# MAIN LOOP #####################################################
     for i in range(1, iterations + 1):
@@ -81,11 +84,13 @@ def main(rgi_id, synthetic, ensemble_size, inflation, iterations, seed, init_off
             current_year=ensembleKF.current_year,
             num_samples=ensembleKF.ensemble_size)
 
+
         print(f'Forward pass ensemble to {year}')
         ensembleKF.forward(year=year, forward_parallel=forward_parallel)
 
         ensemble_observables = obs_provider.get_ensemble_observables(
             EnKF_object=ensembleKF)
+
 
         print("Update")
         ensembleKF.update(new_observation=new_observation,
@@ -102,6 +107,9 @@ def main(rgi_id, synthetic, ensemble_size, inflation, iterations, seed, init_off
             iteration=i,
             year=year,
             ensemble_observables=ensemble_observables)
+        monitor.plot_maps(ensembleKF.ensemble_smb_raster, new_observation,
+                          uncertainty=noise_matrix,
+                  iteration=i, year=year, bedrock=ensembleKF.bedrock)
         # monitor.visualise_3d(obs_provider.dhdt[2],
         #                      ensembleKF.ensemble_usurf[0], ensembleKF.bedrock, 2000,
         #                      obs_provider.x, obs_provider.y)
@@ -112,7 +120,8 @@ def main(rgi_id, synthetic, ensemble_size, inflation, iterations, seed, init_off
 
     ensembleKF.save_results(elevation_step=elevation_step,
                             iterations=iterations,
-                            obs_uncertainty=obs_uncertainty)
+                            obs_uncertainty=obs_uncertainty,
+                            synthetic=synthetic)
     print('Done')
 
 
@@ -154,16 +163,16 @@ if __name__ == '__main__':
                         help='Random seed for the model.')
 
     parser.add_argument('--results_dir', type=str, default='',
-                        help='path to the results directory.')
+                        help='path to the results directory.', required=True)
 
     # Parse arguments
     args = parser.parse_args()
     forward_parallel = False if args.forward_parallel == "false" else True
-    synthetic = False if args.synthetic == "false" else True
+    synthetic = False if args.synthetic == "false"  else True
 
     # Call the main function with the parsed arguments
     main(rgi_id=args.rgi_id,
-         synthetic=args.synthetic,
+         synthetic=synthetic,
          ensemble_size=args.ensemble_size,
          inflation=args.inflation,
          iterations=args.iterations,

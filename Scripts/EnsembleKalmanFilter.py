@@ -93,13 +93,20 @@ class EnsembleKalmanFilter:
             self.initial_smb = params['initial_smb']
             self.initial_spread = params['initial_spread']
             self.reference_smb = params['reference_smb']
+            self.reference_variability = params['reference_variability']
 
         self.init_offset = init_offset
         if not init_offset == 0:
             sign = np.random.choice([-1, 1], 3)
-            self.initial_smb['ela'] += 500 * init_offset / 100 * sign[0]
-            self.initial_smb['gradabl'] += 5 * init_offset / 100 * sign[1]
-            self.initial_smb['gradacc'] += 5 * init_offset / 100 * sign[2]
+            self.initial_smb['ela'] = self.reference_smb['ela'] + (500 * init_offset
+                                                                   / 100 *
+                                                                   sign[0])
+            self.initial_smb['gradabl'] = self.reference_smb[
+                                              'gradabl'] + 5 * init_offset / 100 * \
+                                          sign[1]
+            self.initial_smb['gradacc'] = self.reference_smb[
+                                              'gradacc'] + 5 * init_offset / 100 * \
+                                          sign[2]
 
             self.initial_spread['ela'] = 500
             self.initial_spread['gradabl'] = 5
@@ -261,7 +268,7 @@ class EnsembleKalmanFilter:
 
         self.ensemble_smb = inflated_ensemble_smb
 
-    def save_results(self, elevation_step, iterations, obs_uncertainty):
+    def save_results(self, elevation_step, iterations, obs_uncertainty, synthetic):
         self.params = dict()
 
         keys = self.initial_smb.keys()
@@ -284,6 +291,7 @@ class EnsembleKalmanFilter:
         self.params['elevation_step'] = elevation_step
         self.params['iterations'] = iterations
         self.params['obs_uncertainty'] = obs_uncertainty
+        self.params['synthetic'] = synthetic
         self.params['seed'] = self.seed
 
         from pathlib import Path
