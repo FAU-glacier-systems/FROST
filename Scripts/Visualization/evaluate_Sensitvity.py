@@ -19,7 +19,7 @@ def plot_results():
 
         if hyperparameter == 'elevation_step':
             experiment_folder = os.path.join(
-                '../../Experiments/RGI2000-v7.0-G-11-01706/', hyperparameter)
+                '../../Experiments/RGI2000-v7.0-G-11-01706_v5/', hyperparameter)
         elif hyperparameter == 'ensemble_size':
             experiment_folder = os.path.join(
                 '../../Experiments/RGI2000-v7.0-G-11-01706_v1/', hyperparameter)
@@ -93,7 +93,7 @@ def plot_results():
 
         # Normalise
         MAX_para_total = [200, 5, 5]
-        MAX_spread_total = [30, 5, 5]
+        MAX_spread_total = [15, 2.5, 2.5]
         print(int(MAX_para_total[0]))
 
         max_gradient = np.max(MAX_para_total[1:])
@@ -157,10 +157,10 @@ def plot_results():
             bin_centers = [0, 2, 4, 6, 8, 10]
 
         elif hyperparameter == 'elevation_step':
-            bin_centers = [5, 10, 25, 50, 100]
+            bin_centers = [10, 25, 50, 75, 100]
 
         elif hyperparameter == 'iterations':
-            bin_centers = [1, 2, 5, 8, 10]
+            bin_centers = [2, 4, 6, 8, 10]
 
         # group the MAE by bin_centers\\
         marker = ["^", "o", "v", ]
