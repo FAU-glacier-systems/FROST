@@ -56,7 +56,8 @@ def main(rgi_id, synthetic, ensemble_size, inflation, iterations, seed, init_off
                                        obs_uncertainty=obs_uncertainty,
                                        synthetic=synthetic)
     print("Initializing Usurf 2000")
-    year, usurf_ensemble = obs_provider.initial_usurf(num_samples=ensemble_size)
+    year, usurf_ensemble, binned_usurf = obs_provider.initial_usurf(
+        num_samples=ensemble_size)
 
     # Initialise an ensemble kalman filter object
     print("Initializing Ensemble Kalman Filter")
@@ -74,7 +75,9 @@ def main(rgi_id, synthetic, ensemble_size, inflation, iterations, seed, init_off
                       ObsProvider=obs_provider,
                       output_dir=results_dir,
                       max_iterations=iterations,
-                      synthetic=synthetic)
+                      synthetic=synthetic,
+                      binned_usurf_init=binned_usurf,
+                      plot_dhdt=False)
 
     ################# MAIN LOOP #####################################################
     for i in range(1, iterations + 1):
@@ -84,13 +87,11 @@ def main(rgi_id, synthetic, ensemble_size, inflation, iterations, seed, init_off
             current_year=ensembleKF.current_year,
             num_samples=ensembleKF.ensemble_size)
 
-
         print(f'Forward pass ensemble to {year}')
         ensembleKF.forward(year=year, forward_parallel=forward_parallel)
 
         ensemble_observables = obs_provider.get_ensemble_observables(
             EnKF_object=ensembleKF)
-
 
         print("Update")
         ensembleKF.update(new_observation=new_observation,
@@ -101,15 +102,15 @@ def main(rgi_id, synthetic, ensemble_size, inflation, iterations, seed, init_off
         print("Visualise")
         monitor.plot_iteration(
             ensemble_smb_log=ensembleKF.ensemble_smb_log,
-            ensemble_smb_raster=ensembleKF.ensemble_smb_raster,
             new_observation=new_observation,
             uncertainty=noise_matrix,
             iteration=i,
             year=year,
-            ensemble_observables=ensemble_observables)
+            ensemble_observables=ensemble_observables,
+            noise_samples=noise_samples)
         monitor.plot_maps(ensembleKF.ensemble_smb_raster, new_observation,
                           uncertainty=noise_matrix,
-                  iteration=i, year=year, bedrock=ensembleKF.bedrock)
+                          iteration=i, year=year, bedrock=ensembleKF.bedrock)
         # monitor.visualise_3d(obs_provider.dhdt[2],
         #                      ensembleKF.ensemble_usurf[0], ensembleKF.bedrock, 2000,
         #                      obs_provider.x, obs_provider.y)
@@ -168,7 +169,8 @@ if __name__ == '__main__':
     # Parse arguments
     args = parser.parse_args()
     forward_parallel = False if args.forward_parallel == "false" else True
-    synthetic = False if args.synthetic == "false"  else True
+    synthetic = False if args.synthetic == "false" or args.synthetic == "False" \
+        else True
 
     # Call the main function with the parsed arguments
     main(rgi_id=args.rgi_id,

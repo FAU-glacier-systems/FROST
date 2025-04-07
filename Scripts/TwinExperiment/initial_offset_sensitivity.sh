@@ -69,8 +69,8 @@ if [ "$calibrate" = true ]; then
     pushd ../..
     seeds=(1 2 3 4 5 6 7 8 9 10)
     ensemble_size=32
-    iterations=8
-    elevation_step=25
+    iterations=6
+    elevation_step=50
     obs_uncertainty=20
     synthetic=true
     init_offsets=(20 40 60 80 100)

@@ -211,7 +211,12 @@ class ObservationProvider:
                 usurf_sample = copy.deepcopy(usurf_raster)
                 ensemble_usurf[e] = usurf_sample
 
-        return int(year), ensemble_usurf
+        binned_usurf = []
+        for usurf in ensemble_usurf:
+            binned_usurf.append(self.average_elevation_bin(usurf))
+
+
+        return int(year), ensemble_usurf, np.array(binned_usurf)
 
     def compute_bin_variance(self, usurf_raster, usurf_err_raster, nan_mask):
         bin_variance = []
@@ -306,9 +311,11 @@ class ObservationProvider:
         return cov_matrix
 
 
-    def average_elevation_bin(self, usurf, nan_mask):
+    def average_elevation_bin(self, usurf, nan_mask=None):
         # Apply mask to both surfaces
-
+        # If no mask is provided, treat all values as valid
+        if nan_mask is None:
+            nan_mask = np.zeros_like(self.bin_map, dtype=bool)
         # Compute average 2020 surface for each bin
         average_usurf = []
         for i in range(1, self.num_bins + 1):

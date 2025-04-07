@@ -13,7 +13,7 @@ import pyproj
 
 class Monitor:
     def __init__(self, EnKF_object, ObsProvider, max_iterations, output_dir,
-                 synthetic):
+                 synthetic, binned_usurf_init, plot_dhdt):
 
         self.rgi_id = EnKF_object.rgi_id
         self.ensemble_size = EnKF_object.ensemble_size
@@ -31,6 +31,8 @@ class Monitor:
         self.max_iteration_axis = range(max_iterations + 1)
         self.synthetic = synthetic
         self.colorscale = plt.get_cmap('tab20')
+        self.binned_usurf_init = binned_usurf_init
+        self.plot_dhdt = plot_dhdt
 
         self.monitor_dir = output_dir
         if not os.path.exists(self.monitor_dir):
@@ -47,31 +49,62 @@ class Monitor:
 
         if synthetic:
             self.density_factor = {'ela': 1,
-                                   'gradabl': 0.91,  # 0.91,
-                                   'gradacc': 0.55
-                                   }
-
-        else:
-            self.density_factor = {'ela': 1,
                                    'gradabl': 1,  # 0.91,
                                    'gradacc': 1
                                    }
 
-        self.plot_style = dict(
-            mean_usurf=dict(y_label='Mean surface elevation \nin 2019 (m)'),
-            point1=dict(y_label='Mean surface elevation\nof fifth bin from front ('
-                                'm)'),
-            point2=dict(y_label=f'Mean surface elevation\nof fifth bin from '
-                                f'top ('
-                                f'm)'),
-            ela=dict(y_label='Equilibrium Line\nAltitude (m)'),
-            gradabl=dict(y_label='Ablation Gradient\n(m a$^{-1}$ km$^{-1}$)'),
-            gradacc=dict(y_label='Accumulation Gradient\n(m a$^{-1}$ km$^{-1}$)'),
-        )
+        else:
+            self.density_factor = {'ela': 1,
+                                   'gradabl': 0.91,  # 0.91,
+                                   'gradacc': 0.55
+
+                                   }
+        if self.plot_dhdt:
+            self.plot_style = dict(
+                mean_usurf=dict(y_label='Mean surface elevation \n change 2000- '
+                                        '2019 ('
+                                        'm)'),
+                point1=dict(
+                    y_label='Surface elevation change\nof fifth bin from front ('
+                            'm)'),
+                point2=dict(y_label=f'Mean surface elevation\nof fifth bin from '
+                                    f'top ('
+                                    f'm)'),
+                ela=dict(y_label='Equilibrium Line\nAltitude (m)'),
+                gradabl=dict(y_label='Ablation Gradient\n(m a$^{-1}$ km$^{-1}$)'),
+                gradacc=dict(
+                    y_label='Accumulation Gradient\n(m a$^{-1}$ km$^{-1}$)'),
+            )
+
+        else:
+            self.plot_style = dict(
+                mean_usurf=dict(y_label='Mean surface elevation \nin 2019 (m)'),
+                point1=dict(
+                    y_label='Mean surface elevation\nof fifth bin from front ('
+                            'm)'),
+                point2=dict(y_label=f'Mean surface elevation\nof fifth bin from '
+                                    f'top ('
+                                    f'm)'),
+                ela=dict(y_label='Equilibrium Line\nAltitude (m)'),
+                gradabl=dict(y_label='Ablation Gradient\n(m a$^{-1}$ km$^{-1}$)'),
+                gradacc=dict(
+                    y_label='Accumulation Gradient\n(m a$^{-1}$ km$^{-1}$)'),
+            )
 
     def summarise_observables(self, ensemble_observables, new_observables,
-                              uncertainty_matrix):
-        uncertainty = np.sqrt(np.diagonal(uncertainty_matrix))
+                              uncertainty_matrix, noise_samples):
+
+        # uncertainty = np.sqrt(np.diagonal(uncertainty_matrix))
+        if self.plot_dhdt:
+            time = self.time_period[-1] - self.time_period[0]
+            ensemble_observables = ((ensemble_observables - self.binned_usurf_init) /
+                                    time)
+            noise_samples = (noise_samples -
+                             self.binned_usurf_init) / time
+            new_observables = ((new_observables - np.mean(self.binned_usurf_init,
+                                                          axis=0)) / time)
+
+        uncertainty = np.std(noise_samples, axis=0)
         ensemble_mean = np.mean(ensemble_observables, axis=1)
         ensemble_std = np.std(ensemble_observables, axis=1)
         ensemble_point1 = ensemble_observables[:, 4]
@@ -101,14 +134,14 @@ class Monitor:
 
         return var_mean, ensemble_std
 
-    def plot_iteration(self, ensemble_smb_log, ensemble_smb_raster,
+    def plot_iteration(self, ensemble_smb_log,
                        new_observation, uncertainty, iteration, year,
-                       ensemble_observables):
+                       ensemble_observables, noise_samples):
 
         fig, ax = plt.subplots(2, 3, figsize=(10, 6))
 
         self.summarise_observables(ensemble_observables, new_observation,
-                                   uncertainty)
+                                   uncertainty, noise_samples)
 
         iteration_axis = range(iteration + 1)
         iteration_axis_repeat = np.repeat(iteration_axis, 2)[1:-1]
@@ -161,7 +194,7 @@ class Monitor:
             if self.synthetic:
                 label = 'Observation Uncertainty [Synthetic]'
             else:
-                label = 'Reference Mean [Hugonnet21]'
+                label = 'Observation Uncertainty [Hugonnet21]'
 
             ax[0, i].fill_between(iteration_axis_repeat,
                                   std_minus,
@@ -242,7 +275,7 @@ class Monitor:
     def plot_maps(self, ensemble_smb_raster, new_observation, uncertainty,
                   iteration, year, bedrock):
         ###################### MAPS #################################################
-        fig, ax = plt.subplots(1, 4, figsize=(10, 3.2))
+        fig, ax = plt.subplots(1, 4, figsize=(11, 3.5))
         # Define x and y ticks for both plots
         x_ticks = np.arange(25, self.bin_map.shape[1] - 40,
                             step=self.resolution)  # Adjust step as needed

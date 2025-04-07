@@ -284,15 +284,17 @@ class EnsembleKalmanFilter:
         # information
         self.params['initial_smb'] = self.initial_smb
         self.params['initial_spread'] = self.initial_spread
-        self.params['init_offset'] = self.init_offset
         self.params['reference_smb'] = self.reference_smb
+
+        self.params['init_offset'] = self.init_offset
         self.params['ensemble_size'] = self.ensemble_size
-        self.params['inflation'] = self.inflation
         self.params['elevation_step'] = elevation_step
         self.params['iterations'] = iterations
         self.params['obs_uncertainty'] = obs_uncertainty
+
         self.params['synthetic'] = synthetic
         self.params['seed'] = self.seed
+        self.params['inflation'] = self.inflation
 
         from pathlib import Path
 

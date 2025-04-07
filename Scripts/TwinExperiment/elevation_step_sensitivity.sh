@@ -11,7 +11,7 @@ module load python
 conda activate igm
 
 # Default value for rgi_id
-rgi_id="RGI2000-v7.0-G-11-01706"
+rgi_id="RGI2000-v7.0-G-11-01706_v5"
 download=false
 inversion=false
 synth_obs=false
