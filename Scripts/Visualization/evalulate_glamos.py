@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 # Paths
 root_folder = "../../Experiments"
 experiment_folders = os.listdir(root_folder)
-rgi_name_table = "../../Data/GLAMOS/GLAMOS_RGI.csv"
+rgi_name_table = "../../Data/GLAMOS/GLAMOS_SELECT.csv"
 rgi_df = pd.read_csv(rgi_name_table)
 
 # Data Storage
@@ -27,7 +27,8 @@ for rgi_id in experiment_folders:
     row = rgi_df[rgi_df["RGI_ID"] == rgi_id]
     glacier_names.append(row["GLAMOS Name"].values[0])
 
-    results_file = os.path.join(root_folder, rgi_id, "Experiment_50_50_1.0_1", "result_seed_1_1.0_50.json")
+    results_file = os.path.join(root_folder, rgi_id, "hpc_hugonnet",
+                                "result.json")
     reference_file = os.path.join(root_folder, rgi_id, "params_calibration.json")
 
     with open(results_file) as f:

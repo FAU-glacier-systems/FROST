@@ -4,8 +4,8 @@
         "modules_postproc": ["write_ncdf", "print_info"],
         "smb_simple_array": [
             ["time", "gradabl", "gradacc", "ela", "accmax"],
-            [0, 0.00892, 0.00267, 2964, 100],
-            [20, 0.00892, 0.00267, 2964, 100]
+            [0, 0.01339, 0.00236, 2920, 100],
+            [20, 0.01339, 0.00236, 2920, 100]
         ],
         "iflo_emulator": "../../Data/Glaciers/RGI2000-v7.0-G-11-01706/Inversion/iceflow-model",
         "lncd_input_file": "../../Data/Glaciers/RGI2000-v7.0-G-11-01706/Inversion/geology-optimized.nc",

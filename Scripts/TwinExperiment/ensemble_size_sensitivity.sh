@@ -34,9 +34,9 @@ done
 # Display the selected rgi_id
 echo "Running pipeline for RGI ID: $rgi_id"
 # 0. create folders
-pushd  ../Preprocess
-python -u create_folder.py --rgi_id "$rgi_id"
-popd
+#pushd  ../Preprocess
+#python -u create_folder.py --rgi_id "$rgi_id"
+#popd
 
 # 1. Download data with OGGM_shop (if --download is set)
 if [ "$download" = true ]; then

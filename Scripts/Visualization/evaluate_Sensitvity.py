@@ -5,17 +5,13 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 
-def plot_results():
+def plot_results(hyperparameters):
     # global figure
-    fig_para, ax_para = plt.subplots(nrows=5, ncols=2, figsize=(10, 12))
+    nrows = len(hyperparameters)
+    fig_para, ax_para = plt.subplots(nrows=nrows, ncols=2, figsize=(10, nrows * 3))
 
     # run for every hyperparameters
-    for fig_num, hyperparameter in enumerate(['ensemble_size',
-                                              'iterations',
-                                              'elevation_step',
-                                              'obs_uncertainty',
-                                              'init_offset'
-                                              ]):
+    for fig_num, hyperparameter in enumerate(hyperparameters):
 
         if hyperparameter == 'elevation_step':
             experiment_folder = os.path.join(
@@ -61,7 +57,6 @@ def plot_results():
         var_estimate = []
         hyper_results = []
         for i, run in enumerate(results):
-            print(i)
             try:
                 hyper_results.append(run[hyperparameter])
             except KeyError:
@@ -69,7 +64,6 @@ def plot_results():
             mean_estimate.append(np.array(run['final_mean']))
 
             var_estimate.append(np.array(run['final_std']))
-            # TODO: hotfix
 
         MAE = np.empty((0, len(hyper_results)))
         MAX_para_total = np.array([])
@@ -92,8 +86,8 @@ def plot_results():
             MAX_spread_total = np.append(MAX_spread_total, MAX_spread)
 
         # Normalise
-        MAX_para_total = [200, 5, 5]
-        MAX_spread_total = [15, 2.5, 2.5]
+        MAX_para_total = [80, 2, 2]
+        MAX_spread_total = [16, 2, 2]
         print(int(MAX_para_total[0]))
 
         max_gradient = np.max(MAX_para_total[1:])
@@ -258,9 +252,9 @@ def plot_results():
                 color=colormap[x * 3], marker=marker[x], label=label,
                 zorder=10 + (-abs(x - 1)))
         # ax[i,j].plot(np.arange(1, len(bin_centers) + 1), bin_medians, color=median_color)
-        ax_para[fig_num, 0].set_yscale('log')
+        #ax_para[fig_num, 0].set_yscale('log')
         grad_axis_para = ax_para[fig_num, 0].secondary_yaxis('right')
-        grad_axis_para.set_yscale('log')
+        #grad_axis_para.set_yscale('log')
         grad_axis_para.set_ylabel('Gradient Error (m a$^{-1}$ km$^{-1}$)')
         ax_para[fig_num, 0].set_ylabel('ELA Error (m)')
 
@@ -270,17 +264,17 @@ def plot_results():
         grad_axis_spread.set_ylabel('Gradient Spread (m a$^{-1}$ km$^{-1}$)')
         ax_para[fig_num, 1].set_ylabel('ELA Spread (m)')
 
-        yticks_positions_log = np.logspace(-3, 0, 4)
+        #yticks_positions_log = np.logspace(-3, 0, 4)
         yticks_positions_lin = np.arange(0, 1.1, 0.25)
 
-        ax_para[fig_num, 0].set_yticks(yticks_positions_log,
-                                       ['%.1f' % (MAX_para_total[0] * pos) for pos in
-                                        yticks_positions_log])
-        grad_axis_para.set_yticks(yticks_positions_log,
+        ax_para[fig_num, 0].set_yticks(yticks_positions_lin,
+                                       ['%.0f' % (MAX_para_total[0] * pos) for pos in
+                                        yticks_positions_lin])
+        grad_axis_para.set_yticks(yticks_positions_lin,
                                   ['%.3f' % (e * max_gradient) for e in
-                                   yticks_positions_log])
+                                   yticks_positions_lin])
         ax_para[fig_num, 1].set_yticks(yticks_positions_lin,
-                                       ['%.1f' % (MAX_spread_total[0] * pos) for pos
+                                       ['%.0f' % (MAX_spread_total[0] * pos) for pos
                                         in yticks_positions_lin])
         grad_axis_spread.set_yticks(yticks_positions_lin,
                                     ['%.3f' % (e * max_gradient_spread) for e in
@@ -333,7 +327,7 @@ def plot_results():
             elif hyperparameter == 'bias':
                 ax_para[fig_num, num].set_xlabel('Elevation Bias')
             elif hyperparameter == 'elevation_step':
-                ax_para[fig_num, num].set_xlabel('$s$: Elevation Bin Step (m)')
+                ax_para[fig_num, num].set_xlabel('$s$: Elevation Bin Height (m)')
             elif hyperparameter == 'obs_uncertainty':
                 ax_para[fig_num, num].set_xlabel(
                     '$u$: Observation Uncertainty (m a$^{-1}$)')
@@ -351,10 +345,11 @@ def plot_results():
                 fontsize=12, va='bottom', ha='left', fontweight='bold')
     fig_para.legend(handles, labels, loc='upper center', ncol=3)
     fig_para.tight_layout()
-    fig_para.subplots_adjust(top=0.95, bottom=0.04)
-    fig_para.savefig(f'../../Plots/MAE_ext.pdf', format="pdf")
-    fig_para.savefig(f'../../Plots/MAE_ext.png', format="png", dpi=300)
+    fig_para.subplots_adjust(top=0.92, bottom=0.08)
+    fig_para.savefig(f'../../Plots/MAE_{hyperparameters}.pdf', format="pdf")
+    #fig_para.savefig(f'../../Plots/MAE_ext.png', format="png", dpi=300)
 
 
 if __name__ == '__main__':
-    plot_results()
+    #plot_results(['obs_uncertainty','init_offset'])
+    plot_results(['ensemble_size','iterations','elevation_step'])

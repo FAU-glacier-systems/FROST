@@ -121,7 +121,7 @@ def main(params):
         member_ela = ensemble_member[0]
         grad_abl = ensemble_member[1] * 0.91 # hugonnet uses 0.91 so we are going to
         # use
-        grad_acc = ensemble_member[2] * 0.91 # it here too
+        grad_acc = ensemble_member[2]* 0.91 # it here too
         mbs.append(
             compute_specific_mass_balance_from_ela(member_ela, grad_abl / 1000,
                                                    grad_acc / 1000, usurf,

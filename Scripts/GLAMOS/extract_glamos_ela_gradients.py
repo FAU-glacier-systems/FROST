@@ -34,8 +34,9 @@ class GlacierAnalysis:
         return {"Glacier Name": [], "Mean ELA": [], "Mean Ablation Gradient": [],
                 "Mean Accumulation Gradient": [],
                 "ELAS": [], "ablation gradients": [], "accumulation gradients": [],
-                "Years with ELA": [], "Annual Variability ELA": [], "Annual Variability "
-                                                                 "Ablation Gradient": [],
+                "Years with ELA": [], "Annual Variability ELA": [],
+                "Annual Variability "
+                "Ablation Gradient": [],
                 "Annual Variability Accumulation Gradient": []}
 
     def get_ela_and_specific_mb(self, glacier_df):
@@ -60,19 +61,21 @@ class GlacierAnalysis:
                 elevation_bin_df['annual mass balance']), np.array(
                 elevation_bin_df['upper elevation of bin']) - 50
             abl_gradients.append(
-                self.compute_gradient(mb, elevation, elas[i], negative=True))
+                self.compute_gradient(mb, elevation, elas[i], 20, negative=True))
             acc_gradients.append(
-                self.compute_gradient(mb, elevation, elas[i], negative=False))
-        return abl_gradients, acc_gradients
+                self.compute_gradient(mb, elevation, elas[i], 10, negative=False))
+        return [abl / 0.91 for abl in abl_gradients], [acc / 0.55 for acc in
+                                                      acc_gradients]
 
-    def compute_gradient(self, mb, elevation, ela, negative=True):
+
+    def compute_gradient(self, mb, elevation, ela, threshold, negative=True):
         mask = mb < 0 if negative else mb > 0
         filtered_mb, filtered_elev = mb[mask], elevation[mask]
         if filtered_mb.size > 0:
             adjusted_elevation = filtered_elev - ela
             gradient = np.sum(adjusted_elevation * filtered_mb) / np.sum(
                 adjusted_elevation ** 2)
-            return gradient if 0 < gradient < 20 else np.nan
+            return gradient if 0 < gradient < threshold else np.nan
         return np.nan
 
     def process_glaciers(self):
@@ -110,38 +113,84 @@ class GlacierAnalysis:
 
     def plot_results(self):
         fig, (ax_ela, ax_abl_grad, ax_acc_grad) = plt.subplots(1, 3,
-                                                               figsize=(15, 5))
-        self.plot_subplot(ax_ela, "ELAS", "ELA", "Mean ELA",
-                          "Mean ELA: {:.0f} ± {:.0f} m")
-        self.plot_subplot(ax_abl_grad, "ablation gradients", "Ablation Gradient",
+                                                               figsize=(10, 3.5))
+        import string
+        labels_subplot = [f"{letter})" for letter in
+                          string.ascii_lowercase[:3]]
+        self.plot_subplot(ax_ela, "ELAS", "Equilibrium Line Altitude (m)",
+                          "Mean ELA",
+                          "Equilibrium Line Altitude:\n{:.0f} ± {:.0f} m", "a)"
+                          )
+        self.plot_subplot(ax_abl_grad, "ablation gradients", "Ablation Gradient (m "
+                                                             "a$^{{-1}}$ km$^{{-1}}$)",
                           "Mean Ablation Gradient",
-                          "Mean Ablation Gradient: \n{:.4f} ± {:.4f} m/a/km")
-        self.plot_subplot(ax_acc_grad, "accumulation gradients",
-                          "Accumulation Gradient", "Mean Accumulation Gradient",
-                          "Mean Accumulation Gradient: \n{:.4f} ± {:.4f} m/a/km",
-                          show_legend=True)
-        plt.tight_layout()
-        plt.savefig('../../Plots/all_gradients.png', dpi=300)
+                          "Ablation Gradient:\n{:.2f} ± {:.2f} m a$^{{-1}}$ "
+                          "km$^{{-1}}$", "b)")
+        self.plot_subplot(
+            ax_acc_grad,
+            "accumulation gradients",
+            "Accumulation Gradient (m a$^{{-1}}$ km$^{{-1}}$)",
+            "Mean Accumulation Gradient",
+            "Accumulation Gradient:\n{:.2f} ± {:.2f} m a$^{{-1}}$ km$^{{-1}}$", "c)",
+            show_legend=True
+        )
 
-    def plot_subplot(self, ax, key, ylabel, mean_key, title_fmt, show_legend=False):
+        plt.tight_layout()
+        plt.savefig('../../Plots/all_gradients.pdf')
+
+    def plot_subplot(self, ax, key, ylabel, mean_key, title_fmt,
+                     label, show_legend=False):
         filtered_df = self.results_df[self.results_df["Years with ELA"] > 15]
 
         data_array = np.array(filtered_df[key].tolist())
         yearly_mean = np.nanmean(data_array, axis=0)
+
+        # Compute mean and standard deviation
+        std = np.nanstd(filtered_df[mean_key])
+        mean = np.nanmean(filtered_df[mean_key])
+
+        # Draw custom box representing 1 std deviation
+        ax.add_patch(
+            plt.Rectangle((2010 - 10, mean - std), 20, 2 * std,
+                          facecolor='black', alpha=0.3, edgecolor='black', zorder=5)
+        )
+
+        # Optionally add a line at the mean
+        ax.hlines(mean, 2010 - 10, 2010 + 10, colors='black', linestyles='-',
+                  linewidth=1.5, label="Distribution\nof 20 year mean", zorder=10)
+
+        # Plot each glacier's time series (no transparency)
         for index, row in filtered_df.iterrows():
-            ax.plot(self.time, row[key], linestyle='-', alpha=0.3,
+            ax.plot(self.time, row[key], linestyle='-', alpha=1.0,  # <- No opacity
                     label=row['Glacier Name'])
 
-        ax.boxplot(filtered_df[mean_key], positions=[2020], widths=0.8)
-        ax.plot(self.time, yearly_mean, linestyle='-', color='black')
-        ax.set_xticks(range(2000, 2021, 5))
-        ax.set_xticklabels(range(2000, 2021, 5))
+
+        ax.set_xticks(range(2000, 2021, 10))
+        ax.set_xticklabels(range(2000, 2021, 10))
         ax.set_xlabel('Year')
         ax.set_ylabel(ylabel)
         ax.set_title(title_fmt.format(np.nanmean(filtered_df[mean_key]),
                                       np.nanstd(filtered_df[mean_key])))
+
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.spines['bottom'].set_visible(False)
+        ax.spines['left'].set_visible(False)
+        ax.grid(axis="y", color="lightgray", linestyle="-", zorder=-5)
+        ax.grid(axis="x", color="lightgray", linestyle="-", zorder=-5)
+        ax.xaxis.set_tick_params(bottom=False)
+        ax.yaxis.set_tick_params(left=False)
+
+        import string
+      # Flatten for easy iteration
+
+
+
+        ax.text(-0.3, 1.1, label, transform=ax.transAxes,
+                    fontsize=12, va='bottom', ha='left', fontweight='bold')
+
         if show_legend:
-            ax.legend(loc="upper left", bbox_to_anchor=(1, 1))
+            ax.legend(loc="upper left", bbox_to_anchor=(1.05, 1.05))
 
 
 if __name__ == "__main__":
