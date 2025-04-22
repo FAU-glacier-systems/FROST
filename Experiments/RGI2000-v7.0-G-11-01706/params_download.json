@@ -1,0 +1,9 @@
+{
+        "modules_preproc": ["oggm_shop"],
+        "modules_process": [],
+        "modules_postproc": [],
+        "oggm_RGI_version": 7,
+        "oggm_RGI_product": "G",
+        "oggm_thk_source": "millan_ice_thickness",
+        "oggm_incl_glathida": true
+    }
