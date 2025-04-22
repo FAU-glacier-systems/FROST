@@ -38,4 +38,4 @@ Framework for assimilating Remote-sensing Observations for Surface Mass Balance 
    python run_calibration.py --rgi_id RGI2000-v7.0-G-11-01706  --ensemble_size 3 --iterations 5
    ```
    Results can be seen in Experitment/RGI2000-v7.0-G-11-1706/..
-![Alt text](Plots/status_6_2020_real.png)
+![Alt text](Plots/status_6_2020_real.pdf)
