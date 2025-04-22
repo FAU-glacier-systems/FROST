@@ -5,5 +5,5 @@
   "results_file": "../../Experiments/RGI2000-v7.0-G-11-01706/hpc_hugonnet/result.json",
   "output_dir": "Rhone/",
   "ablation_density": 1,
-  "accumulation_density": 1
+  "accumulation_density": 0.6
 }

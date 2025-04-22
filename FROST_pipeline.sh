@@ -21,7 +21,7 @@ download=false
 inversion=false
 calibrate=false
 forward_parallel=true
-seed=1
+seed=3
 inflation=1
 
 
@@ -67,8 +67,8 @@ fi
 # 3. Calibration step (if --calibrate is set)
 if [ "$calibrate" = true ]; then
     echo "Starting calibration..."
-    python -u FROST_calibration.py --rgi_id "$rgi_id" --ensemble_size 64 \
+    python -u FROST_calibration.py --rgi_id "$rgi_id" --ensemble_size 32 \
     --forward_parallel "$forward_parallel" --iterations 6 --seed "$seed" \
     --inflation "$inflation" --results_dir "Experiments/${rgi_id}/hpc_hugonnet" \
-    --init_offset 50 --elevation_step 50 --synthetic false
+    --init_offset 0 --elevation_step 50 --synthetic false
 fi

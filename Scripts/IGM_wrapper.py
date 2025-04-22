@@ -89,7 +89,7 @@ def forward(member_id, rgi_dir, usurf, smb, year_interval):
     # Read updated results from the output file
     output_file = os.path.join(member_dir, "output.nc")
     with Dataset(output_file, 'r') as new_ds:
-        new_usurf = np.array(new_ds['usurf'][-1])  # Final surface elevation
+        new_usurf = np.array(new_ds['usurf'][-1]) # Final surface elevation
         new_smb = np.array(new_ds['smb'][-1])  # Final SMB values
 
     return member_id, new_usurf, new_smb
