@@ -268,6 +268,9 @@ class Monitor:
         fig.savefig(
             os.path.join(self.monitor_dir, f"status_{iteration:03d}_{year}.pdf"),
             format='pdf')
+        fig.savefig(
+            os.path.join(self.monitor_dir, f"status_{iteration:03d}_{year}.png"),
+            format='png')
 
         plt.close(fig)
         plt.clf()
@@ -398,6 +401,9 @@ class Monitor:
         fig.savefig(
             os.path.join(self.monitor_dir, f"maps_{iteration:03d}_{year}.pdf"),
             format='pdf')
+        fig.savefig(
+            os.path.join(self.monitor_dir, f"maps_{iteration:03d}_{year}.png"),
+            format='png')
 
         plt.close(fig)
 
