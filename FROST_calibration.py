@@ -6,7 +6,7 @@
 import argparse
 from Scripts.EnsembleKalmanFilter import EnsembleKalmanFilter
 from Scripts.ObservationProvider import ObservationProvider
-from Scripts.Visualization.Monitor_split import Monitor
+from Scripts.Visualization.Monitor import Monitor
 import os
 import numpy as np
 
@@ -56,7 +56,7 @@ def main(rgi_id, synthetic, ensemble_size, inflation, iterations, seed, init_off
                                        obs_uncertainty=obs_uncertainty,
                                        synthetic=synthetic)
     print("Initializing Usurf 2000")
-    year, usurf_ensemble, binned_usurf = obs_provider.initial_usurf(
+    year, usurf_ensemble, binned_usurf, init_surf_bin = obs_provider.initial_usurf(
         num_samples=ensemble_size)
 
     # Initialise an ensemble kalman filter object
@@ -82,13 +82,13 @@ def main(rgi_id, synthetic, ensemble_size, inflation, iterations, seed, init_off
     ################# MAIN LOOP #####################################################
     for i in range(1, iterations + 1):
         # get new observation
-        year, new_observation, noise_matrix, noise_samples \
+        year, new_observation, noise_matrix, noise_samples, obs_dhdt_raster, obs_velsurf_mag_raster \
             = obs_provider.get_next_observation(
             current_year=ensembleKF.current_year,
             num_samples=ensembleKF.ensemble_size)
 
         print(f'Forward pass ensemble to {year}')
-        ensembleKF.forward(year=year, forward_parallel=forward_parallel)
+         #ensembleKF.forward(year=year, forward_parallel=forward_parallel)
 
         ensemble_observables = obs_provider.get_ensemble_observables(
             EnKF_object=ensembleKF)
@@ -108,10 +108,20 @@ def main(rgi_id, synthetic, ensemble_size, inflation, iterations, seed, init_off
             year=year,
             ensemble_observables=ensemble_observables,
             noise_samples=noise_samples)
-        monitor.plot_maps(ensembleKF.ensemble_smb_raster, new_observation,
-                          uncertainty=noise_matrix,
-                          iteration=i, year=year, bedrock=ensembleKF.bedrock)
-        # monitor.visualise_3d(obs_provider.dhdt[2],
+        monitor.plot_maps_prognostic(ensembleKF.ensemble_usurf,
+                                     ensembleKF.ensemble_smb_raster,
+                                     ensembleKF.ensemble_init_surf_raster,
+                                     ensembleKF.ensemble_velsurf_mag_raster,
+                                     ensembleKF.ensemble_divflux_raster,
+                                     obs_dhdt_raster, obs_velsurf_mag_raster,
+                                     init_surf_bin,
+                                     new_observation,
+                                     ensemble_observables,
+                                     uncertainty=noise_matrix,
+                                     iteration=i, year=year,
+                                     bedrock=ensembleKF.bedrock)
+
+        # monitor.visualise_3d(obs_provider.ensemble_usurf[0],
         #                      ensembleKF.ensemble_usurf[0], ensembleKF.bedrock, 2000,
         #                      obs_provider.x, obs_provider.y)
 
