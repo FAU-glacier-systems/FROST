@@ -12,6 +12,7 @@ import shutil
 import concurrent.futures
 import json
 from pathlib import Path
+import copy
 
 
 class EnsembleKalmanFilter:
@@ -79,11 +80,19 @@ class EnsembleKalmanFilter:
         with Dataset(geology_file, 'r') as geology_dataset:
             self.icemask_init = np.array(geology_dataset['icemask'])
             self.bedrock = np.array(geology_dataset['topg'])
+            init_divflux = np.array(geology_dataset['divflux'])
+            init_velsurf_mag = np.array(geology_dataset['velsurf_mag'])
 
         # Initialize placeholders for observable and hidden variables
         self.ensemble_usurf = np.empty((ensemble_size,) + self.icemask_init.shape)
         self.ensemble_smb_raster = np.empty(
             (ensemble_size,) + self.icemask_init.shape)
+
+        self.ensemble_smb_raster = np.empty_like(self.ensemble_smb_raster)
+        self.ensemble_init_surf_raster = np.empty_like(self.ensemble_smb_raster)
+        self.ensemble_velsurf_mag_raster = np.empty_like(self.ensemble_smb_raster)
+        self.ensemble_divflux_raster = np.empty_like(self.ensemble_smb_raster)
+
 
         # Load glacier-specific parameters
         params_file_path = os.path.join('Experiments', rgi_id,
@@ -121,7 +130,8 @@ class EnsembleKalmanFilter:
             print(f'Initializing ensemble member {e}')
 
             self.ensemble_usurf[e] = usurf  # Copy initial surface elevation
-
+            self.ensemble_divflux = copy.copy(init_divflux)
+            self.ensemble_velsurf_mag = copy.copy(init_velsurf_mag)
             # Sample SMB parameters for each member
             member_smb = {
                 key: rng.normal(self.initial_smb[key], self.initial_spread[key])
@@ -170,6 +180,12 @@ class EnsembleKalmanFilter:
         year_interval = year - self.current_year
         workers = os.cpu_count()  # Default worker count
         print(f"Default max workers: {workers}")
+        new_usurf_ensemble = np.empty_like(self.ensemble_usurf)
+        new_smb_raster_ensemble = np.empty_like(self.ensemble_smb_raster)
+        new_init_surf_ensemble = np.empty_like(self.ensemble_smb_raster)
+        new_velsurf_mag_ensemble = np.empty_like(self.ensemble_smb_raster)
+        new_divflux_ensemble = np.empty_like(self.ensemble_smb_raster)
+
         if forward_parallel:
 
             with ThreadPoolExecutor() as executor:
@@ -180,30 +196,37 @@ class EnsembleKalmanFilter:
                     enumerate(zip(self.ensemble_usurf, self.ensemble_smb))
                 ]
 
-                new_usurf_ensemble = np.empty_like(self.ensemble_usurf)
-                new_smb_raster_ensemble = np.empty_like(self.ensemble_smb_raster)
 
                 for future in concurrent.futures.as_completed(futures):
-                    member_id, new_usurf, new_smb_raster = future.result()
+                    member_id, new_usurf, new_smb_raster, init_usurf, new_velsurf_mag, new_divflux = future.result()
                     new_usurf_ensemble[member_id] = new_usurf
                     new_smb_raster_ensemble[member_id] = new_smb_raster
+                    new_init_surf_ensemble[member_id] = init_usurf
+                    new_velsurf_mag_ensemble[member_id] = new_velsurf_mag
+                    new_divflux_ensemble[member_id] = new_divflux
+
 
         else:
-            new_usurf_ensemble = np.empty_like(self.ensemble_usurf)
-            new_smb_raster_ensemble = np.empty_like(self.ensemble_smb_raster)
+
 
             for member_id, (usurf, smb) in enumerate(
                     zip(self.ensemble_usurf, self.ensemble_smb)):
-                member_id, new_usurf, new_smb_raster = IGM_wrapper.forward(member_id,
+                member_id, new_usurf, new_smb_raster, init_usurf, new_velsurf_mag, new_divflux = IGM_wrapper.forward(member_id,
                                                                            self.rgi_id_dir,
                                                                            usurf,
                                                                            smb,
                                                                            year_interval)
                 new_usurf_ensemble[member_id] = new_usurf
                 new_smb_raster_ensemble[member_id] = new_smb_raster
+                new_init_surf_ensemble[member_id] = init_usurf
+                new_velsurf_mag_ensemble[member_id] = new_velsurf_mag
+                new_divflux_ensemble[member_id] = new_divflux
 
         self.ensemble_usurf = new_usurf_ensemble
         self.ensemble_smb_raster = new_smb_raster_ensemble
+        self.ensemble_init_surf_raster = new_init_surf_ensemble
+        self.ensemble_velsurf_mag_raster = new_velsurf_mag_ensemble
+        self.ensemble_divflux_raster = new_divflux_ensemble
         self.ensemble_usurf_log.append(new_usurf_ensemble)
         self.current_year = int(year)
 

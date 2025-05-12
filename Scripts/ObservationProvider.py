@@ -91,15 +91,17 @@ class ObservationProvider:
 
         # Load important values from the observation file
         with Dataset(observation_file, 'r') as ds:
-            # self.dhdt = ds['dhdt'][:]  # Surface elevation change rate (dH/dt)
-            # self.dhdt_err = ds['dhdt_err'][:]  # Uncertainty of dH/dt
+            self.dhdt = ds['dhdt'][:]  # Surface elevation change rate (dH/dt)
+            self.dhdt_err = ds['dhdt_err'][:]  # Uncertainty of dH/dt
             self.icemask = np.array(ds['icemask'][:][0])  # Binary glacier mask
             self.usurf = ds['usurf'][:]  # Surface elevation
-            self.usurf_err = ds['usurf_err'][:]  # Uncertainty in surface elevation
+            self.usurf_err = ds['usurf_err'][:]
+            self.velsurf_mag = ds['velsurf_mag'][:]  #
             self.time_period = np.array(ds['time'][:]).astype(
                 int)  # Time period array
             self.x = ds['x'][:]  # X-coordinates (longitude)
             self.y = ds['y'][:]  # Y-coordinates (latitude)
+
 
         # Compute the spatial resolution from the coordinate grid
         self.resolution = int(self.x[1] - self.x[0])
@@ -168,7 +170,7 @@ class ObservationProvider:
                                                       noise_matrix,
                                                       size=num_samples)
 
-        return year, usurf_line, noise_matrix, noise_samples
+        return year, usurf_line, noise_matrix, noise_samples, self.dhdt, self.velsurf_mag
 
     def initial_usurf(self, num_samples, sample=False):
         index = 0
@@ -215,8 +217,8 @@ class ObservationProvider:
         for usurf in ensemble_usurf:
             binned_usurf.append(self.average_elevation_bin(usurf))
 
-
-        return int(year), ensemble_usurf, np.array(binned_usurf)
+        return int(year), ensemble_usurf, np.array(
+            binned_usurf), self.average_elevation_bin(usurf_raster)
 
     def compute_bin_variance(self, usurf_raster, usurf_err_raster, nan_mask):
         bin_variance = []
