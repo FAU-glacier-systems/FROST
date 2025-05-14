@@ -88,10 +88,9 @@ class EnsembleKalmanFilter:
         self.ensemble_smb_raster = np.empty(
             (ensemble_size,) + self.icemask_init.shape)
 
-        self.ensemble_smb_raster = np.empty_like(self.ensemble_smb_raster)
-        self.ensemble_init_surf_raster = np.empty_like(self.ensemble_smb_raster)
-        self.ensemble_velsurf_mag_raster = np.empty_like(self.ensemble_smb_raster)
-        self.ensemble_divflux_raster = np.empty_like(self.ensemble_smb_raster)
+        self.ensemble_smb_raster = np.zeros_like(self.ensemble_smb_raster)
+        self.ensemble_velsurf_mag_raster = np.zeros_like(self.ensemble_smb_raster)
+        self.ensemble_divflux_raster = np.zeros_like(self.ensemble_smb_raster)
 
 
         # Load glacier-specific parameters
@@ -152,6 +151,8 @@ class EnsembleKalmanFilter:
                             member_iceflow_dir)
 
         # Logging initialization
+        self.ensemble_init_surf_raster = copy.copy(self.ensemble_usurf)
+
         self.ensemble_usurf_log = [self.ensemble_usurf]
         self.ensemble_smb_log = {key: [[] for _ in range(self.ensemble_size)] for key
                                  in self.initial_smb}

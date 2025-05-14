@@ -169,8 +169,9 @@ class ObservationProvider:
         noise_samples = np.random.multivariate_normal(np.zeros_like(usurf_line),
                                                       noise_matrix,
                                                       size=num_samples)
-
-        return year, usurf_line, noise_matrix, noise_samples, self.dhdt, self.velsurf_mag
+        dhdt = self.dhdt[next_index]
+        velocity = self.velsurf_mag[next_index]
+        return year, usurf_line, noise_matrix, noise_samples, dhdt, velocity
 
     def initial_usurf(self, num_samples, sample=False):
         index = 0

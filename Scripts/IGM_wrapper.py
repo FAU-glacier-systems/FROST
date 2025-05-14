@@ -90,9 +90,9 @@ def forward(member_id, rgi_dir, usurf, smb, year_interval):
     output_file = os.path.join(member_dir, "output.nc")
     with Dataset(output_file, 'r') as new_ds:
         new_usurf = np.array(new_ds['usurf'][-1]) # Final surface elevation
-        new_smb = np.array(new_ds['smb'][-1])  # Final SMB values
+        new_smb = np.mean(np.array(new_ds['smb']), axis=0) # Final SMB values
         init_usurf = np.array(new_ds['usurf'][0])
-        new_velsurf_mag = np.array(new_ds['velsurf_mag'][-1])
-        new_divflux = np.array(new_ds['divflux'][-1])
+        new_velsurf_mag = np.array(new_ds['velsurf_mag'][1])
+        new_divflux = np.array(new_ds['divflux'][1])
 
     return member_id, new_usurf, new_smb, init_usurf, new_velsurf_mag, new_divflux

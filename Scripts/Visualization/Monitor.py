@@ -9,6 +9,7 @@ import numpy as np
 import plotly.graph_objects as go
 import copy
 import pyproj
+from itertools import product, accumulate
 
 
 class Monitor:
@@ -48,26 +49,26 @@ class Monitor:
         self.observation_std_log = {key: [] for key in self.keys}
 
         if synthetic:
-# start JJF
+            # start JJF
             self.density_factor = {'melt_f': 1,
                                    'prcp_fac': 1,
                                    'temp_bias': 1}
             self.density_factor = {'ela': 1,
-                                  'gradabl': 1,#0.91,
-                                  'gradacc': 1,
-                                  }
-# end JJF
+                                   'gradabl': 1,  # 0.91,
+                                   'gradacc': 1,
+                                   }
+        # end JJF
 
         else:
-# start JJF
+            # start JJF
             self.density_factor = {'melt_f': 1,
                                    'prcp_fac': 1,
                                    'temp_bias': 1}
             self.density_factor = {'ela': 1,
-                                  'gradabl': 0.91, # 0.91,
-                                  'gradacc': 0.55,
-                                  }
-# end JJF
+                                   'gradabl': 0.91,  # 0.91,
+                                   'gradacc': 0.55,
+                                   }
+        # end JJF
         if self.plot_dhdt:
             self.plot_style = dict(
                 mean_usurf=dict(y_label='Mean surface elevation \n change 2000- '
@@ -79,15 +80,15 @@ class Monitor:
                 point2=dict(y_label=f'Mean surface elevation\nof fifth bin from '
                                     f'top ('
                                     f'm)'),
-# start JJF
+                # start JJF
                 melt_f=dict(y_label='Melt Factor OGGM\n( mm w.e. / (C day) )'),
                 prcp_fac=dict(y_label='Precipitation Factor \n( - )'),
                 temp_bias=dict(y_label='Temperature Bias ( C )'),
-                #ela=dict(y_label='Equilibrium Line\nAltitude (m)'),
-                #gradabl=dict(y_label='Ablation Gradient\n(m a$^{-1}$ km$^{-1}$)'),
-                #gradacc=dict(
+                # ela=dict(y_label='Equilibrium Line\nAltitude (m)'),
+                # gradabl=dict(y_label='Ablation Gradient\n(m a$^{-1}$ km$^{-1}$)'),
+                # gradacc=dict(
                 #    y_label='Accumulation Gradient\n(m a$^{-1}$ km$^{-1}$)'),
-# end JJF
+                # end JJF
             )
 
         else:
@@ -99,15 +100,15 @@ class Monitor:
                 point2=dict(y_label=f'Mean surface elevation\nof fifth bin from '
                                     f'top ('
                                     f'm)'),
-# start JJF
+                # start JJF
                 melt_f=dict(y_label='Melt Factor OGGM\n( mm w.e. / (C day) )'),
                 prcp_fac=dict(y_label='Precipitation Factor \n( - )'),
                 temp_bias=dict(y_label='Temperature Bias ( C )'),
                 ela=dict(y_label='Equilibrium Line\nAltitude (m)'),
                 gradabl=dict(y_label='Ablation Gradient\n(m a$^{-1}$ km$^{-1}$)'),
                 gradacc=dict(
-                   y_label='Accumulation Gradient\n(m a$^{-1}$ km$^{-1}$)'),
-# end JJF
+                    y_label='Accumulation Gradient\n(m a$^{-1}$ km$^{-1}$)'),
+                # end JJF
             )
 
     def summarise_observables(self, ensemble_observables, new_observables,
@@ -291,366 +292,194 @@ class Monitor:
         plt.close(fig)
         plt.clf()
 
-    def plot_maps(self, ensemble_smb_raster, new_observation, uncertainty,
-                  iteration, year, bedrock):
+    def set_axis_labels(self, ax, x_ticks, y_ticks, show_x=True, show_y=True):
+        if show_x:
+            ax.set_xlabel('km')
+        if show_y:
+            ax.set_ylabel('km')
+        ax.set_xticks(x_ticks)
+        ax.set_yticks(y_ticks)
 
-        ###################### MAPS #################################################
-        fig, ax = plt.subplots(1, 4, figsize=(11, 3.5))
-        # Define x and y ticks for both plots
-# start JJF
-        x_ticks = np.arange(0, self.bin_map.shape[1] - 0,
-                            step=self.resolution)  # Adjust step as needed
-        y_ticks = np.arange(0, self.bin_map.shape[0] - 0 + 1, step=self.resolution)
-# end JJF
-
-# start JJF
-        #p = 25
-        p = 1
-# end JJF
-        for i in range(4):
-            surface_im = ax[i].imshow(bedrock[p:-p, p:-p],
-                                      cmap='gray', vmin=1450,
-                                      vmax=3600,
-                                      origin='lower')
-
-        def formatter(x, pos):
-            del pos
+        def formatter(x, _):
             return str(int(x * self.resolution / 1000))
 
-            # Common function for setting axis properties
+        ax.xaxis.set_major_formatter(formatter)
+        ax.yaxis.set_major_formatter(formatter)
+        ax.grid(axis="y", color="black", linestyle="--", zorder=-1, alpha=.2)
+        ax.grid(axis="x", color="black", linestyle="--", zorder=-1, alpha=.2)
+        ax.xaxis.set_tick_params(bottom=False)
+        ax.yaxis.set_tick_params(left=False)
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.spines['bottom'].set_visible(False)
+        ax.spines['left'].set_visible(False)
 
-        def set_axis_labels(ax, show_x=True, show_y=True):
-            if show_x:
-                ax.set_xlabel('km')
-            if show_y:
-                ax.set_ylabel('km')
-            ax.set_xticks(x_ticks)
-            ax.set_yticks(y_ticks)
-            ax.xaxis.set_major_formatter(formatter)
-            ax.yaxis.set_major_formatter(formatter)
-            ax.grid(axis="y", color="black", linestyle="--", zorder=-1, alpha=.2)
-            ax.grid(axis="x", color="black", linestyle="--", zorder=-1, alpha=.2)
-            ax.xaxis.set_tick_params(bottom=False)
-            ax.yaxis.set_tick_params(left=False)
-            ax.spines['top'].set_visible(False)
-            ax.spines['right'].set_visible(False)
-            ax.spines['bottom'].set_visible(False)
-            ax.spines['left'].set_visible(False)
+    def vector_to_map(self, new_observation):
+        obs_mapped = np.full_like(self.bin_map, np.nan, dtype=np.float32)
+        for bin_id, value in enumerate(new_observation, start=1):
+            obs_mapped[self.bin_map == bin_id] = value
+        obs_mapped[self.bin_map == 0] = np.nan
+        return obs_mapped
 
-        # Observation Map
-        def map_observation(new_observation):
-            obs_mapped = np.full_like(self.bin_map, np.nan, dtype=np.float32)
-            for bin_id, value in enumerate(new_observation, start=1):
-                obs_mapped[self.bin_map == bin_id] = value
-            obs_mapped[self.bin_map == 0] = np.nan
-            return obs_mapped
+    def plot_glacier_property_map(self, ax, data_map, x_ticks, y_ticks,
+                                  crop_padding, title, colorlabel, vmin=-10, vmax=10,
+                                  cmap='seismic_r', mask=None):
+        """
+        Plot a glacier property map (e.g., elevation change, velocity, SMB) on the given Axes.
 
-        obs_mapped = map_observation(new_observation)
+        Parameters:
+            cmap:
+            colorlabel:
+            title:
+            ax (matplotlib.axes.Axes): Target axes for the plot.
+            data_map (np.ndarray): 2D array of the glacier property.
+            x_ticks, y_ticks (list): Tick positions in grid units.
+            crop_padding (int): Number of pixels to crop on all sides.
+        """
+        if mask is None:
+            mask = self.icemask_init == 1
+        data_map[mask==0] = np.nan  # Mask non-glacier areas
+        cropped = data_map[crop_padding:-crop_padding, crop_padding:-crop_padding]
 
-        ax_obs_map = ax[0]
+        img = ax.imshow(cropped, cmap=cmap, vmin=vmin, vmax=vmax,
+                        origin='lower',
+                        zorder=3)
+        plt.colorbar(img, ax=ax, orientation='vertical').set_label(colorlabel)
 
-        img_obs = ax_obs_map.imshow(obs_mapped[p:-p, p:-p], origin='lower',
-                                    cmap='Blues_r',
-                                    vmin=new_observation[0],
-                                    vmax=new_observation[-1], zorder=3)
-        plt.colorbar(img_obs, ax=ax_obs_map, orientation='vertical').set_label(
-            'Surface Elevation (m)')
-        if self.synthetic:
-            title = 'Elevation in 2019\n[Synthetic]'
-        else:
-            title = 'Elevation in 2019\n[Hugonnet21]'
-        ax_obs_map.set_title(title)
-        set_axis_labels(ax_obs_map, show_x=True, show_y=True)
+        self.set_axis_labels(ax, x_ticks, y_ticks, show_x=True, show_y=False)
 
-        obs_std_mapped = map_observation(np.sqrt(np.diagonal(uncertainty)))
-        ax_obs_std_map = ax[1]
-        img_obs_std = ax_obs_std_map.imshow(obs_std_mapped[p:-p, p:-p],
-                                            origin='lower',
-                                            cmap='Blues', zorder=3)
-        plt.colorbar(img_obs_std, ax=ax_obs_std_map,
-                     orientation='vertical').set_label('Elevation Uncertainty (m)')
-        if self.synthetic:
-            title = 'Elevation Uncertainty\n[Synthetic]'
-        else:
-            title = 'Elevation Uncertainty\n[Hugonnet21]'
-        ax_obs_std_map.set_title(title)
-        set_axis_labels(ax_obs_std_map, show_x=True, show_y=False)
+        mean_val = np.nanmean(data_map[mask])
+        ax.set_title(f"{title}\nMean: {mean_val:.2f} m a$^{{-1}}$")
 
-        # Surface Mass Balance (SMB) Map
-        mean_smb_raster = np.mean(ensemble_smb_raster, axis=0)
-        mean_smb_raster[self.icemask_init == 0] = np.nan  # Mask ice-free areas
-
-        ax_smb_map = ax[2]
-        smb_img = ax_smb_map.imshow(mean_smb_raster[p:-p, p:-p], cmap='RdBu',
-                                    vmin=-10, vmax=10,
-                                    origin='lower', zorder=3)
-        plt.colorbar(smb_img, ax=ax_smb_map, orientation='vertical').set_label(
-            'Surface Mass Balance (m a$^{-1}$)')
-        ax_smb_map.set_title('Estimated SMB')
-        set_axis_labels(ax_smb_map, show_x=True, show_y=False)
-
-        # Surface Mass Balance (SMB) Map
-        std_smb_raster = np.std(ensemble_smb_raster, axis=0)
-        std_smb_raster[self.icemask_init == 0] = np.nan  # Mask ice-free areas
-
-        ax_smb_std_map = ax[3]
-
-        std_smb_img = ax_smb_std_map.imshow(std_smb_raster[p:-p, p:-p],
-                                            cmap='YlOrBr',
-                                            origin='lower', zorder=3,
-                                            vmin=0,
-                                            vmax=1)
-        plt.colorbar(std_smb_img, ax=ax_smb_std_map,
-                     orientation='vertical').set_label('SMB Uncertainty (m a$^{'
-                                                       '-1}$)')
-        ax_smb_std_map.set_title('SMB Uncertainty')
-        set_axis_labels(ax_smb_std_map, show_x=True, show_y=False)
-
-        import string
-        axes = ax.flatten()  # Flatten for easy iteration
-
-        labels_subplot = [f"{letter})" for letter in
-                          string.ascii_lowercase[:len(axes)]]
-
-        for ax, label in zip(axes, labels_subplot):
-            # Add label to lower-left corner (relative coordinates)
-            ax.text(-0.35, 1.01, label, transform=ax.transAxes,
-                    fontsize=12, va='bottom', ha='left', fontweight='bold')
-
-        fig.tight_layout()
-        plt.subplots_adjust(wspace=0.5, left=0.05)
-
-        fig.savefig(
-            os.path.join(self.monitor_dir, f"maps_{iteration:03d}_{year}.pdf"),
-            format='png')
-
-        plt.close(fig)
-
-        plt.clf()
-
-    def plot_maps_prognostic(self, ensemble_usurf, ensemble_smb_raster, ensemble_init_surf_raster, ensemble_velsurf_mag_raster, ensemble_divflux_raster, obs_dhdt_raster, obs_velsurf_mag_raster, init_surf_bin, new_observation, modeled_observables, uncertainty, iteration, year, bedrock):
+    def plot_maps_prognostic(self, ensembleKF, obs_dhdt_raster,
+                             obs_velsurf_mag_raster, init_surf_bin, new_observation,
+                             modeled_surface, uncertainty, iteration, year,
+                             bedrock):
 
         ###################### MAPS #################################################
-        fig, ax = plt.subplots(2, 4, figsize=(15, 8))
+        nrows = 2
+        ncols = 4
+        fig, ax = plt.subplots(nrows, ncols, figsize=(15, 10))
+
         # Define x and y ticks for both plots
-# start JJF
-        x_ticks = np.arange(0, self.bin_map.shape[1] - 0,
-                            step=self.resolution)  # Adjust step as needed
-        y_ticks = np.arange(0, self.bin_map.shape[0] - 0 + 1, step=self.resolution)
-# end JJF
 
-# start JJF
-        #p = 25
-        p = 1
-# end JJF
-        for ii in range(4):
-            for jj in range(2):
-                surface_im = ax[jj,ii].imshow(bedrock[p:-p, p:-p],
-                                      cmap='gray', vmin=1450,
-                                      vmax=3600,
-                                      origin='lower')
+        crop_padding = 25
+        x_ticks = np.arange(crop_padding, self.bin_map.shape[1] - crop_padding * 2,
+                            step=self.resolution)
+        y_ticks = np.arange(crop_padding, self.bin_map.shape[0] - crop_padding * 2,
+                            step=self.resolution)
 
-        def formatter(x, pos):
-            del pos
-            return str(int(x * self.resolution / 1000))
+        cropped_bedrock = bedrock[crop_padding:-crop_padding,
+                          crop_padding:-crop_padding]
 
-            # Common function for setting axis properties
+        for row, col in product(range(nrows), range(ncols)):
+            ax[row, col].imshow(cropped_bedrock, cmap='gray',
+                                vmin=1450, vmax=3600, origin='lower')
 
-        def set_axis_labels(ax, show_x=True, show_y=True):
-            if show_x:
-                ax.set_xlabel('km')
-            if show_y:
-                ax.set_ylabel('km')
-            ax.set_xticks(x_ticks)
-            ax.set_yticks(y_ticks)
-            ax.xaxis.set_major_formatter(formatter)
-            ax.yaxis.set_major_formatter(formatter)
-            ax.grid(axis="y", color="black", linestyle="--", zorder=-1, alpha=.2)
-            ax.grid(axis="x", color="black", linestyle="--", zorder=-1, alpha=.2)
-            ax.xaxis.set_tick_params(bottom=False)
-            ax.yaxis.set_tick_params(left=False)
-            ax.spines['top'].set_visible(False)
-            ax.spines['right'].set_visible(False)
-            ax.spines['bottom'].set_visible(False)
-            ax.spines['left'].set_visible(False)
+        surface = np.mean(ensembleKF.ensemble_usurf, axis=0)
+        thk = surface - bedrock
+        new_mask = thk > 0
+        # Observed elevation change
+        self.plot_glacier_property_map(ax=ax[0, 0],
+                                       data_map=obs_dhdt_raster,
+                                       x_ticks=x_ticks,
+                                       y_ticks=y_ticks,
+                                       crop_padding=crop_padding,
+                                       title='Observed\nElevation Change',
+                                       colorlabel='Elevation Change (m a$^{-1}$)',
+                                       mask=new_mask)
 
-        # Observed elevation change (modelled)
-        mean_smb_raster = np.mean((obs_dhdt_raster), axis=0)
-        mean_smb_raster[self.icemask_init == 0] = np.nan  # Mask ice-free areas
+        # Observed Elevation Changes binned
+        binned_difference = (new_observation - init_surf_bin) / 19
+        new_observation_mapped = self.vector_to_map(binned_difference)
 
-        ax_smb_map = ax[0,0]
-        smb_img = ax_smb_map.imshow(mean_smb_raster[p:-p, p:-p], cmap='seismic',
-                                    vmin=-10, vmax=10,
-                                    origin='lower', zorder=3)
-        plt.colorbar(smb_img, ax=ax_smb_map, orientation='vertical').set_label(
-            'Elevation Change (m a$^{-1}$)')
-        ax_smb_map.set_title('Observed Elevation Change')
-        set_axis_labels(ax_smb_map, show_x=True, show_y=False)
-
-        mean_mean_value = str(np.floor(np.nansum(np.nansum(mean_smb_raster))/np.nansum(np.nansum(self.icemask_init))*100)/100)
-        ax_xmin=ax_smb_map.get_xlim()[0]
-        ax_xmax=ax_smb_map.get_xlim()[1]
-        ax_ymin=ax_smb_map.get_ylim()[0]
-        ax_ymax=ax_smb_map.get_ylim()[-1]
-        ax_dx = ax_xmax-ax_xmin
-        ax_dy = ax_ymax-ax_ymin
-        ax_smb_map.text(0.1*ax_dx+ax_xmin,0.9*ax_dy+ax_ymin, mean_mean_value+' i.e. m / yr', fontweight='bold')
-
-        # Obs. Elevation Changes (binned)
-        # Observation Map
-        binned_difference=(new_observation-init_surf_bin)/20.0
-        def map_observation(new_observation):
-            obs_mapped = np.full_like(self.bin_map, np.nan, dtype=np.float32)
-            for bin_id, value in enumerate(new_observation, start=1):
-                obs_mapped[self.bin_map == bin_id] = value
-            obs_mapped[self.bin_map == 0] = np.nan
-            return obs_mapped
-
-        obs_mapped = map_observation(binned_difference)
-
-        ax_obs_map = ax[0,1]
-
-        img_obs = ax_obs_map.imshow(obs_mapped[p:-p, p:-p], origin='lower',
-                                    cmap='seismic',
-                                    vmin=-10,
-                                    vmax=10, zorder=3)
-        plt.colorbar(img_obs, ax=ax_obs_map, orientation='vertical').set_label(
-            'Elevation Change (m a$^{-1}$)')
-        title = 'Obs. Elevation Change binned'
-        ax_obs_map.set_title(title)
-        set_axis_labels(ax_obs_map, show_x=True, show_y=True)
-
-        mean_mean_value = str(np.floor(np.nansum(np.nansum(obs_mapped))/np.nansum(np.nansum(self.icemask_init))*100)/100)
-        ax_xmin=ax_smb_map.get_xlim()[0]
-        ax_xmax=ax_smb_map.get_xlim()[1]
-        ax_ymin=ax_smb_map.get_ylim()[0]
-        ax_ymax=ax_smb_map.get_ylim()[-1]
-        ax_dx = ax_xmax-ax_xmin
-        ax_dy = ax_ymax-ax_ymin
-        ax_obs_map.text(0.1*ax_dx+ax_xmin,0.9*ax_dy+ax_ymin, mean_mean_value+' i.e. m / yr', fontweight='bold')
-
-
-        # Modelled elevation Change (binned)
-        ensemble_obs_mean = np.mean(modeled_observables, axis=0)
-        binned_difference=(ensemble_obs_mean-init_surf_bin)/20.0
-
-        obs_mapped = map_observation(binned_difference)
-
-        ax_obs_map = ax[0,2]
-
-        img_obs = ax_obs_map.imshow(obs_mapped[p:-p, p:-p], origin='lower',
-                                    cmap='seismic',
-                                    vmin=-10,
-                                    vmax=10, zorder=3)
-        plt.colorbar(img_obs, ax=ax_obs_map, orientation='vertical').set_label(
-            'Elevation Change (m a$^{-1}$)')
-        title = 'Modelled Elevation Change binned'
-        ax_obs_map.set_title(title)
-        set_axis_labels(ax_obs_map, show_x=True, show_y=True)
-
-        mean_mean_value = str(np.floor(np.nansum(np.nansum(obs_mapped))/np.nansum(np.nansum(self.icemask_init))*100)/100)
-        ax_xmin=ax_smb_map.get_xlim()[0]
-        ax_xmax=ax_smb_map.get_xlim()[1]
-        ax_ymin=ax_smb_map.get_ylim()[0]
-        ax_ymax=ax_smb_map.get_ylim()[-1]
-        ax_dx = ax_xmax-ax_xmin
-        ax_dy = ax_ymax-ax_ymin
-        ax_obs_map.text(0.1*ax_dx+ax_xmin,0.9*ax_dy+ax_ymin, mean_mean_value+' i.e. m / yr', fontweight='bold')
+        self.plot_glacier_property_map(ax=ax[0, 1],
+                                       data_map=new_observation_mapped,
+                                       x_ticks=x_ticks,
+                                       y_ticks=y_ticks,
+                                       crop_padding=crop_padding,
+                                       title='Observed\nElevation Change binned',
+                                       colorlabel='Elevation Change (m a$^{-1}$)',
+                                       mask=new_mask)
 
         # Observed velocities
-        mean_smb_raster = np.mean((obs_velsurf_mag_raster), axis=0)
-        mean_smb_raster[self.icemask_init == 0] = np.nan  # Mask ice-free areas
-
-        ax_smb_map = ax[0,3]
-        smb_img = ax_smb_map.imshow(mean_smb_raster[p:-p, p:-p], cmap='plasma_r',
-                                    vmin=0.1, vmax=100,
-                                    origin='lower', zorder=3)
-        plt.colorbar(smb_img, ax=ax_smb_map, orientation='vertical').set_label(
-            'Velocity(m a$^{-1}$)')
-        ax_smb_map.set_title('Observed Surface Velocity')
-        set_axis_labels(ax_smb_map, show_x=True, show_y=False)
+        obs_velsurf_mag_raster[
+            self.icemask_init == 0] = np.nan  # Mask ice-free areas
+        self.plot_glacier_property_map(ax=ax[0, 2],
+                                       data_map=obs_velsurf_mag_raster,
+                                       x_ticks=x_ticks,
+                                       y_ticks=y_ticks,
+                                       crop_padding=crop_padding,
+                                       title='Observed\nSurface Velocity',
+                                       colorlabel='Surface Velocity (m a$^{-1}$)',
+                                       vmin=0,
+                                       vmax=np.nanmax(obs_velsurf_mag_raster),
+                                       cmap='magma')
 
         # Estimated elevation change (modelled)
-        mean_smb_raster = np.mean((ensemble_usurf-ensemble_init_surf_raster)/20., axis=0)
-        mean_smb_raster[self.icemask_init == 0] = np.nan  # Mask ice-free areas
+        ensemble_usurf = np.mean(ensembleKF.ensemble_usurf, axis=0)
+        init_usurf = np.mean(ensembleKF.ensemble_init_surf_raster, axis=0)
+        modeled_dhdt = (ensemble_usurf - init_usurf) / 19
+        self.plot_glacier_property_map(ax=ax[1, 0],
+                                       data_map=modeled_dhdt,
+                                       x_ticks=x_ticks,
+                                       y_ticks=y_ticks,
+                                       crop_padding=crop_padding,
+                                       title='Modelled\nElevation Change',
+                                       colorlabel='Elevation Change (m a$^{-1}$)',
+                                       mask=new_mask)
 
-        ax_smb_map = ax[1,0]
-        smb_img = ax_smb_map.imshow(mean_smb_raster[p:-p, p:-p], cmap='seismic',
-                                    vmin=-10, vmax=10,
-                                    origin='lower', zorder=3)
-        plt.colorbar(smb_img, ax=ax_smb_map, orientation='vertical').set_label(
-            'Elevation Change (m a$^{-1}$)')
-        ax_smb_map.set_title('Modelled Elevation Change')
-        set_axis_labels(ax_smb_map, show_x=True, show_y=False)
+        # Modelled elevation Change (binned)
+        ensemble_surface_mean = np.mean(modeled_surface, axis=0)
+        ensemble_dhdt_mean = (ensemble_surface_mean - init_surf_bin) / 19
+        ensemble_dhdt_mean_mapped = self.vector_to_map(ensemble_dhdt_mean)
+        self.plot_glacier_property_map(ax=ax[1, 1],
+                                       data_map=ensemble_dhdt_mean_mapped,
+                                       x_ticks=x_ticks,
+                                       y_ticks=y_ticks,
+                                       crop_padding=crop_padding,
+                                       title='Modelled\nElevation Change binned',
+                                       colorlabel='Elevation Change (m a$^{-1}$)',
+                                       mask=new_mask)
 
-        mean_mean_value = str(np.floor(np.nansum(np.nansum(mean_smb_raster))/np.nansum(np.nansum(self.icemask_init))*100)/100)
-        ax_xmin=ax_smb_map.get_xlim()[0]
-        ax_xmax=ax_smb_map.get_xlim()[1]
-        ax_ymin=ax_smb_map.get_ylim()[0]
-        ax_ymax=ax_smb_map.get_ylim()[-1]
-        ax_dx = ax_xmax-ax_xmin
-        ax_dy = ax_ymax-ax_ymin
-        ax_smb_map.text(0.1*ax_dx+ax_xmin,0.9*ax_dy+ax_ymin, mean_mean_value+' i.e. m / yr', fontweight='bold')
+        # modelled velocity
+        modelled_velocity = np.mean(ensembleKF.ensemble_velsurf_mag_raster, axis=0)
+        modelled_velocity[self.icemask_init == 0] = np.nan  # Mask ice-free areas
+        self.plot_glacier_property_map(ax=ax[1, 2],
+                                       data_map=modelled_velocity,
+                                       x_ticks=x_ticks,
+                                       y_ticks=y_ticks,
+                                       crop_padding=crop_padding,
+                                       title='Modelled\nSurface Velocity',
+                                       colorlabel='Surface Velocity (m a$^{-1}$)',
+                                       vmin=0,
+                                       vmax=np.nanmax(obs_velsurf_mag_raster),
+                                       cmap='magma')
 
 
         # Surface Mass Balance (SMB) Map
-        mean_smb_raster = np.mean(ensemble_smb_raster, axis=0)
+        mean_smb_raster = np.mean(ensembleKF.ensemble_smb_raster, axis=0)
         mean_smb_raster[self.icemask_init == 0] = np.nan  # Mask ice-free areas
 
-        ax_smb_map = ax[1,1]
-        smb_img = ax_smb_map.imshow(mean_smb_raster[p:-p, p:-p], cmap='RdBu',
-                                    vmin=-10, vmax=10,
-                                    origin='lower', zorder=3)
-        plt.colorbar(smb_img, ax=ax_smb_map, orientation='vertical').set_label(
-            'Surface Mass Balance (m a$^{-1}$)')
-        ax_smb_map.set_title('Modelled SMB')
-        set_axis_labels(ax_smb_map, show_x=True, show_y=False)
-
-        mean_mean_value = str(np.floor(np.nansum(np.nansum(mean_smb_raster))/np.nansum(np.nansum(self.icemask_init))*100)/100)
-        ax_xmin=ax_smb_map.get_xlim()[0]
-        ax_xmax=ax_smb_map.get_xlim()[1]
-        ax_ymin=ax_smb_map.get_ylim()[0]
-        ax_ymax=ax_smb_map.get_ylim()[-1]
-        ax_dx = ax_xmax-ax_xmin
-        ax_dy = ax_ymax-ax_ymin
-        ax_smb_map.text(0.1*ax_dx+ax_xmin,0.9*ax_dy+ax_ymin, mean_mean_value+' i.e. m / yr', fontweight='bold')
-
-
-        # Surface Velocity Magnitude Map
-        mean_smb_raster = np.mean(ensemble_velsurf_mag_raster, axis=0)
-        mean_smb_raster[self.icemask_init == 0] = np.nan  # Mask ice-free areas
-
-        ax_smb_map = ax[1,3]
-        smb_img = ax_smb_map.imshow(mean_smb_raster[p:-p, p:-p], cmap='plasma_r',
-                                    vmin=0.1, vmax=100,
-                                    origin='lower', zorder=3)
-        plt.colorbar(smb_img, ax=ax_smb_map, orientation='vertical').set_label(
-            'Velocity (m a$^{-1}$)')
-        ax_smb_map.set_title('Modelled Surface Velocity')
-        set_axis_labels(ax_smb_map, show_x=True, show_y=False)
-
+        self.plot_glacier_property_map(ax=ax[1, 3],
+                                       data_map=mean_smb_raster,
+                                       x_ticks=x_ticks,
+                                       y_ticks=y_ticks,
+                                       crop_padding=crop_padding,
+                                       title='Modelled\nSurface Mass Balance',
+                                       colorlabel='Surface Mass Balance (m a$^{'
+                                                  '-1}$)', mask=new_mask)
+  
         # Flux Divergence Map
-        mean_smb_raster = np.mean(ensemble_divflux_raster, axis=0)
+        mean_smb_raster = np.mean(ensembleKF.ensemble_divflux_raster, axis=0)
         mean_smb_raster[self.icemask_init == 0] = np.nan  # Mask ice-free areas
-
-        ax_smb_map = ax[1,2]
-        smb_img = ax_smb_map.imshow(mean_smb_raster[p:-p, p:-p], cmap='PiYG',
-                                    vmin=-10, vmax=10,
-                                    origin='lower', zorder=3)
-        plt.colorbar(smb_img, ax=ax_smb_map, orientation='vertical').set_label(
-            'Flux Divergence (m a$^{-1}$)')
-        ax_smb_map.set_title('Modelled Flux Divergence')
-        set_axis_labels(ax_smb_map, show_x=True, show_y=False)
-
-        mean_mean_value = str(np.floor(np.nansum(np.nansum(mean_smb_raster))/np.nansum(np.nansum(self.icemask_init))*100)/100)
-        ax_xmin=ax_smb_map.get_xlim()[0]
-        ax_xmax=ax_smb_map.get_xlim()[1]
-        ax_ymin=ax_smb_map.get_ylim()[0]
-        ax_ymax=ax_smb_map.get_ylim()[-1]
-        ax_dx = ax_xmax-ax_xmin
-        ax_dy = ax_ymax-ax_ymin
-        ax_smb_map.text(0.1*ax_dx+ax_xmin,0.9*ax_dy+ax_ymin, mean_mean_value+' i.e. m / yr', fontweight='bold')
-
+        self.plot_glacier_property_map(ax=ax[0, 3],
+                                       data_map=mean_smb_raster,
+                                       x_ticks=x_ticks,
+                                       y_ticks=y_ticks,
+                                       crop_padding=crop_padding,
+                                       title='Modelled\nFlux Divergence',
+                                       colorlabel='Flux Divergence (m a$^{-1}$)')
 
         import string
         axes = ax.flatten()  # Flatten for easy iteration
@@ -674,7 +503,6 @@ class Monitor:
         plt.close(fig)
 
         plt.clf()
-
 
     def visualise_3d(self, property_map, glacier_surface, bedrock, year, x, y):
         # choose property that is displayed on the glacier surface
