@@ -3,7 +3,7 @@
 # Published under the GNU GPL (Version 3), check the LICENSE file
 
 #SBATCH --nodes=1
-#SBATCH --time=00:19:59
+#SBATCH --time=00:59:59
 #SBATCH --job-name=frost
 #SBATCH --output=Experiments/Log/frost_%j.out
 #SBATCH --error=Experiments/Log/frost_%j.err
@@ -19,9 +19,9 @@ conda activate igm
 rgi_id="RGI2000-v7.0-G-11-01706"
 download=false
 inversion=false
-calibrate=false
+calibrate=true
 forward_parallel=true
-seed=3
+seed=6
 inflation=1
 
 
@@ -69,6 +69,6 @@ if [ "$calibrate" = true ]; then
     echo "Starting calibration..."
     python -u FROST_calibration.py --rgi_id "$rgi_id" --ensemble_size 32 \
     --forward_parallel "$forward_parallel" --iterations 6 --seed "$seed" \
-    --inflation "$inflation" --results_dir "Experiments/${rgi_id}/hpc_hugonnet" \
+    --inflation "$inflation" --results_dir "Experiments/${rgi_id}/regional_run_v1" \
     --init_offset 0 --elevation_step 50 --synthetic false
 fi

@@ -88,7 +88,7 @@ def main(rgi_id, synthetic, ensemble_size, inflation, iterations, seed, init_off
             num_samples=ensembleKF.ensemble_size)
 
         print(f'Forward pass ensemble to {year}')
-         #ensembleKF.forward(year=year, forward_parallel=forward_parallel)
+        ensembleKF.forward(year=year, forward_parallel=forward_parallel)
 
         ensemble_observables = obs_provider.get_ensemble_observables(
             EnKF_object=ensembleKF)
@@ -108,11 +108,8 @@ def main(rgi_id, synthetic, ensemble_size, inflation, iterations, seed, init_off
             year=year,
             ensemble_observables=ensemble_observables,
             noise_samples=noise_samples)
-        monitor.plot_maps_prognostic(ensembleKF.ensemble_usurf,
-                                     ensembleKF.ensemble_smb_raster,
-                                     ensembleKF.ensemble_init_surf_raster,
-                                     ensembleKF.ensemble_velsurf_mag_raster,
-                                     ensembleKF.ensemble_divflux_raster,
+
+        monitor.plot_maps_prognostic(ensembleKF,
                                      obs_dhdt_raster,
                                      obs_velsurf_mag_raster,
                                      init_surf_bin,
