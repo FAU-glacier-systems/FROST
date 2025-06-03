@@ -1,9 +1,9 @@
 {
   "reference_smb": {
     "time": 2000,
-    "ela": 3056,
-    "gradabl": 7.6,
-    "gradacc": 3.9,
+    "ela": 3000,
+    "gradabl": 8,
+    "gradacc": 4,
     "accmax": 2
   },
   "reference_variability": {
@@ -12,13 +12,13 @@
     "gradacc": 1
   },
   "initial_smb": {
-    "ela": 3056,
-    "gradabl": 7.6,
-    "gradacc": 3.9
+    "ela": 3000,
+    "gradabl": 8,
+    "gradacc": 4
   },
   "initial_spread": {
-    "ela": 245,
-    "gradabl": 3.5,
-    "gradacc": 3.9
+    "ela": 500,
+    "gradabl": 6,
+    "gradacc": 4
   }
 }
