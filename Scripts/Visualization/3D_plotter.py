@@ -5,26 +5,28 @@ import pyproj
 from netCDF4 import Dataset
 import argparse
 
+
 def main(file_path):
     with Dataset(file_path, 'r') as ds:
-        dhdt = ds.variables['dhdt'][:]
         glacier_surface = ds.variables['usurf'][:]
+        #dhdt = (ds.variables['usurf'][-1] - glacier_surface)/20
+        dhdt = ds.variables['dhdt'][:]
         bedrock = ds.variables['topg'][:]
 
         x = ds.variables['x'][:]
         y = ds.variables['y'][:]
 
-    visualise_3d(dhdt, glacier_surface, bedrock,  x, y)
-    visualise_3d()
+    visualise_3d(dhdt, glacier_surface, bedrock, x, y)
     return
+
 
 def visualise_3d(dhdt, glacier_surface, bedrock, x, y):
     # choose property that is displayed on the glacier surface
 
-    thicknes = glacier_surface - bedrock
+    thickness = glacier_surface - bedrock
     lat_range = x
     lon_range = y
-    #dhdt[thicknes < 0.001] = None
+    # dhdt[thickness < 0.001] = None
 
     color_scale = "RdBu"
     max_property_map = np.nanmax(dhdt)
@@ -40,13 +42,13 @@ def visualise_3d(dhdt, glacier_surface, bedrock, x, y):
     bedrock_border[:, -1] = min_bedrock
 
     # create time frames for slider
-    glacier_surface[thicknes < 1] -=10
+    glacier_surface[thickness < 1] -= 10
 
     glacier_bottom = copy.copy(bedrock)
-    glacier_bottom[thicknes < 1] = None
+    glacier_bottom[thickness < 1] = None
 
-    for i,year in enumerate(range(2000, 2025, 1)):
-    # create 3D surface plots with property as surface color
+    for i, year in enumerate(range(2000, 2020, 1)):
+        # create 3D surface plots with property as surface color
 
         glacier_surface += dhdt
         surface_fig = go.Surface(
@@ -61,8 +63,8 @@ def visualise_3d(dhdt, glacier_surface, bedrock, x, y):
             surfacecolor=dhdt,
             showlegend=False,
             name="glacier surface",
-            colorbar=dict(title="Surface Elevation Change (m/a) [Hugonnet et al. "
-                                "2021]",
+            colorbar=dict(title="Beobachtete Höhenänderung (m/Jahr) [Hugonnet et "
+                                "al. 2021] ",
                           titleside="top", thickness=25, orientation="h", y=0.75,
                           len=0.75,
                           titlefont=dict(size=40), tickfont=dict(size=40),
@@ -131,8 +133,8 @@ def visualise_3d(dhdt, glacier_surface, bedrock, x, y):
             layout=dict(
                 autosize=True,
                 title={'text': 'Rhône Glacier                              '
-                               ''+str(year),
-                       'font': {'size': 50, 'color':'white'},
+                               '' + str(year),
+                       'font': {'size': 50, 'color': 'white'},
                        'x': 0.1,
                        'y': 0.1},
                 margin=dict(l=0, r=0, t=0, b=0),
@@ -184,9 +186,9 @@ def visualise_3d(dhdt, glacier_surface, bedrock, x, y):
         )
         # create figure
         fig = go.Figure(fig_dict)
-        #fig.show()
-        #return
+        # return
         fig.write_image(f"../../Plots/3D/glacier_surface{year}.png")
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(

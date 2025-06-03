@@ -23,6 +23,7 @@ calibrate=true
 forward_parallel=true
 seed=6
 inflation=1
+results_dir=""
 
 
 # Parse command-line arguments
@@ -35,11 +36,13 @@ while [[ "$#" -gt 0 ]]; do
         --forward_parallel) forward_parallel=true; shift ;;
         --seed) seed="$2"; shift 2 ;;
         --inflation) inflation="$2"; shift 2 ;;
+        --results_dir) results_dir="$2"; shift 2 ;;  # NEW ARG
+
         *) echo "Unknown parameter $1"; exit 1 ;;  # Exit on unknown argument
     esac
 done
 
-# Display the selected rgi_id
+# Display the selected rgi_i
 echo "Running pipeline for RGI ID: $rgi_id"
 # 0. create folders
 pushd  Scripts/Preprocess
@@ -69,6 +72,6 @@ if [ "$calibrate" = true ]; then
     echo "Starting calibration..."
     python -u FROST_calibration.py --rgi_id "$rgi_id" --ensemble_size 32 \
     --forward_parallel "$forward_parallel" --iterations 6 --seed "$seed" \
-    --inflation "$inflation" --results_dir "Experiments/${rgi_id}/regional_run_v1" \
+    --inflation "$inflation" --results_dir "$results_dir" \
     --init_offset 0 --elevation_step 50 --synthetic false
 fi
