@@ -42,7 +42,7 @@ def visualise_3d(dhdt, glacier_surface, bedrock, x, y):
     bedrock_border[:, -1] = min_bedrock
 
     # create time frames for slider
-    glacier_surface[thickness < 1] -= 10
+    glacier_surface[thickness < 1] = None
 
     glacier_bottom = copy.copy(bedrock)
     glacier_bottom[thickness < 1] = None
@@ -179,8 +179,8 @@ def visualise_3d(dhdt, glacier_surface, bedrock, x, y):
                     ),
                 ),
                 scene_aspectratio=dict(x=1, y=ratio_y, z=ratio_z),
-                scene_camera_eye=dict(x=-0.2, y=-0.8, z=0.1),
-                scene_camera_center=dict(x=-0.1, y=-0.3, z=-0.01),
+                scene_camera_eye=dict(x=1, y=1, z=1),
+                scene_camera_center=dict(x=0, y=0, z=0),
 
             ),
         )
