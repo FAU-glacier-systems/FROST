@@ -1,0 +1,15 @@
+# @package _global_
+
+core:
+  url_data: ''
+defaults:
+- override /inputs:
+  - oggm_shop
+  - local
+- override /processes: []
+- override /outputs: []
+inputs:
+  oggm_shop:
+    RGI_ID: RGI60-11.01706
+outputs: {}
+processes: {}

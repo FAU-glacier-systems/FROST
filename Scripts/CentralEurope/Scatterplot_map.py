@@ -236,9 +236,18 @@ def main():
 
     merged_df = pd.merge(gdf, sla_df, on="rgi_id", how="left",
                          suffixes=('', '_drop'))
-    merged_df['sla_ela_diff'] = merged_df['ela'] - merged_df['sla']
+    # Calculate bias correction as mean difference
+    # bias_correction = np.mean(merged_df['ela'] - merged_df['sla'])
+    # # Apply bias correction to SLA values
+    # merged_df['sla_corrected'] = merged_df['sla'] + bias_correction
+    # # Calculate corrected difference
+    merged_df['sla_ela_diff'] = merged_df['ela']-merged_df['sla']#-
+    # merged_df[
+    # 'sla_corrected']
+
     gdf = merged_df.loc[:, ~merged_df.columns.str.endswith('_drop')]
-    print(np.mean(abs(gdf['sla_ela_diff'])))
+    print(
+        f"Mean absolute difference after bias correction: {np.mean(abs(gdf['sla_ela_diff'])):.2f}")
 
     # Map for "ela"
     print("Plotting map for 'ela'...")

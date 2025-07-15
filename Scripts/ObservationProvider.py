@@ -2,13 +2,8 @@
 
 # Copyright (C) 2024-2026 Oskar Herrmann
 # Published under the GNU GPL (Version 3), check the LICENSE file
-
-from statistics import correlation
-
 import numpy as np
 import os
-from skimage.morphology import skeletonize
-from matplotlib import pyplot as plt
 from netCDF4 import Dataset
 import gstools as gs
 import copy

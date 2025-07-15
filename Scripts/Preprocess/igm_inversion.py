@@ -23,7 +23,8 @@ def main(rgi_id):
         params = json.load(file)
 
     # Prepare inversion directory
-    inversion_dir = os.path.join('..', '..', 'Data', 'Glaciers', rgi_id, 'Inversion')
+    inversion_dir = os.path.join('..', '..', 'Data', 'Glaciers', rgi_id,
+                                 'Inversion_2')
     shutil.rmtree(inversion_dir, ignore_errors=True)
     os.makedirs(inversion_dir)
 
