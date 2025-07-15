@@ -9,14 +9,17 @@
         "opti_usurfobs_std"			: 0.3,
         "opti_velsurfobs_std" 	: 0.1,
         "opti_thkobs_std"			  : 1,
-        "opti_divfluxobs_std"   : 0.1,
+        "opti_divfluxobs_std"   : 1.0,
         "opti_regu_param_thk"			: 1,
-        "opti_regu_param_slidingco"     : 1.0e6,
-        "opti_smooth_anisotropy_factor"	: 0.2,
-        "opti_convexity_weight"		: 500,
-        "opti_nbitmax"			: 500,
-        "iflo_init_slidingco"      		: 0.045,
+        "opti_regu_param_slidingco"     : 1.0e4,
+        "opti_smooth_anisotropy_factor"	: 1,
+        "opti_convexity_weight"		: 1,
+        "opti_nbitmax"			: 1000,
+        "iflo_init_slidingco"      		: 0.05,
         "iflo_save_model": true,
         "opti_vars_to_save": ["usurf", "thk", "slidingco", "velsurf_mag", "velsurfobs_mag",
-                            "divflux", "icemask", "arrhenius", "thkobs", "dhdt", "topg"]
-    }
+                            "divflux", "icemask", "arrhenius", "thkobs", "dhdt", "topg"],
+        "opti_divflux_method"			: "upwind",
+        "opti_tidewater_glacier"		: false,
+        "opti_force_zero_sum_divflux"	: true
+}

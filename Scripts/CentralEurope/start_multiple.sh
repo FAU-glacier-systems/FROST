@@ -15,10 +15,8 @@ tail -n +2 "$CSV_FILE" | cut -d, -f1 | while read -r RGI_ID; do
    --error="Experiments/${CSV_BASENAME}/Log/${SHORT_ID}.err" \
    FROST_pipeline.sh \
    --rgi_id "$RGI_ID"  \
-   --download \
    --inversion \
-   --calibrate \
-   --results_dir "Experiments/${CSV_BASENAME}/${RGI_ID}/regional_run_v1"
+   --results_dir "Experiments/${CSV_BASENAME}/${RGI_ID}/regional_run_samuel"
 
 done
 

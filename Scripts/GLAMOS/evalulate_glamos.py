@@ -12,7 +12,8 @@ from matplotlib.patches import Ellipse
 
 # Paths
 glamos_results = "../../Data/GLAMOS/GLAMOS_analysis_results.csv"
-predicted_results = "../../Scripts/CentralEurope/aggregated_results.csv"
+#predicted_results = "../../Scripts/CentralEurope/aggregated_results.csv"
+predicted_results = "../../Scripts/CentralEurope/velocity_results_merged.csv"
 sla_path = "../../Data/CentralEurope/Alps_EOS_SLA_2000-2019_mean.csv"
 
 glamos_df = pd.read_csv(glamos_results)
@@ -87,17 +88,20 @@ def scatter_plot(ax, x, y, xlabel, ylabel, title, ticks, glacier_names=None,
     bcmae = np.mean(np.abs(bc_didf))  # Bias-corrected MAE
     correlation = np.corrcoef(x, y)[0, 1]
 
-    ax.text(0.05, 0.95,
+    ax.text(0.95, 0.05,
             f'MAE: {mae:.0f} Bias: {bias:.0f}\nBias-corrected-\nMAE:'
             f' {bcmae:.0f}\nPearson r: {correlation:.2f}',
             transform=ax.transAxes,
             bbox=dict(facecolor='white', alpha=0.8),
-            verticalalignment='top')
-    
+            verticalalignment='bottom',
+            horizontalalignment='right')
 
     scatter_handles = []
     if glacier_names is None:
-        scatter = ax.scatter(x, y, c=np.log(color))
+        if color is None:
+            scatter = ax.scatter(x, y, c=np.log(np.abs(y - x)))
+        else:
+            scatter = ax.scatter(x, y, c=np.log(color))
         plt.colorbar(scatter, ax=ax, label='Log(Area) km²', shrink=0.8,)
 
     else:
@@ -207,6 +211,7 @@ scatter_handlessla = scatter_plot(ax=axes[5],
 merged_df_glamos_sla['difference'] = abs(
     merged_df_sla['sla'] - merged_df_sla['ela'])
 
+
 # Get top 10 differences
 top_10_diff = merged_df_glamos_sla.nlargest(10, 'difference')[
     ['rgi_id', 'Glacier_Name', 'sla', 'ela', 'difference']]
@@ -227,3 +232,4 @@ fig.legend(scatter_handles_ela, glacier_names, loc="upper left",
 
 fig.tight_layout()
 plt.savefig("../../Plots/GLAMOS_regional_run.png", dpi=300, bbox_inches="tight")
+

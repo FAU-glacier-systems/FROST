@@ -13,7 +13,7 @@ import argparse
 def main(rgi_id):
     # Define paths
     SOURCE_FOLDER = "../../Experiments/default"
-    CSV_FILE = "../../Data/GLAMOS/GLAMOS_SELECT.csv"
+    CSV_FILE = "../../Data/GLAMOS/GLAMOS_analysis_results.csv"
 
     # Create destination folder
     DEST_FOLDER = f"../../Experiments/{rgi_id}"
@@ -23,6 +23,9 @@ def main(rgi_id):
     for file in os.listdir(SOURCE_FOLDER):
         if file.endswith(".json"):
             shutil.copy(os.path.join(SOURCE_FOLDER, file), DEST_FOLDER)
+        if file.endswith(".yaml"):
+            shutil.copy(os.path.join(SOURCE_FOLDER, file), DEST_FOLDER)
+
 
     # Read the CSV file and extract values for the given rgi_id
     df = pd.read_csv(CSV_FILE)
@@ -33,13 +36,13 @@ def main(rgi_id):
         exit(1)
 
     # Extract values from the CSV row
-    ela_var = float(row["Annual Variability ELA"].values[0])
-    gradabl_var = float(row["Annual Variability Ablation Gradient"].values[0])
-    gradacc_var = float(row["Annual Variability Accumulation Gradient"].values[0])
+    ela_var = float(row["Annual_Variability_ELA"].values[0])
+    gradabl_var = float(row["Annual_Variability_Ablation_Gradient"].values[0])
+    gradacc_var = float(row["Annual_Variability_Accumulation_Gradient"].values[0])
 
-    ela = float(row["Mean ELA"].values[0])
-    gradabl = float(row["Mean Ablation Gradient"].values[0])
-    gradacc = float(row["Mean Accumulation Gradient"].values[0])
+    ela = float(row["Mean_ELA"].values[0])
+    gradabl = float(row["Mean_Ablation_Gradient"].values[0])
+    gradacc = float(row["Mean_Accumulation_Gradient"].values[0])
 
     # Define the JSON file path
     json_file = os.path.join(DEST_FOLDER, "params_calibration.json")

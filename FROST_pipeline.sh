@@ -5,6 +5,7 @@
 #SBATCH --nodes=1
 #SBATCH --time=00:59:59
 #SBATCH --job-name=frost
+#SBATCH --gres=gpu:a100:1
 #SBATCH --output=Experiments/Log/frost_%j.out
 #SBATCH --error=Experiments/Log/frost_%j.err
 
@@ -13,13 +14,13 @@ export http_proxy=http://proxy:80
 export https_proxy=http://proxy:80
 
 module load python
-conda activate igm
+conda activate igm_gpu
 
 # default values for hpc
 rgi_id="RGI2000-v7.0-G-11-01706"
 download=false
 inversion=false
-calibrate=true
+calibrate=false
 forward_parallel=true
 seed=6
 inflation=1
@@ -46,7 +47,7 @@ done
 echo "Running pipeline for RGI ID: $rgi_id"
 # 0. create folders
 pushd  Scripts/Preprocess
-python -u create_folder.py --rgi_id "$rgi_id"
+# python -u create_folder.py --rgi_id "$rgi_id"
 popd
 
 

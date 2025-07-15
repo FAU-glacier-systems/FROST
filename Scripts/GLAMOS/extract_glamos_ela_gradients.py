@@ -136,5 +136,6 @@ if __name__ == "__main__":
         '../../Data/GLAMOS/massbalance_observation_elevationbins.csv',
         '../../Data/RGI2000-v7.0-G-11_central_europe/RGI2000-v7.0-G-11_central_europe-attributes.csv',
         '../../Data/GLAMOS/GLAMOS_RGI.csv',
+
         '../../Data/GLAMOS/GLAMOS_analysis_results.csv'
     )
