@@ -24,6 +24,7 @@ class EnsembleKalmanFilter:
 
     Args:
         rgi_id (str)          - Glacier ID
+        SMB_model(str)        - chosen SMB model (ELA, TI, ...)
         ensemble_size (int)   - Number of ensemble members
         inflation (float)     - Inflation factor for Kalman updates
         seed (int)            - Random seed for reproducibility
@@ -41,7 +42,7 @@ class EnsembleKalmanFilter:
         reference_smb (dict)          - Reference SMB values
     """
 
-    def __init__(self, rgi_id, ensemble_size, inflation, seed, start_year,
+    def __init__(self, rgi_id, SMB_model, ensemble_size, inflation, seed, start_year,
                  output_dir, usurf_ensemble, init_offset=0):
         """
         Initializes the Ensemble Kalman Filter by loading required data and setting up
@@ -49,6 +50,7 @@ class EnsembleKalmanFilter:
 
         Args:
             rgi_id (str)         - Glacier ID
+            SMB_model(str)        - chosen SMB model (ELA, TI, ...)
             ensemble_size (int)  - Number of ensemble members
             inflation (float)    - Inflation factor for Kalman updates
             seed (int)           - Random seed for reproducibility
@@ -62,6 +64,7 @@ class EnsembleKalmanFilter:
 
         # Store arguments
         self.rgi_id = rgi_id
+        self.SMB_model = SMB_model
         self.rgi_id_dir = os.path.join('Data', 'Glaciers', rgi_id)
         self.ensemble_size = ensemble_size
         self.inflation = inflation
@@ -95,7 +98,7 @@ class EnsembleKalmanFilter:
 
         # Load glacier-specific parameters
         params_file_path = os.path.join('Experiments', rgi_id,
-                                        'params_calibration.json')
+                                        'params_calibration_'+SMB_model+'.json')
         with open(params_file_path, 'r') as file:
             params = json.load(file)
             self.initial_smb = params['initial_smb']
@@ -106,19 +109,33 @@ class EnsembleKalmanFilter:
         self.init_offset = init_offset
         if not init_offset == 0:
             sign = np.random.choice([-1, 1], 3)
-            self.initial_smb['ela'] = self.reference_smb['ela'] + (500 * init_offset
+            if str(SMB_model) == "ELA":
+                self.initial_smb['ela'] = self.reference_smb['ela'] + (500 * init_offset
                                                                    / 100 *
                                                                    sign[0])
-            self.initial_smb['gradabl'] = self.reference_smb[
+                self.initial_smb['gradabl'] = self.reference_smb[
                                               'gradabl'] + 5 * init_offset / 100 * \
                                           sign[1]
-            self.initial_smb['gradacc'] = self.reference_smb[
+                self.initial_smb['gradacc'] = self.reference_smb[
                                               'gradacc'] + 5 * init_offset / 100 * \
                                           sign[2]
 
-            self.initial_spread['ela'] = 500
-            self.initial_spread['gradabl'] = 5
-            self.initial_spread['gradacc'] = 5
+                self.initial_spread['ela'] = 500
+                self.initial_spread['gradabl'] = 5
+                self.initial_spread['gradacc'] = 5
+            elif str(SMB_model) == "TI":
+                self.initial_smb['melt_f'] = self.reference_smb['melt_f'] + (4 * init_offset
+                                                                   / 100 *
+                                                                   sign[0])
+                self.initial_spread['melt_f'] = 4
+                self.initial_smb['prcp_fac'] = self.reference_smb['prcp_fac'] + (0.25 * init_offset
+                                                                   / 100 *
+                                                                   sign[1])
+                self.initial_spread['prcp_fac'] = 1.0
+                self.initial_smb['temp_bias'] = self.reference_smb['temp_bias'] + (2.00 * init_offset
+                                                                   / 100 *
+                                                                   sign[1])
+                self.initial_spread['temp_bias'] = 2.0
 
         # Initialize random generator and SMB ensemble
         rng = np.random.default_rng(seed=seed)
@@ -187,12 +204,18 @@ class EnsembleKalmanFilter:
         new_velsurf_mag_ensemble = np.empty_like(self.ensemble_smb_raster)
         new_divflux_ensemble = np.empty_like(self.ensemble_smb_raster)
 
+        # Calibration run setting
+        exp="Calibration"
+        output1D=False
+        output2D_3D=True
+
         if forward_parallel:
 
             with ThreadPoolExecutor() as executor:
                 futures = [
-                    executor.submit(IGM_wrapper.forward, member_id, self.rgi_id_dir,
-                                    usurf, smb, year_interval)
+                    executor.submit(IGM_wrapper.forward, exp, output1D, output2D_3D, 
+                                    member_id, self.rgi_id_dir,
+                                    self.SMB_model, usurf, smb, year_interval)
                     for member_id, (usurf, smb) in
                     enumerate(zip(self.ensemble_usurf, self.ensemble_smb))
                 ]
@@ -212,8 +235,11 @@ class EnsembleKalmanFilter:
 
             for member_id, (usurf, smb) in enumerate(
                     zip(self.ensemble_usurf, self.ensemble_smb)):
-                member_id, new_usurf, new_smb_raster, init_usurf, new_velsurf_mag, new_divflux = IGM_wrapper.forward(member_id,
+                member_id, new_usurf, new_smb_raster, init_usurf, new_velsurf_mag, new_divflux = IGM_wrapper.forward(
+                                                                           exp, output1D, output2D_3D,
+                                                                           member_id,
                                                                            self.rgi_id_dir,
+                                                                           self.SMB_model,
                                                                            usurf,
                                                                            smb,
                                                                            year_interval)

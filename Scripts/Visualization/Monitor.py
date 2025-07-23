@@ -17,6 +17,7 @@ class Monitor:
                  synthetic, binned_usurf_init, plot_dhdt):
 
         self.rgi_id = EnKF_object.rgi_id
+        self.SMB_model = EnKF_object.SMB_model
         self.ensemble_size = EnKF_object.ensemble_size
         self.seed = EnKF_object.seed
         self.icemask_init = EnKF_object.icemask_init
@@ -49,46 +50,58 @@ class Monitor:
         self.observation_std_log = {key: [] for key in self.keys}
 
         if synthetic:
-            # start JJF
-            self.density_factor = {'melt_f': 1,
-                                   'prcp_fac': 1,
-                                   'temp_bias': 1}
-            self.density_factor = {'ela': 1,
-                                   'gradabl': 1,  # 0.91,
-                                   'gradacc': 1,
-                                   }
-        # end JJF
+            if str(self.SMB_model) == "ELA":
+                self.density_factor = {'ela': 1,
+                                       'gradabl': 1,
+                                       'gradacc': 1,
+                                       }
+            elif str(self.SMB_model) == "TI":
+                self.density_factor = {'melt_f': 1,
+                                       'prcp_fac': 1,
+                                       'temp_bias': 1}
 
         else:
-            # start JJF
-            self.density_factor = {'melt_f': 1,
-                                   'prcp_fac': 1,
-                                   'temp_bias': 1}
-            self.density_factor = {'ela': 1,
-                                   'gradabl': 0.91,  # 0.91,
-                                   'gradacc': 0.55,
-                                   }
-        # end JJF
+            if str(self.SMB_model) == "ELA":
+                self.density_factor = {'ela': 1,
+                                       'gradabl': 0.91,
+                                       'gradacc': 0.55,
+                                       }
+            elif str(self.SMB_model) == "TI":
+                self.density_factor = {'melt_f': 1,
+                                       'prcp_fac': 1,
+                                       'temp_bias': 1}
+
         if self.plot_dhdt:
-            self.plot_style = dict(
-                mean_usurf=dict(y_label='Mean surface elevation \n change 2000- '
-                                        '2019 ('
-                                        'm)'),
-                point1=dict(
-                    y_label='Surface elevation change\nof fifth bin from front ('
-                            'm)'),
-                point2=dict(y_label=f'Mean surface elevation\nof fifth bin from '
-                                    f'top ('
-                                    f'm)'),
-                # start JJF
-                melt_f=dict(y_label='Melt Factor OGGM\n( mm w.e. / (C day) )'),
-                prcp_fac=dict(y_label='Precipitation Factor \n( - )'),
-                temp_bias=dict(y_label='Temperature Bias ( C )'),
-                # ela=dict(y_label='Equilibrium Line\nAltitude (m)'),
-                # gradabl=dict(y_label='Ablation Gradient\n(m a$^{-1}$ km$^{-1}$)'),
-                # gradacc=dict(
-                #    y_label='Accumulation Gradient\n(m a$^{-1}$ km$^{-1}$)'),
-                # end JJF
+            if str(self.SMB_model) == "ELA":
+                self.plot_style = dict(
+                    mean_usurf=dict(y_label='Mean surface elevation \n change 2000- '
+                                            '2019 ('
+                                            'm)'),
+                    point1=dict(
+                        y_label='Mean surface elevation change\nof fifth bin from front ('
+                                'm)'),
+                    point2=dict(y_label=f'Mean surface elevation change\nof fifth bin from '
+                                        f'top ('
+                                        f'm)'),
+                    ela=dict(y_label='Equilibrium Line\nAltitude (m)'),
+                    gradabl=dict(y_label='Ablation Gradient\n(m a$^{-1}$ km$^{-1}$)'),
+                    gradacc=dict(
+                       y_label='Accumulation Gradient\n(m a$^{-1}$ km$^{-1}$)'),
+                )
+            elif str(self.SMB_model) == "TI":
+                self.plot_style = dict(
+                    mean_usurf=dict(y_label='Mean surface elevation \n change 2000- '
+                                            '2019 ('
+                                            'm)'),
+                    point1=dict(
+                        y_label='Mean surface elevation change\nof fifth bin from front ('
+                                'm)'),
+                    point2=dict(y_label=f'Mean surface elevation change\nof fifth bin from '
+                                        f'top ('
+                                        f'm)'),
+                    melt_f=dict(y_label='Melt Factor OGGM\n( mm w.e. / (C day) )'),
+                    prcp_fac=dict(y_label='Precipitation Factor \n( - )'),
+                    temp_bias=dict(y_label='Temperature Bias ( C )'),
             )
 
         else:
@@ -109,6 +122,37 @@ class Monitor:
                 gradacc=dict(
                     y_label='Accumulation Gradient\n(m a$^{-1}$ km$^{-1}$)'),
                 # end JJF
+            )
+            if str(self.SMB_model) == "ELA":
+                self.plot_style = dict(
+                    mean_usurf=dict(y_label='Mean surface elevation \n change 2000- '
+                                            '2019 ('
+                                            'm)'),
+                    point1=dict(
+                        y_label='Mean surface elevation\nof fifth bin from front ('
+                                'm)'),
+                    point2=dict(y_label=f'Mean surface elevation\nof fifth bin from '
+                                        f'top ('
+                                        f'm)'),
+                    ela=dict(y_label='Equilibrium Line\nAltitude (m)'),
+                    gradabl=dict(y_label='Ablation Gradient\n(m a$^{-1}$ km$^{-1}$)'),
+                    gradacc=dict(
+                       y_label='Accumulation Gradient\n(m a$^{-1}$ km$^{-1}$)'),
+                )
+            elif str(self.SMB_model) == "TI":
+                self.plot_style = dict(
+                    mean_usurf=dict(y_label='Mean surface elevation \n 2000- '
+                                            '2019 ('
+                                            'm)'),
+                    point1=dict(
+                        y_label='Mean surface elevation\nof fifth bin from front ('
+                                'm)'),
+                    point2=dict(y_label=f'Mean surface elevation\nof fifth bin from '
+                                        f'top ('
+                                        f'm)'),
+                    melt_f=dict(y_label='Melt Factor OGGM\n( mm w.e. / (C day) )'),
+                    prcp_fac=dict(y_label='Precipitation Factor \n( - )'),
+                    temp_bias=dict(y_label='Temperature Bias ( C )'),
             )
 
     def summarise_observables(self, ensemble_observables, new_observables,
@@ -353,8 +397,7 @@ class Monitor:
 
     def plot_maps_prognostic(self, ensembleKF, obs_dhdt_raster,
                              obs_velsurf_mag_raster, init_surf_bin, new_observation,
-                             modeled_surface, uncertainty, iteration, year,
-                             bedrock):
+                             modeled_surface, uncertainty, iteration, year):
 
         ###################### MAPS #################################################
         nrows = 2
@@ -369,7 +412,7 @@ class Monitor:
         y_ticks = np.arange(crop_padding, self.bin_map.shape[0] - crop_padding * 2,
                             step=self.resolution)
 
-        cropped_bedrock = bedrock[crop_padding:-crop_padding,
+        cropped_bedrock = ensembleKF.bedrock[crop_padding:-crop_padding,
                           crop_padding:-crop_padding]
 
         for row, col in product(range(nrows), range(ncols)):
@@ -377,7 +420,7 @@ class Monitor:
                                 vmin=1450, vmax=3600, origin='lower')
 
         surface = np.mean(ensembleKF.ensemble_usurf, axis=0)
-        thk = surface - bedrock
+        thk = surface - ensembleKF.bedrock
         new_mask = thk > 0
         # Observed elevation change
         self.plot_glacier_property_map(ax=ax[0, 0],
