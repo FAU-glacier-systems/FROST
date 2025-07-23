@@ -39,7 +39,7 @@ def main(rgi_id,
     # Call functions based on flags
     if download_oggm_shop_flag:
         print(f"Downloading OGGM shop data for RGI ID: {rgi_id}...")
-        download_OGGM_shop(rgi_id_dir, rgi_id)
+        download_OGGM_shop(rgi_id_dir, rgi_id, args.flag_OGGM_climate)
         print("OGGM shop data download completed.")
 
     if download_hugonnet_flag:
@@ -51,7 +51,18 @@ def main(rgi_id,
         print("Hugonnet data download completed.")
 
     # Rescale all output netCDF to a given target resolution
-    if args.target_resolution:
+    # check if target resolution is defined as a float
+    try:
+        float(target_resolution)
+        if np.isnan(float(target_resolution)) or np.isinf(float(target_resolution)):
+            target_resolution_float = False
+        else:
+            target_resolution_float = True
+    except ValueError:
+        print("--target resolution is not a float. Standard OGGM resolution is taken.")
+
+
+    if args.target_resolution and target_resolution_float:
         print(
             f"  Scale output netCDF to target resolution: {target_resolution}")
         target_resolution = float(target_resolution)
@@ -80,33 +91,33 @@ def main(rgi_id,
             os.rename(os.path.join(rgi_id_dir, 'observations_scaled.nc'),
                       os.path.join(rgi_id_dir, 'observations.nc'))
             # scale_raster('input_saved.nc', 'input_scaled.nc', scale_factor)
-        else:
-            # Make back-up file for original OGGM netCDF
-            # Source and destination
-            src = os.path.join(rgi_id_dir, 'observations.nc')
-            dst = os.path.join(rgi_id_dir, 'observations_OGGM.nc')
+    else:
+        # Make back-up file for original OGGM netCDF
+        # Source and destination
+        src = os.path.join(rgi_id_dir, 'observations.nc')
+        dst = os.path.join(rgi_id_dir, 'observations_OGGM.nc')
 
-            # Check the operating system and use the respective command
-            if os.name == 'nt':  # Windows
-                cmd = f'copy "{src}" "{dst}"'
-            else:  # Unix/Linux
-                cmd = f'cp "{src}" "{dst}"'
-
-            # Copy File
-            os.system(cmd)
-
-            # Source and destination
-            src = os.path.join(rgi_id_dir, 'OGGM_shop', 'input_saved.nc')
-            dst = os.path.join(rgi_id_dir, 'OGGM_shop', 'input_saved_OGGM.nc')
-
-            # Check the operating system and use the respective command
-            if os.name == 'nt':  # Windows
-                cmd = f'copy "{src}" "{dst}"'
-            else:  # Unix/Linux
-                cmd = f'cp "{src}" "{dst}"'
+        # Check the operating system and use the respective command
+        if os.name == 'nt':  # Windows
+            cmd = f'copy "{src}" "{dst}"'
+        else:  # Unix/Linux
+            cmd = f'cp "{src}" "{dst}"'
 
             # Copy File
             os.system(cmd)
+
+        # Source and destination
+        src = os.path.join(rgi_id_dir, 'OGGM_shop', 'input_saved.nc')
+        dst = os.path.join(rgi_id_dir, 'OGGM_shop', 'input_saved_OGGM.nc')
+
+        # Check the operating system and use the respective command
+        if os.name == 'nt':  # Windows
+            cmd = f'copy "{src}" "{dst}"'
+        else:  # Unix/Linux
+            cmd = f'cp "{src}" "{dst}"'
+
+        # Copy File
+        os.system(cmd)
 
 
 def scale_raster(input_file, output_file, scale_factor):
@@ -226,7 +237,7 @@ def scale_raster(input_file, output_file, scale_factor):
 
 
 # Function to handle the main logic
-def download_OGGM_shop(rgi_id_dir, rgi_id):
+def download_OGGM_shop(rgi_id_dir, rgi_id, flag_OGGM_climate):
     """
     wrapper to call 'igm_run'
     - JSON file needs to specify the oggm_shop routine of IGM
@@ -265,6 +276,24 @@ def download_OGGM_shop(rgi_id_dir, rgi_id):
 
     # Run the igm_run command
     subprocess.run(['igm_run', '--param_file', 'params.json'])
+
+    if flag_OGGM_climate:
+        # Rescue 'climate_historical.nc' created by oggm_shop.py
+        # this option requires that "oggm_remove_RGI_folder": false
+        print('flag_OGGM_climate', flag_OGGM_climate, type(flag_OGGM_climate))
+        if flag_OGGM_climate:
+            os.system('pwd')
+            src = os.path.join('.', rgi_id,'climate_historical.nc')
+            dst = os.path.join('..', 'climate_historical.nc')
+
+            # Check the operating system and use the respective command
+            if os.name == 'nt':  # Windows
+                cmd = f'copy "{src}" "{dst}"'
+            else:  # Unix/Linux
+                cmd = f'cp "{src}" "{dst}"'
+
+            # Copy File
+            os.system(cmd)
 
     os.chdir(original_dir)
 
@@ -741,13 +770,18 @@ if __name__ == '__main__':
                              '(default: RGI2000-v7.0-G-11-01706).')
 
     # Add argument for specific target resolution
-    parser.add_argument('--target_resolution', type=float,
+    parser.add_argument('--target_resolution', type=str,
                         help='user-specific resolution for IGM run [meters] '
                              '(default: 100m)')
 
     # Add flags to control function execution
     parser.add_argument('--download_oggm_shop', action='store_true',
                         help='Flag to control execution of download_OGGM_shop.')
+
+    # Add argument for climate data acquisition
+    parser.add_argument('--SMB_model', type=str,
+                        default="ELA",
+                        help='Flag to decide for SMB model (ELA, TI, ...).')
 
     parser.add_argument('--download_hugonnet', action='store_true',
                         help='Flag to control execution of download_Hugonnet.')
@@ -764,6 +798,15 @@ if __name__ == '__main__':
 
     # Parse arguments
     args = parser.parse_args()
+
+    # SMB model
+    if str(args.SMB_model) == "ELA":
+        args.flag_OGGM_climate=False
+    elif str(args.SMB_model) == "TI":
+        args.flag_OGGM_climate = True
+    else:
+        flag_OGGM_climate = False
+
 
     main(rgi_id=args.rgi_id,
          target_resolution=args.target_resolution,
