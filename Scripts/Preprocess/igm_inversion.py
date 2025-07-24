@@ -24,7 +24,7 @@ def main(rgi_id):
 
     # Prepare inversion directory
     inversion_dir = os.path.join('..', '..', 'Data', 'Glaciers', rgi_id,
-                                 'Inversion_2')
+                                 'Inversion')
     shutil.rmtree(inversion_dir, ignore_errors=True)
     os.makedirs(inversion_dir)
 
