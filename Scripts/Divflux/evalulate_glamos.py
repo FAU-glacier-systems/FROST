@@ -12,14 +12,13 @@ from matplotlib.patches import Ellipse
 from Scripts.Visualization.utils import scatter_plot
 
 # Paths
-glamos_results = "../../Data/GLAMOS/GLAMOS_analysis_results.csv"
+
 predicted_results = "../../Scripts/CentralEurope/aggregated_results.csv"
-#predicted_results = "../../Scripts/CentralEurope/velocity_results_merged.csv"
-sla_path = "../../Data/CentralEurope/Alps_EOS_SLA_2000-2019_mean.csv"
+fluxdiv_path = "smb_params_results_Anna.csv"
 
 glamos_df = pd.read_csv(glamos_results)
 predicted_df = pd.read_csv(predicted_results)
-sla_df = pd.read_csv(sla_path)
+fluxdiv_df = pd.read_csv(fluxdiv_path)
 
 merged_df_glamos = pd.merge(glamos_df, predicted_df, on="rgi_id", how="left",
                             suffixes=('', '_drop'))
@@ -30,7 +29,7 @@ merged_df_glamos = merged_df_glamos.sort_values(by="area_km2",
                                                 ascending=True).reset_index(
     drop=True)
 
-merged_df_sla = pd.merge(predicted_df, sla_df, on="rgi_id", how="inner",
+merged_df_sla = pd.merge(predicted_df, fluxdiv_df, on="rgi_id", how="inner",
                          suffixes=('', '_drop'))
 merged_df_sla = merged_df_sla.sort_values(by="area_km2",
                                           ascending=True).reset_index(
