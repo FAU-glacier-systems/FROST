@@ -11,7 +11,7 @@ import os
 import numpy as np
 
 
-def main(rgi_id, synthetic, ensemble_size, inflation, iterations, seed, init_offset,
+def main(rgi_id, SMB_model, synthetic, ensemble_size, inflation, iterations, seed, init_offset,
          elevation_step, forward_parallel, results_dir, obs_uncertainty):
     """
     main function to run the calibration, handles the interaction between
@@ -19,10 +19,11 @@ def main(rgi_id, synthetic, ensemble_size, inflation, iterations, seed, init_off
     folder as a json file that contain the final ensemble, its mean and standard
     deviation.
 
-    Authors: Oskar Herrmann
+    Authors: Oskar Herrmann, Johannes J. Fürst
 
     Args:
            rgi_id(str)           - glacier ID
+           SMB_model(str)        - chosen SMB model (ELA, TI, ...)
            synthetic(bool)       - switch to synthetic observations
            obs_uncertainty(float)- factor of synthetic observation uncertainty
            ensemble_size(int)    - ensemble size
@@ -38,6 +39,7 @@ def main(rgi_id, synthetic, ensemble_size, inflation, iterations, seed, init_off
     """
 
     print(f'Running calibration for glacier: {rgi_id}')
+    print(f'SMB model: {SMB_model}')
     print(f'Ensemble size: {ensemble_size}',
           f'Inflation: {inflation}',
           f'Iterations: {iterations}',
@@ -62,6 +64,7 @@ def main(rgi_id, synthetic, ensemble_size, inflation, iterations, seed, init_off
     # Initialise an ensemble kalman filter object
     print("Initializing Ensemble Kalman Filter")
     ensembleKF = EnsembleKalmanFilter(rgi_id=rgi_id,
+                                      SMB_model=SMB_model,
                                       ensemble_size=ensemble_size,
                                       inflation=inflation,
                                       seed=seed,
@@ -116,8 +119,7 @@ def main(rgi_id, synthetic, ensemble_size, inflation, iterations, seed, init_off
                                      new_observation,
                                      ensemble_observables,
                                      uncertainty=noise_matrix,
-                                     iteration=i, year=year,
-                                     bedrock=ensembleKF.bedrock)
+                                     iteration=i, year=year)
 
         # monitor.visualise_3d(obs_provider.ensemble_usurf[0],
         #                      ensembleKF.ensemble_usurf[0], ensembleKF.bedrock, 2000,
@@ -174,6 +176,10 @@ if __name__ == '__main__':
     parser.add_argument('--results_dir', type=str, default='',
                         help='path to the results directory.', required=True)
 
+    parser.add_argument('--SMB_model', type=str,
+                        default="ELA",
+                        help='Flag to decide for SMB model (ELA, TI, ...).')
+
     # Parse arguments
     args = parser.parse_args()
     forward_parallel = False if args.forward_parallel == "false" else True
@@ -182,6 +188,7 @@ if __name__ == '__main__':
 
     # Call the main function with the parsed arguments
     main(rgi_id=args.rgi_id,
+         SMB_model=args.SMB_model,
          synthetic=synthetic,
          ensemble_size=args.ensemble_size,
          inflation=args.inflation,
