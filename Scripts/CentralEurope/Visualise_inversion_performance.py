@@ -68,14 +68,15 @@ def scatter_plot(ax, x, y, xlabel, ylabel, title, ticks, glacier_names=None,
 
 
 # Read both CSV files
-velocity_df = pd.read_csv('velocity_2_results.csv')
+velocity_df = pd.read_csv('velocity_results.csv')
 aggregated_df = pd.read_csv('aggregated_results.csv')
 
 # Merge the dataframes on RGI_ID
 merged_df = pd.merge(velocity_df, aggregated_df, on='rgi_id', how='inner')
 
 # Compute the velocity error for each glacier
-merged_df['velocity_error'] = abs(merged_df['Mean_velsurf_mag'] - merged_df['Mean_velsurfobs_mag'])
+merged_df['velocity_error'] = abs(
+    merged_df['Mean_velsurf_mag'] - merged_df['Mean_velsurfobs_mag'])
 
 # Find the glacier with the highest velocity error
 highest_error_row = merged_df.loc[merged_df['velocity_error'].idxmax()]
@@ -93,9 +94,8 @@ print("Results merged and saved to merged_results.csv")
 vel_stats = [
     ('Mean_velsurf_mag', 'Mean_velsurfobs_mag', 'Mean'),
     ('Q1_velsurf_mag', 'Q1_velsurfobs_mag', 'Q1'),
-    ('Median_velsurf_mag', 'Median_velsurfobs_mag', 'Median'),
-    ('Q3_velsurf_mag', 'Q3_velsurfobs_mag', 'Q3'),
     ('Max_velsurf_mag', 'Max_velsurfobs_mag', 'Max'),
+    ('Q3_velsurf_mag', 'Q3_velsurfobs_mag', 'Q3'),
     ('Std_velsurf_mag', 'Std_velsurfobs_mag', 'Std')
 ]
 
@@ -111,8 +111,16 @@ for idx, (mod_col, obs_col, stat_name) in enumerate(vel_stats):
                                    y=velsurf,
                                    ylabel=f"Modelled {stat_name} Surface Velocity (m/yr)",
                                    xlabel=f"Observed {stat_name} Surface Velocity (m/yr)",
-                                   title=f"{stat_name} Velocity Comparison",
+                                   title=f"{stat_name} Velocity",
                                    ticks=np.logspace(0, 3, 4))
 
+import string
+
+labels_subplot = [f"{letter})" for letter in
+                  string.ascii_lowercase[:len(axes)]]
+for ax, label in zip(axes, labels_subplot):
+    # Add label to lower-left corner (relative coordinates)
+    ax.text(0, 1.02, label, transform=ax.transAxes,
+            fontsize=12, va='bottom', ha='left', fontweight='bold')
 fig.tight_layout()
-plt.savefig("../../Plots/Inversion_effect.png", dpi=300, bbox_inches="tight")
+plt.savefig("../../Plots/Inversion_effect.pdf", bbox_inches="tight")

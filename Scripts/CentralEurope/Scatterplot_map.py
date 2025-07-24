@@ -253,7 +253,7 @@ def main():
     print("Plotting map for 'ela'...")
     plot_map_with_annotations(
         dem_data, extent, gdf,
-        save_path="../../Plots/ALPS_ela_Scatter.png",
+        save_path="../../Plots/ALPS_ela_Scatter.pdf",
         country_paths=country_paths,
         value_column="ela",  # Column for ELA
         color_map="viridis",  # Colormap
@@ -265,7 +265,7 @@ def main():
     print("Plotting map for 'gradabl'...")
     plot_map_with_annotations(
         dem_data, extent, gdf,
-        save_path="../../Plots/ALPS_gradabl_Scatter.png",
+        save_path="../../Plots/ALPS_gradabl_Scatter.pdf",
         country_paths=country_paths,
         value_column="gradabl",  # Column for Gradient Ablation
         color_map="Reds",       # Colormap
@@ -276,7 +276,7 @@ def main():
     print("Plotting map for 'gradacc'...")
     plot_map_with_annotations(
         dem_data, extent, gdf,
-        save_path="../../Plots/ALPS_gradacc_Scatter.png",
+        save_path="../../Plots/ALPS_gradacc_Scatter.pdf",
         country_paths=country_paths,
         value_column="gradacc",  # Column for Gradient Accumulation
         color_map="Blues",       # Colormap
@@ -285,7 +285,7 @@ def main():
 
     plot_map_with_annotations(
         dem_data, extent, gdf,
-        save_path="../../Plots/ALPS_sla_Scatter.png",
+        save_path="../../Plots/ALPS_sla_Scatter.pdf",
         country_paths=country_paths,
         value_column="sla",  # Column for ELA
         color_map="viridis",  # Colormap
@@ -295,7 +295,7 @@ def main():
 
     plot_map_with_annotations(
         dem_data, extent, gdf,
-        save_path="../../Plots/ALPS_difslaela_Scatter.png",
+        save_path="../../Plots/ALPS_difslaela_Scatter.pdf",
         country_paths=country_paths,
         value_column="sla_ela_diff",  # Column for ELA
         color_map="RdBu",  # Colormap
