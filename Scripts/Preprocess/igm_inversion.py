@@ -17,10 +17,34 @@ def main(rgi_id):
         rgi_id (str) - Glacier RGI ID
     """
 
-    # Load parameters
-    json_file_path = os.path.join('..', '..', 'Experiments', rgi_id, 'params_inversion.json')
-    with open(json_file_path, 'r') as file:
-        params = json.load(file)
+    flag_velsurfobs = False
+    try:
+        # Define input and output file names
+        input_file = os.path.join(rgi_id_dir, 'OGGM_shop', 'input_saved.nc')
+
+        # Open the input netCDF file in read mode
+        with Dataset(input_file, 'r') as src:
+
+
+            # try reading velocity data
+            var1 = input_dataset.variables['uvelsurfobs']
+            var2 = input_dataset.variables['vvelsurfobs']
+
+        flag_velsurfobs = True
+    except:
+        flag_velsurfobs = False
+
+
+    if flag_velsurfobs:
+        # Load parameters
+        json_file_path = os.path.join('..', '..', 'Experiments', rgi_id, 'params_inversion.json')
+        with open(json_file_path, 'r') as file:
+            params = json.load(file)
+    else:
+        # Load parameters
+        json_file_path = os.path.join('..', '..', 'Experiments', rgi_id, 'params_inversion_noVEL.json')
+        with open(json_file_path, 'r') as file:
+            params = json.load(file)
 
     # Prepare inversion directory
     inversion_dir = os.path.join('..', '..', 'Data', 'Glaciers', rgi_id,

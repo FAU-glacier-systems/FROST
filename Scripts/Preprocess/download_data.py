@@ -50,6 +50,73 @@ def main(rgi_id,
         download_hugonnet(rgi_id_dir, year_interval, hugonnet_directory)
         print("Hugonnet data download completed.")
 
+    # Check input file from download for consistency
+    # - no 'NaN' in the thickness fields (thkinit, thk)
+    # - 90% percentile of observed velocities must be above 10m/yr (mangitude of both x- and y-components)
+    os.rename(os.path.join(rgi_id_dir, 'OGGM_shop', 'input_saved.nc'),
+                os.path.join(rgi_id_dir, 'OGGM_shop', 'input_saved_OGGM_orig.nc'))
+
+    # Define input and output file names
+    input_file = os.path.join(rgi_id_dir, 'OGGM_shop', 'input_saved_OGGM_orig.nc')
+    output_file = os.path.join(rgi_id_dir, 'OGGM_shop', 'input_saved.nc')
+
+    # Open the input netCDF file in read mode
+    with Dataset(input_file, 'r') as src:
+        # Create a new netCDF file in write mode
+        with Dataset(output_file, 'w') as dst:
+
+            # Copy all dimensions from the source file to the destination file
+            for name, dimension in src.dimensions.items():
+               dst.createDimension(name, len(dimension) if not dimension.isunlimited() else None)
+
+            # Copy all variables from the source file to the destination file
+            for name, variable in src.variables.items():
+                #dst_var = dst.createVariable(name, variable.datatype, variable.dimensions)
+                #dst_var[:] = variable[:]  # Copy variable data
+
+                # Check if variable is 'thi' and its original values are all NaN
+                if name == 'thk':
+                    # Set values to zero where they are NaN
+                    original_data = variable[:]
+                    # Create a mask for NaN values and set them to zero
+                    #dst_var[:] = np.where(np.isnan(original_data), 0, original_data)
+                    dst_var = dst.createVariable(name, variable.datatype, variable.dimensions)
+                    dst_var[:] = np.where(np.abs(original_data)>10000, 0, original_data)
+                    dst_var[:] = np.where(np.abs(original_data)<0, 0, dst_var)
+                elif name == 'thkinit':
+                    # Set values to zero where they are NaN
+                    original_data = variable[:]
+                    # Create a mask for NaN values and set them to zero
+                    #dst_var[:] = np.where(np.isnan(original_data), 0, original_data)
+                    dst_var = dst.createVariable(name, variable.datatype, variable.dimensions)
+                    dst_var[:] = np.where(np.abs(original_data)>10000, 0, original_data)
+                    dst_var[:] = np.where(np.abs(original_data)<0, 0, dst_var)
+                elif name == 'uvelsurfobs':
+                    # Set values to zero where they are NaN
+                    original_data = variable[:]
+                    modified_data = np.where(np.abs(original_data)==0, np.nan, original_data)
+                    if np.nansum(np.nansum(original_data)) != 0 :
+                         if np.nanpercentile(np.abs(original_data.flatten()),90) > 10.0:
+                             #Create a mask for NaN values and set them to zero
+                             dst_var = dst.createVariable(name, variable.datatype, variable.dimensions)
+                             dst_var[:] = np.where(np.abs(original_data)==0, np.nan, original_data)
+                elif name == 'vvelsurfobs':
+                    # Set values to zero where they are NaN
+                    original_data = variable[:]
+                    print('PERCENTILE PERCENTILE 90 : ',np.nanpercentile(np.abs(original_data.flatten()),90))
+                    if np.nansum(np.nansum(original_data)) != 0 :
+                        if np.nanpercentile(np.abs(original_data.flatten()),90) > 10.0:
+                            # Create a mask for NaN values and set them to zero
+                            dst_var = dst.createVariable(name, variable.datatype, variable.dimensions)
+                            dst_var[:] = np.where(np.abs(original_data)==0, np.nan, original_data)
+                else:
+                    dst_var = dst.createVariable(name, variable.datatype, variable.dimensions)
+                    dst_var[:] = variable[:]  # Copy variable data
+
+            # Copy global attributes from the source file to the destination file
+            dst.setncatts({k: src.getncattr(k) for k in src.ncattrs()})
+
+
     # Rescale all output netCDF to a given target resolution
     # check if target resolution is defined as a float
     try:
@@ -60,17 +127,17 @@ def main(rgi_id,
             target_resolution_float = True
     except ValueError:
         print("--target resolution is not a float. Standard OGGM resolution is taken.")
+        target_resolution_float = False
 
-
-    if args.target_resolution and target_resolution_float:
-        print(
-            f"  Scale output netCDF to target resolution: {target_resolution}")
+    if target_resolution_float:
         target_resolution = float(target_resolution)
         with Dataset(os.path.join(rgi_id_dir, 'OGGM_shop', 'input_saved.nc'),
                      'r') as scaled_dataset:
             x = scaled_dataset.variables['x'][:]
             resolution = abs(x[1] - x[2])
         if resolution != target_resolution:
+            print(
+                f"  Scale output netCDF to target resolution: {target_resolution}")
             scale_factor = resolution / target_resolution
             print('  Scale factor : ', scale_factor)
             scale_raster(
