@@ -4,15 +4,16 @@
 # Published under the GNU GPL (Version 3), check the LICENSE file
 
 import argparse
+import os.path
+
 from Scripts.EnsembleKalmanFilter import EnsembleKalmanFilter
 from Scripts.ObservationProvider import ObservationProvider
 from Scripts.Visualization.Monitor import Monitor
-import os
-import numpy as np
 
 
-def main(rgi_id, SMB_model, synthetic, ensemble_size, inflation, iterations, seed, init_offset,
-         elevation_step, forward_parallel, results_dir, obs_uncertainty):
+def main(rgi_id, SMB_model, synthetic, ensemble_size, inflation, iterations, seed,
+         init_offset, elevation_step, forward_parallel, results_dir,
+         obs_uncertainty):
     """
     main function to run the calibration, handles the interaction between
     observation, ensemble and visualization. It saves the results in the experiment
@@ -50,6 +51,9 @@ def main(rgi_id, SMB_model, synthetic, ensemble_size, inflation, iterations, see
           f'Initial offset: {init_offset}'
           f'Results directory: {results_dir}'
           f'Forward parallel: {forward_parallel}')
+
+    if not os.path.exists(results_dir):
+        os.mkdir(results_dir)
 
     # Initialise the Observation provider
     print("Initializing Observation Provider")
@@ -173,7 +177,7 @@ if __name__ == '__main__':
     parser.add_argument('--init_offset', type=int, default=0,
                         help='Random seed for the model.')
 
-    parser.add_argument('--results_dir', type=str, default='',
+    parser.add_argument('--results_dir', type=str,
                         help='path to the results directory.', required=True)
 
     parser.add_argument('--SMB_model', type=str,
