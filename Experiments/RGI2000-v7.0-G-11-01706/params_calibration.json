@@ -1,24 +1,24 @@
 {
-    "reference_smb": {
-        "time": 2000,
-        "ela": 2968.076923076923,
-        "gradabl": 9.587223813175562,
-        "gradacc": 4.798995980047308,
-        "accmax": 2
-    },
-    "reference_variability": {
-        "ela": 90.331408234398,
-        "gradabl": 1.079518104771279,
-        "gradacc": 0.7258067349125813
-    },
-    "initial_smb": {
-        "ela": 3000,
-        "gradabl": 8,
-        "gradacc": 4
-    },
-    "initial_spread": {
-        "ela": 500,
-        "gradabl": 6,
-        "gradacc": 4
-    }
+  "reference_smb": {
+    "time": 2000,
+    "ela": 3000,
+    "gradabl": 8,
+    "gradacc": 4,
+    "accmax": 2
+  },
+  "reference_variability": {
+    "ela": 100,
+    "gradabl": 1,
+    "gradacc": 1
+  },
+  "initial_smb": {
+    "ela": 3000,
+    "gradabl": 8,
+    "gradacc": 4
+  },
+  "initial_spread": {
+    "ela": 500,
+    "gradabl": 6,
+    "gradacc": 4
+  }
 }

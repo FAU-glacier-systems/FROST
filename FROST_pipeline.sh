@@ -27,7 +27,7 @@ conda activate igm_gpu
 #####################################
 
 # specify an individual experiment ID
-exp_version='v01'
+exp_version='v02'
 
 # results output directory
 #results_dir=""
@@ -39,21 +39,21 @@ rgi_id="RGI2000-v7.0-G-11-01706"
 # options:
 #           ELA: equlibrium line altitude, vertical SMB gradients
 #           TI:  OGGM temperature index implementation
-SMB_model="TI"
+SMB_model="ELA"
 
 # select FROST steps
 # STEP 1
-download=true
+download=false
 # STEP 2
-inversion=true
+inversion=false
 # STEP 3
 calibrate=true
 
 
 # STEP 1: SETUP GENERATION
 #####################################
-hugonnet_storage_dir="/home/vault/gwgi/gwgi17/projects/FRAGILE/input/dhdt/"
-# specify desired resoltion
+hugonnet_storage_dir="../../Data/Hugonnet/11_rgi60_2000-01-01_2020-01-01"
+# specify desired resolution
 # float value given in metres
 # if "none" --> the OGGM default resolution is used (size dependent)
 target_resolution="none"
@@ -112,6 +112,8 @@ results_dir=""
 
 # display the selected rgi_i
 echo "Running pipeline for RGI ID: $rgi_id"
+echo "with download: $download, inversion: $inversion, calibration: $calibration"
+
 # 0. create folders
 pushd  Scripts/Preprocess > /dev/null
 python -u create_folder.py --rgi_id "$rgi_id" --SMB_model "SMB_model"
@@ -159,7 +161,9 @@ if [ "$calibrate" = true ]; then
     echo "Starting calibration..."
     python -u FROST_calibration.py --rgi_id "$rgi_id" --ensemble_size "$EnKF_ensemble_size" \
     --forward_parallel "$EnKF_forward_parallel" --iterations "$EnKF_iterations" --seed "$EnKF_seed" \
-    --inflation "$EnKF_inflation" --results_dir "$results_dir" \
+    --inflation "$EnKF_inflation" --results_dir "$exp_version" \
     --init_offset "$EnKF_init_offset" --elevation_step "$EnKF_elev_band_height" --synthetic "$EnKF_synthetic" \
     --SMB_model "$SMB_model"
 fi
+
+echo "End of pipeline"

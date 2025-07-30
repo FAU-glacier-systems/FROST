@@ -503,6 +503,7 @@ def tile_merge_reproject(flist, oggm_shop_dataset):
 
     # A glacier area can cover more than one tile:
     if len(flist) == 1:
+
         dem_dss = [rasterio.open(flist[0])]  # if one tile, just open it
         file_crs = dem_dss[0].crs
         dhdt_data = rasterio.band(dem_dss[0], 1)
