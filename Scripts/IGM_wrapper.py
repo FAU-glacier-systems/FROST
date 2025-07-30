@@ -3,6 +3,8 @@
 # Copyright (C) 2024-2026 Oskar Herrmann
 # Published under the GNU GPL (Version 3), check the LICENSE file
 
+import argparse
+import shutil
 import json
 import os
 import subprocess
@@ -202,7 +204,9 @@ def forward(exp, output1D, output2D_3D, member_id, rgi_dir, SMB_model, usurf, sm
             new_velsurf_mag = np.array(new_ds['velsurf_mag'][1])
             new_divflux = np.array(new_ds['divflux'][1])
 
-    return member_id, new_usurf, new_smb, init_usurf, new_velsurf_mag, new_divflux
+        return member_id, new_usurf, new_smb, init_usurf, new_velsurf_mag, new_divflux
+    else:
+        return
 
 if __name__ == '__main__':
     # Parse command-line arguments
@@ -213,6 +217,11 @@ if __name__ == '__main__':
     parser.add_argument('--rgi_id', type=str,
                         default="RGI2000-v7.0-G-11-01706",
                         help='RGI ID of the glacier for the model.')
+
+    # Add arguments for parameters
+    parser.add_argument('--JSON_path', type=str,
+                        default="result.json",
+                        help='Provide file path to FROST ensemble results (currently TI approach).')
 
     # Add arguments for parameters
     parser.add_argument('--member_id', type=str,
@@ -261,9 +270,11 @@ if __name__ == '__main__':
 
     # Load glacier-specific parameters
     # calibration version
-    cal_version = "v01"
-    params_file_path = os.path.join('./Experiments',args.rgi_id,'Ensemble_'+cal_version+'_'+args.rgi_id+'_50.0_6_6_50m',
-                                        'result.json')
+    #cal_version = "v01"
+    #params_file_path = os.path.join('./Experiments',args.rgi_id,'Ensemble_'+cal_version+'_'+args.rgi_id+'_50.0_6_6_50m',
+    #                                    'result.json')
+    params_file_path = args.JSON_path
+
     with open(params_file_path, 'r') as file:
         params = json.load(file)
         final_mean = params['final_mean']
