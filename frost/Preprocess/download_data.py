@@ -28,21 +28,30 @@ TODOs:
 
 def main(rgi_id,
          target_resolution,
-         download_oggm_shop_flag,
-         download_hugonnet_flag,
+         download_oggm_shop,
+         download_hugonnet,
          hugonnet_directory,
-         year_interval):  # Parse command-line arguments
+         year_interval,
+         smb_model):  # Parse command-line arguments
+
+    # SMB model
+    if str(smb_model) == "ELA":
+        flag_OGGM_climate=False
+    elif str(smb_model) == "TI":
+        flag_OGGM_climate = True
+    else:
+        flag_OGGM_climate = False
 
     # Define the path using os.path.join
     rgi_id_dir = os.path.join('..', '..', 'Data', 'Glaciers', rgi_id)
 
     # Call functions based on flags
-    if download_oggm_shop_flag:
+    if download_oggm_shop:
         print(f"Downloading OGGM shop data for RGI ID: {rgi_id}...")
-        download_OGGM_shop(rgi_id_dir, rgi_id, args.flag_OGGM_climate)
+        download_OGGM_shop(rgi_id_dir, rgi_id, flag_OGGM_climate)
         print("OGGM shop data download completed.")
 
-    if download_hugonnet_flag:
+    if download_hugonnet:
         print(f"Downloading Hugonnet data with the following parameters:")
 
         print(f"  RGI directory: {rgi_id_dir}")
@@ -867,19 +876,14 @@ if __name__ == '__main__':
     # Parse arguments
     args = parser.parse_args()
 
-    # SMB model
-    if str(args.SMB_model) == "ELA":
-        args.flag_OGGM_climate=False
-    elif str(args.SMB_model) == "TI":
-        args.flag_OGGM_climate = True
-    else:
-        flag_OGGM_climate = False
+
 
 
     main(rgi_id=args.rgi_id,
          target_resolution=args.target_resolution,
-         download_oggm_shop_flag=args.download_oggm_shop,
-         download_hugonnet_flag=args.download_hugonnet,
+         download_oggm_shop=args.download_oggm_shop,
+         download_hugonnet=args.download_hugonnet,
          hugonnet_directory=args.hugonnet_directory,
-         year_interval=args.year_interval
+         year_interval=args.year_interval,
+         smb_model=args.SMB_model
          )

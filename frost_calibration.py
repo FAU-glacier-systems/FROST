@@ -6,9 +6,9 @@
 import argparse
 import os.path
 
-from Scripts.EnsembleKalmanFilter import EnsembleKalmanFilter
-from Scripts.ObservationProvider import ObservationProvider
-from Scripts.Visualization.Monitor import Monitor
+from frost.Calibration.EnsembleKalmanFilter import EnsembleKalmanFilter
+from frost.Calibration.ObservationProvider import ObservationProvider
+from frost.Visualization.Monitor import Monitor
 
 
 def main(rgi_id, SMB_model, synthetic, ensemble_size, inflation, iterations, seed,

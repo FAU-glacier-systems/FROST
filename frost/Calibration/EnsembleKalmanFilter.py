@@ -7,7 +7,7 @@ import os
 from netCDF4 import Dataset
 import numpy as np
 from concurrent.futures import ThreadPoolExecutor
-import Scripts.IGM_wrapper as IGM_wrapper
+import frost.Glacier_model.IGM_wrapper as IGM_wrapper
 import shutil
 import concurrent.futures
 import json
