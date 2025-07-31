@@ -1,17 +1,16 @@
-   experiment_name: "v02"
+   experiment_name: "Test_default"
    rgi_id: "RGI2000-v7.0-G-11-01706"
    smb_model: "ELA"
    pipeline_steps:
      download: true
-     inversion: true
-     calibrate: true
+     inversion: false
+     calibrate: false
    download:
-     download_oggm_shop: true
-     download_hugonnet: true
+     oggm_shop: true
+     hugonnet: true
      year_interval: 20
      target_resolution: None
-     hugonnet_directory: '../../Data/Raw/Hugonnet/11_rgi60_2000-01-01_2020-01-01
-        /dhdt'
+     hugonnet_directory: 'Data/Raw/Hugonnet/11_rgi60_2000-01-01_2020-01-01'
    EnKF:
      seed: 6
      inflation: 1

@@ -1,3 +1,5 @@
+import os.path
+
 import yaml
 import subprocess
 from pathlib import Path
@@ -6,11 +8,16 @@ import frost.Preprocess.download_data as download_data
 import frost.Preprocess.igm_inversion as igm_inversion
 import frost_calibration
 
+
 def run_frost_pipeline(cfg):
     print(f"Running FROST for RGI ID: {cfg['rgi_id']}")
     print(f"Steps: download={cfg['pipeline_steps']['download']}, "
           f"inversion={cfg['pipeline_steps']['inversion']}, "
           f"calibration={cfg['pipeline_steps']['calibrate']}")
+
+    # create experiment folder
+    experiment_path = os.path.join('Data', 'Results', cfg['experiment_name'])
+    os.makedirs(experiment_path,exist_ok=True)
 
     if cfg['pipeline_steps']['download']:
         #####################################
@@ -19,16 +26,10 @@ def run_frost_pipeline(cfg):
         #         (input data, domain, ...) #
         #                                   #
         #####################################
+        rgi_id_dir=os.path.join(experiment_path, 'Glaciers', cfg['rgi_id'])
         download_data.main(rgi_id=cfg['rgi_id'],
-                           smb_model=cfg['smb_model'],
-                           **cfg['download'], )
-        # download_data.main(rgi_id=cfg['rgi_id'],
-        #                    download_oggm_shop_flag=cfg['download']['oggm_shop'],
-        #                    download_hugonnet_flag=cfg['download']['hugonnet'],
-        #                    hugonnet_directory=cfg['download']['hugonnet_directory'],
-        #                    year_interval=cfg['download']['year_interval'],
-        #                    target_resolution=cfg['download']['target_resolution'],
-        #                    )
+                           rgi_id_dir=rgi_id_dir,
+                           **cfg['download'])
 
     if cfg['pipeline_steps']['inversion']:
         #####################################
@@ -46,7 +47,7 @@ def run_frost_pipeline(cfg):
         #         (ELAs, melt params., ...) #
         #                                   #
         #####################################
-        FROST_calibration.main(
+        frost_calibration.main(
             rgi_id=cfg['rgi_id'],
             ensemble_size=cfg['EnKF']['ensemble_size'],
             forward_parallel=cfg['EnKF']['forward_parallel'],

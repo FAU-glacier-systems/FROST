@@ -15,8 +15,8 @@ from netCDF4 import Dataset
 from scipy.ndimage import zoom
 import scipy.interpolate
 import rasterio
-from rasterio.windows import from_bounds
-from rasterio.merge import merge
+import shutil
+import yaml
 
 """
 TODOs:
@@ -27,33 +27,24 @@ TODOs:
 
 
 def main(rgi_id,
+         rgi_id_dir,
          target_resolution,
-         download_oggm_shop,
-         download_hugonnet,
+         oggm_shop,
+         hugonnet,
          hugonnet_directory,
-         year_interval,
-         smb_model):  # Parse command-line arguments
+         year_interval):  # Parse command-line arguments
 
-    # SMB model
-    if str(smb_model) == "ELA":
-        flag_OGGM_climate=False
-    elif str(smb_model) == "TI":
-        flag_OGGM_climate = True
-    else:
-        flag_OGGM_climate = False
-
-    # Define the path using os.path.join
-    rgi_id_dir = os.path.join('..', '..', 'Data', 'Glaciers', rgi_id)
+    # Create output folder
+    os.makedirs(rgi_id_dir, exist_ok=True)
 
     # Call functions based on flags
-    if download_oggm_shop:
+    if oggm_shop:
         print(f"Downloading OGGM shop data for RGI ID: {rgi_id}...")
-        download_OGGM_shop(rgi_id_dir, rgi_id, flag_OGGM_climate)
+        download_OGGM_shop(rgi_id_dir, rgi_id)
         print("OGGM shop data download completed.")
 
-    if download_hugonnet:
+    if hugonnet:
         print(f"Downloading Hugonnet data with the following parameters:")
-
         print(f"  RGI directory: {rgi_id_dir}")
         print(f"  Year interval: {year_interval}")
         download_hugonnet(rgi_id_dir, year_interval, hugonnet_directory)
@@ -62,12 +53,14 @@ def main(rgi_id,
     # Check input file from download for consistency
     # - no 'NaN' in the thickness fields (thkinit, thk)
     # - 90% percentile of observed velocities must be above 10m/yr (mangitude of both x- and y-components)
-    os.rename(os.path.join(rgi_id_dir, 'OGGM_shop', 'input_saved.nc'),
-                os.path.join(rgi_id_dir, 'OGGM_shop', 'input_saved_OGGM_orig.nc'))
+    os.rename(os.path.join(rgi_id_dir, 'OGGM_shop', 'data', 'input.nc'),
+              os.path.join(rgi_id_dir, 'OGGM_shop', 'data',
+                           'input_OGGM_orig.nc'))
 
     # Define input and output file names
-    input_file = os.path.join(rgi_id_dir, 'OGGM_shop', 'input_saved_OGGM_orig.nc')
-    output_file = os.path.join(rgi_id_dir, 'OGGM_shop', 'input_saved.nc')
+    input_file = os.path.join(rgi_id_dir, 'OGGM_shop',
+                              'data', 'input_OGGM_orig.nc')
+    output_file = os.path.join(rgi_id_dir, 'OGGM_shop', 'data', 'input.nc')
 
     # Open the input netCDF file in read mode
     with Dataset(input_file, 'r') as src:
@@ -76,55 +69,68 @@ def main(rgi_id,
 
             # Copy all dimensions from the source file to the destination file
             for name, dimension in src.dimensions.items():
-               dst.createDimension(name, len(dimension) if not dimension.isunlimited() else None)
+                dst.createDimension(name,
+                                    len(dimension) if not dimension.isunlimited() else None)
 
             # Copy all variables from the source file to the destination file
             for name, variable in src.variables.items():
-                #dst_var = dst.createVariable(name, variable.datatype, variable.dimensions)
-                #dst_var[:] = variable[:]  # Copy variable data
+                # dst_var = dst.createVariable(name, variable.datatype, variable.dimensions)
+                # dst_var[:] = variable[:]  # Copy variable data
 
                 # Check if variable is 'thi' and its original values are all NaN
                 if name == 'thk':
                     # Set values to zero where they are NaN
                     original_data = variable[:]
                     # Create a mask for NaN values and set them to zero
-                    #dst_var[:] = np.where(np.isnan(original_data), 0, original_data)
-                    dst_var = dst.createVariable(name, variable.datatype, variable.dimensions)
-                    dst_var[:] = np.where(np.abs(original_data)>10000, 0, original_data)
-                    dst_var[:] = np.where(np.abs(original_data)<0, 0, dst_var)
+                    # dst_var[:] = np.where(np.isnan(original_data), 0, original_data)
+                    dst_var = dst.createVariable(name, variable.datatype,
+                                                 variable.dimensions)
+                    dst_var[:] = np.where(np.abs(original_data) > 10000, 0,
+                                          original_data)
+                    dst_var[:] = np.where(np.abs(original_data) < 0, 0, dst_var)
                 elif name == 'thkinit':
                     # Set values to zero where they are NaN
                     original_data = variable[:]
                     # Create a mask for NaN values and set them to zero
-                    #dst_var[:] = np.where(np.isnan(original_data), 0, original_data)
-                    dst_var = dst.createVariable(name, variable.datatype, variable.dimensions)
-                    dst_var[:] = np.where(np.abs(original_data)>10000, 0, original_data)
-                    dst_var[:] = np.where(np.abs(original_data)<0, 0, dst_var)
+                    # dst_var[:] = np.where(np.isnan(original_data), 0, original_data)
+                    dst_var = dst.createVariable(name, variable.datatype,
+                                                 variable.dimensions)
+                    dst_var[:] = np.where(np.abs(original_data) > 10000, 0,
+                                          original_data)
+                    dst_var[:] = np.where(np.abs(original_data) < 0, 0, dst_var)
                 elif name == 'uvelsurfobs':
                     # Set values to zero where they are NaN
                     original_data = variable[:]
-                    modified_data = np.where(np.abs(original_data)==0, np.nan, original_data)
-                    if np.nansum(np.nansum(original_data)) != 0 :
-                         if np.nanpercentile(np.abs(original_data.flatten()),90) > 10.0:
-                             #Create a mask for NaN values and set them to zero
-                             dst_var = dst.createVariable(name, variable.datatype, variable.dimensions)
-                             dst_var[:] = np.where(np.abs(original_data)==0, np.nan, original_data)
+                    modified_data = np.where(np.abs(original_data) == 0, np.nan,
+                                             original_data)
+                    if np.nansum(np.nansum(modified_data)) != 0:
+                        if np.nanpercentile(np.abs(original_data.flatten()),
+                                            90) > 10.0:
+                            # Create a mask for NaN values and set them to zero
+                            dst_var = dst.createVariable(name, variable.datatype,
+                                                         variable.dimensions)
+                            dst_var[:] = np.where(np.abs(original_data) == 0, np.nan,
+                                                  original_data)
                 elif name == 'vvelsurfobs':
                     # Set values to zero where they are NaN
                     original_data = variable[:]
-                    print('PERCENTILE PERCENTILE 90 : ',np.nanpercentile(np.abs(original_data.flatten()),90))
-                    if np.nansum(np.nansum(original_data)) != 0 :
-                        if np.nanpercentile(np.abs(original_data.flatten()),90) > 10.0:
+                    print('PERCENTILE PERCENTILE 90 : ',
+                          np.nanpercentile(np.abs(original_data.flatten()), 90))
+                    if np.nansum(np.nansum(original_data)) != 0:
+                        if np.nanpercentile(np.abs(original_data.flatten()),
+                                            90) > 10.0:
                             # Create a mask for NaN values and set them to zero
-                            dst_var = dst.createVariable(name, variable.datatype, variable.dimensions)
-                            dst_var[:] = np.where(np.abs(original_data)==0, np.nan, original_data)
+                            dst_var = dst.createVariable(name, variable.datatype,
+                                                         variable.dimensions)
+                            dst_var[:] = np.where(np.abs(original_data) == 0, np.nan,
+                                                  original_data)
                 else:
-                    dst_var = dst.createVariable(name, variable.datatype, variable.dimensions)
+                    dst_var = dst.createVariable(name, variable.datatype,
+                                                 variable.dimensions)
                     dst_var[:] = variable[:]  # Copy variable data
 
             # Copy global attributes from the source file to the destination file
             dst.setncatts({k: src.getncattr(k) for k in src.ncattrs()})
-
 
     # Rescale all output netCDF to a given target resolution
     # check if target resolution is defined as a float
@@ -135,65 +141,40 @@ def main(rgi_id,
         else:
             target_resolution_float = True
     except ValueError:
-        print("--target resolution is not a float. Standard OGGM resolution is taken.")
+        print(
+            "--target resolution is not a float. Standard OGGM resolution is taken.")
         target_resolution_float = False
 
+
     if target_resolution_float:
-        target_resolution = float(target_resolution)
-        with Dataset(os.path.join(rgi_id_dir, 'OGGM_shop', 'input_saved.nc'),
-                     'r') as scaled_dataset:
-            x = scaled_dataset.variables['x'][:]
+
+        input_nc = os.path.join(rgi_id_dir, 'OGGM_shop', 'data', 'input.nc')
+        obs_nc = os.path.join(rgi_id_dir, 'observations.nc')
+
+        with Dataset(input_nc, 'r') as ds:
+            x = ds.variables['x'][:]
             resolution = abs(x[1] - x[2])
+
         if resolution != target_resolution:
-            print(
-                f"  Scale output netCDF to target resolution: {target_resolution}")
+            print(f"  Scale to target resolution: {target_resolution}")
             scale_factor = resolution / target_resolution
-            print('  Scale factor : ', scale_factor)
-            scale_raster(
-                os.path.join(rgi_id_dir, 'OGGM_shop', 'input_saved.nc'),
-                os.path.join(rgi_id_dir, 'OGGM_shop', 'input_scaled.nc'),
-                scale_factor)
-            os.rename(os.path.join(rgi_id_dir, 'OGGM_shop', 'input_saved.nc'),
-                      os.path.join(rgi_id_dir, 'OGGM_shop', 'input_saved_OGGM.nc'))
-            os.rename(os.path.join(rgi_id_dir, 'OGGM_shop', 'input_scaled.nc'),
-                      os.path.join(rgi_id_dir, 'OGGM_shop', 'input_saved.nc'))
+            print(f"  Scale factor: {scale_factor:.3f}")
 
-            scale_raster(
-                os.path.join(rgi_id_dir, 'observations.nc'),
-                os.path.join(rgi_id_dir, 'observations_scaled.nc'),
-                scale_factor)
-            os.rename(os.path.join(rgi_id_dir, 'observations.nc'),
-                      os.path.join(rgi_id_dir, 'observations_OGGM.nc'))
-            os.rename(os.path.join(rgi_id_dir, 'observations_scaled.nc'),
-                      os.path.join(rgi_id_dir, 'observations.nc'))
-            # scale_raster('input_saved.nc', 'input_scaled.nc', scale_factor)
-    else:
-        # Make back-up file for original OGGM netCDF
-        # Source and destination
-        src = os.path.join(rgi_id_dir, 'observations.nc')
-        dst = os.path.join(rgi_id_dir, 'observations_OGGM.nc')
+            # scale input.nc
+            scale_raster(input_nc, input_nc.replace('.nc', '_scaled.nc'),
+                         scale_factor)
+            shutil.move(input_nc, input_nc.replace('.nc', '_OGGM.nc'))
+            shutil.move(input_nc.replace('.nc', '_scaled.nc'), input_nc)
 
-        # Check the operating system and use the respective command
-        if os.name == 'nt':  # Windows
-            cmd = f'copy "{src}" "{dst}"'
-        else:  # Unix/Linux
-            cmd = f'cp "{src}" "{dst}"'
+            # scale observations.nc
+            scale_raster(obs_nc, obs_nc.replace('.nc', '_scaled.nc'), scale_factor)
+            shutil.move(obs_nc, obs_nc.replace('.nc', '_OGGM.nc'))
+            shutil.move(obs_nc.replace('.nc', '_scaled.nc'), obs_nc)
 
-            # Copy File
-            os.system(cmd)
-
-        # Source and destination
-        src = os.path.join(rgi_id_dir, 'OGGM_shop', 'input_saved.nc')
-        dst = os.path.join(rgi_id_dir, 'OGGM_shop', 'input_saved_OGGM.nc')
-
-        # Check the operating system and use the respective command
-        if os.name == 'nt':  # Windows
-            cmd = f'copy "{src}" "{dst}"'
-        else:  # Unix/Linux
-            cmd = f'cp "{src}" "{dst}"'
-
-        # Copy File
-        os.system(cmd)
+        else:
+            print("  No scaling needed. Creating backups...")
+            shutil.copy(obs_nc, obs_nc.replace('.nc', '_OGGM.nc'))
+            shutil.copy(input_nc, input_nc.replace('.nc', '_OGGM.nc'))
 
 
 def scale_raster(input_file, output_file, scale_factor):
@@ -313,7 +294,7 @@ def scale_raster(input_file, output_file, scale_factor):
 
 
 # Function to handle the main logic
-def download_OGGM_shop(rgi_id_dir, rgi_id, flag_OGGM_climate):
+def download_OGGM_shop(rgi_id_dir, rgi_id):
     """
     wrapper to call 'igm_run'
     - JSON file needs to specify the oggm_shop routine of IGM
@@ -329,53 +310,55 @@ def download_OGGM_shop(rgi_id_dir, rgi_id, flag_OGGM_climate):
     """
 
     # Define the params to be saved in params.json
-    json_file_path = os.path.join('..', '..', 'Experiments', rgi_id,
-                                  'params_download.json')
 
-    with open(json_file_path, 'r') as file:
-        params = json.load(file)
-
-    params["oggm_RGI_ID"] = rgi_id
     # Check if the directory exists, and create it if not
     oggm_shop_dir = os.path.join(rgi_id_dir, 'OGGM_shop')
-
-    if not os.path.exists(oggm_shop_dir):
-        os.makedirs(oggm_shop_dir)
+    os.makedirs(oggm_shop_dir, exist_ok=True)
+    exp_dir = os.path.join(oggm_shop_dir, 'experiment')
+    os.makedirs(exp_dir, exist_ok=True)
 
     # Change directory to the correct location
     original_dir = os.getcwd()
     os.chdir(oggm_shop_dir)
 
-    # Write the params dictionary to the params.json file
-    with open('params.json', 'w') as json_file:
-        json.dump(params, json_file, indent=4)
+    # create params.yaml
+    params = {
+        "core": {
+            "url_data": ""
+        },
+        "defaults": [
+            {"override /inputs": ["oggm_shop", "local"]},
+            {"override /processes": []},
+            {"override /outputs": []}
+        ],
+        "inputs": {
+            "oggm_shop": {
+                "RGI_ID": rgi_id,
+                "thk_source": "millan_ice_thickness",
+                "incl_glathida": True,
+            }
+        },
+        "outputs": {},
+        "processes": {}
+    }
+
+    # Write YAML
+    with open(os.path.join('experiment', 'params.yaml'), 'w') as f:
+        f.write("# @package _global_\n")
+        yaml.dump(params, f, sort_keys=False)
 
     # Run the igm_run command
-    subprocess.run(['igm_run', '--param_file', 'params.json'])
-
-    if flag_OGGM_climate:
-        # Rescue 'climate_historical.nc' created by oggm_shop.py
-        # this option requires that "oggm_remove_RGI_folder": false
-        print('flag_OGGM_climate', flag_OGGM_climate, type(flag_OGGM_climate))
-        if flag_OGGM_climate:
-            os.system('pwd')
-            src = os.path.join('.', rgi_id,'climate_historical.nc')
-            dst = os.path.join('..', 'climate_historical.nc')
-
-            # Check the operating system and use the respective command
-            if os.name == 'nt':  # Windows
-                cmd = f'copy "{src}" "{dst}"'
-            else:  # Unix/Linux
-                cmd = f'cp "{src}" "{dst}"'
-
-            # Copy File
-            os.system(cmd)
+    import sys
+    from igm.igm_run import main as igm_main
+    sys.argv = ["igm_run", "+experiment=params"]
+    igm_main()
+    # subprocess.run(["igm_run", "+experiment=params"], check=True)
+    # TODO remove unnecessary files
 
     os.chdir(original_dir)
 
 
-def crop_hugonnet_to_glacier(rgi_region, date_range, hugonnet_dir, oggm_shop_dir,
-                             oggm_shop_dataset):
+def crop_hugonnet_to_glacier(date_range, hugonnet_dir, oggm_shop_dataset):
     """
     Fuse multiple dh/dt tiles and crop to a specified OGGM dataset area.
 
@@ -401,14 +384,19 @@ def crop_hugonnet_to_glacier(rgi_region, date_range, hugonnet_dir, oggm_shop_dir
     min_x, max_x = x_coords.min(), x_coords.max()
     min_y, max_y = y_coords.min(), y_coords.max()
 
+    # TODO
     # Use netCDF file from OGGMshop and extract projection details
     # (no idea what happens if another DEM source is taken - instead of SRTM)
-    zone_number = int(oggm_shop_dataset.epsg.split(':')[1][3:5])
+    zone_number = int(oggm_shop_dataset.pyproj_srs.split('=')[2][0:2])
+    # Convert to CRS object
+    from pyproj import CRS
+    crs = CRS.from_proj4(oggm_shop_dataset.pyproj_srs)
 
-    # Determine if glacier is in northern or southern hemisphere
-    # for that use y-corner coordinate from OGGM projection details
-    if float(oggm_shop_dataset.pyproj_crs.split(':')[2].split(']')[0].split(',')[
-                 1]) > 0:
+    # Try to get the EPSG code
+    epsg_code = crs.to_epsg()
+    oggm_shop_dataset.epsg = f"EPSG:{epsg_code}"
+
+    if zone_number > 0:
         zone_letter = "N"
     else:
         zone_letter = "S"
@@ -582,20 +570,10 @@ def tile_merge_reproject(flist, oggm_shop_dataset):
     # Read global attributes from OGGMshop netcdf (as written by IGM oggm_shop.py)
     dst_array = np.zeros(np.shape(oggm_shop_dataset['usurf'][:]))
     dst_crs = oggm_shop_dataset.epsg
-    dst_transform = rasterio.transform.from_origin(float(
-        oggm_shop_dataset.pyproj_crs.split(':')[2].split('[')[1].split(',')[0]),
-        float(
-            oggm_shop_dataset.pyproj_crs.split(
-                ':')[2].split(']')[
-                0].split(',')[1]),
-        abs(float(
-            oggm_shop_dataset.pyproj_crs.split(
-                ':')[4].split('[')[
-                1].split(',')[0])),
-        abs(float(
-            oggm_shop_dataset.pyproj_crs.split(
-                ':')[4].split(']')[
-                0].split(',')[1])))
+    x = oggm_shop_dataset['x'][:]
+    y = oggm_shop_dataset['y'][:]
+    dst_transform = rasterio.transform.from_origin(x[0], y[-1], x[1] - x[0],
+                                                   y[1] - y[0])
 
     resampling = Resampling.bilinear
 
@@ -670,10 +648,10 @@ def download_hugonnet(rgi_id_dir, year_interval, hugonnet_directory):
     oggm_shop_dir = os.path.join(rgi_id_dir, 'OGGM_shop')
 
     # Join directory and filename
-    oggm_shop_file = os.path.join(oggm_shop_dir, 'input_saved.nc')
+    oggm_shop_file = os.path.join(oggm_shop_dir, 'data', 'input.nc')
 
     # Load file from oggm_shop and retrieve relevant variables
-    oggm_shop_dataset = Dataset(oggm_shop_file, 'r')
+    oggm_shop_dataset = Dataset(oggm_shop_file, 'a')
     icemask_2000 = oggm_shop_dataset['icemask'][:]
     usurf_2000 = oggm_shop_dataset['usurf'][:]
     thk_2000 = oggm_shop_dataset['thkinit'][:]
@@ -715,16 +693,15 @@ def download_hugonnet(rgi_id_dir, year_interval, hugonnet_directory):
 
         ### MERGE TILES AND CROP to oggmshop area ###
         print('Hugonnet dh/dt filename : ', folder_name)
-        cropped_dhdt, cropped_dhdt_err = crop_hugonnet_to_glacier(rgi_region,
-                                                                  date_range,
-                                                                  hugonnet_dir,
-                                                                  oggm_shop_dir,
-                                                                  oggm_shop_dataset)
+        dhdt, dhdt_err = crop_hugonnet_to_glacier(date_range=date_range,
+                                                  hugonnet_dir=hugonnet_dir,
+                                                  oggm_shop_dataset=oggm_shop_dataset,
+                                                  )
 
-        dhdt_masked = cropped_dhdt[::-1] * icemask_2000
+        dhdt_masked = dhdt[::-1] * icemask_2000
         dhdts.append(dhdt_masked)
 
-        dhdt_err_masked = cropped_dhdt_err[::-1] * icemask_2000
+        dhdt_err_masked = dhdt_err[::-1] * icemask_2000
         dhdts_err.append(dhdt_err_masked)
 
     usurf_change = [usurf_2000]  # initialise with 2000 state #TODO ASTER ?
@@ -813,6 +790,10 @@ def download_hugonnet(rgi_id_dir, year_interval, hugonnet_directory):
                                                      ('time', 'y', 'x'))
         velsurf_mag_var = merged_dataset.createVariable('velsurf_mag', 'f4',
                                                         ('time', 'y', 'x'))
+        uvelsurfobs_var = merged_dataset.createVariable('uvelsurfobs', 'f4',
+                                                        ('time', 'y', 'x'))
+        vvelsurfobs_var = merged_dataset.createVariable('vvelsurfobs', 'f4',
+                                                        ('time', 'y', 'x'))
 
         # Assign data to variables
         time_var[:] = year_range
@@ -824,13 +805,13 @@ def download_hugonnet(rgi_id_dir, year_interval, hugonnet_directory):
         dhdt_var[:] = dhdt_change
         dhdt_err_var[:] = dhdt_err_change
         velsurf_mag_var[:] = velo
-
-
+        uvelsurfobs_var[:] = uvelo
+        vvelsurfobs_var[:] = vvelo
 
         # Write globale attribute in OGGMshop netCDF file
         dst_crs = oggm_shop_dataset.epsg
-        dst_proj = oggm_shop_dataset.pyproj_crs
-        merged_dataset.setncattr('pyproj_crs', str(dst_proj))
+        dst_proj = oggm_shop_dataset.pyproj_srs
+        merged_dataset.setncattr('pyproj_srs', str(dst_proj))
         merged_dataset.setncattr('epsg', str(dst_crs))
 
 
@@ -846,6 +827,10 @@ if __name__ == '__main__':
                         help='The RGI ID of the glacier to be calibrated '
                              '(default: RGI2000-v7.0-G-11-01706).')
 
+    parser.add_argument('--rgi_id_dir', type=str,
+                        default="../../Data/Results/Test_default/Glaciers/RGI2000"
+                                "-v7.0-G-11-01706/")
+
     # Add argument for specific target resolution
     parser.add_argument('--target_resolution', type=str,
                         help='user-specific resolution for IGM run [meters] '
@@ -855,10 +840,9 @@ if __name__ == '__main__':
     parser.add_argument('--download_oggm_shop', action='store_true',
                         help='Flag to control execution of download_OGGM_shop.')
 
-    # Add argument for climate data acquisition
-    parser.add_argument('--SMB_model', type=str,
-                        default="ELA",
-                        help='Flag to decide for SMB model (ELA, TI, ...).')
+    # Add flags to control function execution
+    parser.add_argument('--download_oggm_shop', action='store_true',
+                        help='Flag to control execution of download_OGGM_shop.')
 
     parser.add_argument('--download_hugonnet', action='store_true',
                         help='Flag to control execution of download_Hugonnet.')
@@ -876,14 +860,11 @@ if __name__ == '__main__':
     # Parse arguments
     args = parser.parse_args()
 
-
-
-
     main(rgi_id=args.rgi_id,
+         rgi_id_dir=args.rgi_id_dir,
          target_resolution=args.target_resolution,
-         download_oggm_shop=args.download_oggm_shop,
-         download_hugonnet=args.download_hugonnet,
+         oggm_shop=args.download_oggm_shop,
+         hugonnet=args.download_hugonnet,
          hugonnet_directory=args.hugonnet_directory,
          year_interval=args.year_interval,
-         smb_model=args.SMB_model
          )
