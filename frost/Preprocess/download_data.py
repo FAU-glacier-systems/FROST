@@ -40,7 +40,7 @@ def main(rgi_id,
     # Call functions based on flags
     if oggm_shop:
         print(f"Downloading OGGM shop data for RGI ID: {rgi_id}...")
-        download_OGGM_shop(rgi_id_dir, rgi_id)
+        download_OGGM_shop(rgi_id, rgi_id_dir)
         print("OGGM shop data download completed.")
 
     if hugonnet:
@@ -50,87 +50,92 @@ def main(rgi_id,
         download_hugonnet(rgi_id_dir, year_interval, hugonnet_directory)
         print("Hugonnet data download completed.")
 
+    # TODO
     # Check input file from download for consistency
     # - no 'NaN' in the thickness fields (thkinit, thk)
     # - 90% percentile of observed velocities must be above 10m/yr (mangitude of both x- and y-components)
-    os.rename(os.path.join(rgi_id_dir, 'OGGM_shop', 'data', 'input.nc'),
-              os.path.join(rgi_id_dir, 'OGGM_shop', 'data',
-                           'input_OGGM_orig.nc'))
-
-    # Define input and output file names
-    input_file = os.path.join(rgi_id_dir, 'OGGM_shop',
-                              'data', 'input_OGGM_orig.nc')
-    output_file = os.path.join(rgi_id_dir, 'OGGM_shop', 'data', 'input.nc')
-
-    # Open the input netCDF file in read mode
-    with Dataset(input_file, 'r') as src:
-        # Create a new netCDF file in write mode
-        with Dataset(output_file, 'w') as dst:
-
-            # Copy all dimensions from the source file to the destination file
-            for name, dimension in src.dimensions.items():
-                dst.createDimension(name,
-                                    len(dimension) if not dimension.isunlimited() else None)
-
-            # Copy all variables from the source file to the destination file
-            for name, variable in src.variables.items():
-                # dst_var = dst.createVariable(name, variable.datatype, variable.dimensions)
-                # dst_var[:] = variable[:]  # Copy variable data
-
-                # Check if variable is 'thi' and its original values are all NaN
-                if name == 'thk':
-                    # Set values to zero where they are NaN
-                    original_data = variable[:]
-                    # Create a mask for NaN values and set them to zero
-                    # dst_var[:] = np.where(np.isnan(original_data), 0, original_data)
-                    dst_var = dst.createVariable(name, variable.datatype,
-                                                 variable.dimensions)
-                    dst_var[:] = np.where(np.abs(original_data) > 10000, 0,
-                                          original_data)
-                    dst_var[:] = np.where(np.abs(original_data) < 0, 0, dst_var)
-                elif name == 'thkinit':
-                    # Set values to zero where they are NaN
-                    original_data = variable[:]
-                    # Create a mask for NaN values and set them to zero
-                    # dst_var[:] = np.where(np.isnan(original_data), 0, original_data)
-                    dst_var = dst.createVariable(name, variable.datatype,
-                                                 variable.dimensions)
-                    dst_var[:] = np.where(np.abs(original_data) > 10000, 0,
-                                          original_data)
-                    dst_var[:] = np.where(np.abs(original_data) < 0, 0, dst_var)
-                elif name == 'uvelsurfobs':
-                    # Set values to zero where they are NaN
-                    original_data = variable[:]
-                    modified_data = np.where(np.abs(original_data) == 0, np.nan,
-                                             original_data)
-                    if np.nansum(np.nansum(modified_data)) != 0:
-                        if np.nanpercentile(np.abs(original_data.flatten()),
-                                            90) > 10.0:
-                            # Create a mask for NaN values and set them to zero
-                            dst_var = dst.createVariable(name, variable.datatype,
-                                                         variable.dimensions)
-                            dst_var[:] = np.where(np.abs(original_data) == 0, np.nan,
-                                                  original_data)
-                elif name == 'vvelsurfobs':
-                    # Set values to zero where they are NaN
-                    original_data = variable[:]
-                    print('PERCENTILE PERCENTILE 90 : ',
-                          np.nanpercentile(np.abs(original_data.flatten()), 90))
-                    if np.nansum(np.nansum(original_data)) != 0:
-                        if np.nanpercentile(np.abs(original_data.flatten()),
-                                            90) > 10.0:
-                            # Create a mask for NaN values and set them to zero
-                            dst_var = dst.createVariable(name, variable.datatype,
-                                                         variable.dimensions)
-                            dst_var[:] = np.where(np.abs(original_data) == 0, np.nan,
-                                                  original_data)
-                else:
-                    dst_var = dst.createVariable(name, variable.datatype,
-                                                 variable.dimensions)
-                    dst_var[:] = variable[:]  # Copy variable data
-
-            # Copy global attributes from the source file to the destination file
-            dst.setncatts({k: src.getncattr(k) for k in src.ncattrs()})
+    # os.rename(os.path.join(rgi_id_dir, 'OGGM_shop', 'data', 'input.nc'),
+    #           os.path.join(rgi_id_dir, 'OGGM_shop', 'data',
+    #                        'input_OGGM_orig.nc'))
+    #
+    # # Define input and output file names
+    # input_file = os.path.join(rgi_id_dir, 'OGGM_shop',
+    #                           'data', 'input_OGGM_orig.nc')
+    # output_file = os.path.join(rgi_id_dir, 'OGGM_shop', 'data', 'input.nc')
+    #
+    #
+    #
+    # # Open the input netCDF file in read mode
+    # with Dataset(input_file, 'r') as src:
+    #     # Create a new netCDF file in write mode
+    #     with Dataset(output_file, 'w') as dst:
+    #
+    #         # Copy all dimensions from the source file to the destination file
+    #         for name, dimension in src.dimensions.items():
+    #             dst.createDimension(name,
+    #                                 len(dimension) if not dimension.isunlimited() else None)
+    #
+    #         # Copy all variables from the source file to the destination file
+    #         for name, variable in src.variables.items():
+    #             # dst_var = dst.createVariable(name, variable.datatype, variable.dimensions)
+    #             # dst_var[:] = variable[:]  # Copy variable data
+    #
+    #             # Check if variable is 'thi' and its original values are all NaN
+    #             if name == 'thk':
+    #                 # Set values to zero where they are NaN
+    #                 original_data = variable[:]
+    #                 # Create a mask for NaN values and set them to zero
+    #                 # dst_var[:] = np.where(np.isnan(original_data), 0, original_data)
+    #                 dst_var = dst.createVariable(name, variable.datatype,
+    #                                              variable.dimensions)
+    #                 dst_var[:] = np.where(np.abs(original_data) > 10000, 0,
+    #                                       original_data)
+    #                 dst_var[:] = np.where(np.abs(original_data) < 0, 0, dst_var)
+    #             elif name == 'thkinit':
+    #                 # Set values to zero where they are NaN
+    #                 original_data = variable[:]
+    #                 # Create a mask for NaN values and set them to zero
+    #                 # dst_var[:] = np.where(np.isnan(original_data), 0, original_data)
+    #                 dst_var = dst.createVariable(name, variable.datatype,
+    #                                              variable.dimensions)
+    #                 dst_var[:] = np.where(np.abs(original_data) > 10000, 0,
+    #                                       original_data)
+    #                 dst_var[:] = np.where(np.abs(original_data) < 0, 0, dst_var)
+    #             elif name == 'uvelsurfobs':
+    #                 # Set values to zero where they are NaN
+    #                 original_data = np.array(variable[:])
+    #                 modified_data = np.where(np.abs(original_data) == 0, np.nan,
+    #                                          original_data)
+    #                 if np.nansum(np.nansum(modified_data)) != 0:
+    #                     if np.nanpercentile(np.abs(original_data.flatten()),
+    #                                         90) > 10.0:
+    #                         # Create a mask for NaN values and set them to zero
+    #                         dst_var = dst.createVariable(name, variable.datatype,
+    #                                                      variable.dimensions)
+    #                         dst_var[:] = np.where(np.abs(original_data) == 0, np.nan,
+    #                                               original_data)
+    #             elif name == 'vvelsurfobs':
+    #                 # Set values to zero where they are NaN
+    #                 original_data = np.array(variable[:])
+    #                 modified_data = np.where(np.abs(original_data) == 0, np.nan,
+    #                                          original_data)
+    #                 print('PERCENTILE PERCENTILE 90 : ',
+    #                       np.nanpercentile(np.abs(modified_data.flatten()), 90))
+    #                 if np.nansum(np.nansum(modified_data)) != 0:
+    #                     if np.nanpercentile(np.abs(modified_data.flatten()),
+    #                                         90) > 10.0:
+    #                         # Create a mask for NaN values and set them to zero
+    #                         dst_var = dst.createVariable(name, variable.datatype,
+    #                                                      variable.dimensions)
+    #                         dst_var[:] = np.where(np.abs(original_data) == 0, np.nan,
+    #                                               original_data)
+    #             else:
+    #                 dst_var = dst.createVariable(name, variable.datatype,
+    #                                              variable.dimensions)
+    #                 dst_var[:] = variable[:]  # Copy variable data
+    #
+    #         # Copy global attributes from the source file to the destination file
+    #         dst.setncatts({k: src.getncattr(k) for k in src.ncattrs()})
 
     # Rescale all output netCDF to a given target resolution
     # check if target resolution is defined as a float
@@ -145,10 +150,9 @@ def main(rgi_id,
             "--target resolution is not a float. Standard OGGM resolution is taken.")
         target_resolution_float = False
 
-
     if target_resolution_float:
 
-        input_nc = os.path.join(rgi_id_dir, 'OGGM_shop', 'data', 'input.nc')
+        input_nc = os.path.join(rgi_id_dir, 'Preprocess', 'data', 'input.nc')
         obs_nc = os.path.join(rgi_id_dir, 'observations.nc')
 
         with Dataset(input_nc, 'r') as ds:
@@ -170,11 +174,6 @@ def main(rgi_id,
             scale_raster(obs_nc, obs_nc.replace('.nc', '_scaled.nc'), scale_factor)
             shutil.move(obs_nc, obs_nc.replace('.nc', '_OGGM.nc'))
             shutil.move(obs_nc.replace('.nc', '_scaled.nc'), obs_nc)
-
-        else:
-            print("  No scaling needed. Creating backups...")
-            shutil.copy(obs_nc, obs_nc.replace('.nc', '_OGGM.nc'))
-            shutil.copy(input_nc, input_nc.replace('.nc', '_OGGM.nc'))
 
 
 def scale_raster(input_file, output_file, scale_factor):
@@ -225,12 +224,19 @@ def scale_raster(input_file, output_file, scale_factor):
             y_var[:] = new_y
 
             # Copy attributes for x and y
-            x_var.setncatts(
-                {attr: input_dataset.variables['x'].getncattr(attr) for attr in
-                 input_dataset.variables['x'].ncattrs()})
-            y_var.setncatts(
-                {attr: input_dataset.variables['y'].getncattr(attr) for attr in
-                 input_dataset.variables['y'].ncattrs()})
+            x_attrs = {
+                attr: input_dataset.variables['x'].getncattr(attr)
+                for attr in input_dataset.variables['x'].ncattrs()
+                if attr != '_FillValue'
+            }
+            x_var.setncatts(x_attrs)
+
+            y_attrs = {
+                attr: input_dataset.variables['y'].getncattr(attr)
+                for attr in input_dataset.variables['y'].ncattrs()
+                if attr != '_FillValue'
+            }
+            y_var.setncatts(y_attrs)
 
             # Copy other variables and downscale
             for var_name in input_dataset.variables:
@@ -256,45 +262,48 @@ def scale_raster(input_file, output_file, scale_factor):
                     scaled_var[:] = var[:]
 
                 # Copy variable attributes
-                scaled_var.setncatts(
-                    {attr: var.getncattr(attr) for attr in var.ncattrs()})
+                attrs_to_copy = {
+                    attr: var.getncattr(attr)
+                    for attr in var.ncattrs()
+                    if attr != '_FillValue'
+                }
+                scaled_var.setncatts(attrs_to_copy)
 
             # Copy global attributes (e.g., CRS, title, etc.)
             scaled_dataset.setncatts(
                 {attr: input_dataset.getncattr(attr) for attr in
                  input_dataset.ncattrs()})
 
-            # Get global pyproj attribute
-            dst_proj = scaled_dataset.pyproj_crs
-            # adjust dxdx values§
-            dst_proj2 = str(
-                scaled_dataset.pyproj_crs.split('dxdy')[0]) + "dxdy\': [" + str(
-                1.0 / scale_factor * (input_dataset.variables['x'][1] -
-                                      input_dataset.variables['x'][
-                                          0])) + ', -' + str(1.0 / scale_factor * (
-                    input_dataset.variables['y'][1] -
-                    input_dataset.variables['y'][0])) + '],' + "\'pixel " + str(
-                scaled_dataset.pyproj_crs.split('pixel')[1])
-            # adjust nxny values
-            dst_proj3 = str(dst_proj2.split('nxny')[0]) + "nxny\': [" + str(
-                len(scaled_dataset.variables['x'][:])) + ', ' + str(
-                len(scaled_dataset.variables['y'][:])) + ']' + str(
-                "\'dxdy" + str(dst_proj2.split('dxdy')[1]))
-            scaled_dataset.setncattr('pyproj_crs', str(dst_proj3))
-
-            # Handle CRS explicitly, if available
-            if 'crs' in input_dataset.variables:
-                crs_var = input_dataset.variables['crs']
-                scaled_crs = scaled_dataset.createVariable('crs', crs_var.datatype)
-                scaled_crs.setncatts(
-                    {attr: crs_var.getncattr(attr) for attr in crs_var.ncattrs()})
-                scaled_dataset.variables['crs'] = crs_var[:]
+            # TODO
+            # # adjust dxdx values§
+            # dst_proj2 = str(
+            #     scaled_dataset.pyproj_crs.split('dxdy')[0]) + "dxdy\': [" + str(
+            #     1.0 / scale_factor * (input_dataset.variables['x'][1] -
+            #                           input_dataset.variables['x'][
+            #                               0])) + ', -' + str(1.0 / scale_factor * (
+            #         input_dataset.variables['y'][1] -
+            #         input_dataset.variables['y'][0])) + '],' + "\'pixel " + str(
+            #     scaled_dataset.pyproj_crs.split('pixel')[1])
+            # # adjust nxny values
+            # dst_proj3 = str(dst_proj2.split('nxny')[0]) + "nxny\': [" + str(
+            #     len(scaled_dataset.variables['x'][:])) + ', ' + str(
+            #     len(scaled_dataset.variables['y'][:])) + ']' + str(
+            #     "\'dxdy" + str(dst_proj2.split('dxdy')[1]))
+            # scaled_dataset.setncattr('pyproj_crs', str(dst_proj3))
+            #
+            # # Handle CRS explicitly, if available
+            # if 'crs' in input_dataset.variables:
+            #     crs_var = input_dataset.variables['crs']
+            #     scaled_crs = scaled_dataset.createVariable('crs', crs_var.datatype)
+            #     scaled_crs.setncatts(
+            #         {attr: crs_var.getncattr(attr) for attr in crs_var.ncattrs()})
+            #     scaled_dataset.variables['crs'] = crs_var[:]
 
     print(f"Scaled raster saved to {output_file} with metadata.")
 
 
 # Function to handle the main logic
-def download_OGGM_shop(rgi_id_dir, rgi_id):
+def download_OGGM_shop(rgi_id, rgi_id_dir,):
     """
     wrapper to call 'igm_run'
     - JSON file needs to specify the oggm_shop routine of IGM
@@ -312,14 +321,13 @@ def download_OGGM_shop(rgi_id_dir, rgi_id):
     # Define the params to be saved in params.json
 
     # Check if the directory exists, and create it if not
-    oggm_shop_dir = os.path.join(rgi_id_dir, 'OGGM_shop')
-    os.makedirs(oggm_shop_dir, exist_ok=True)
-    exp_dir = os.path.join(oggm_shop_dir, 'experiment')
+    preprocess_dir = os.path.join(rgi_id_dir, 'Preprocess')
+    exp_dir = os.path.join(preprocess_dir, 'experiment')
     os.makedirs(exp_dir, exist_ok=True)
 
     # Change directory to the correct location
     original_dir = os.getcwd()
-    os.chdir(oggm_shop_dir)
+    os.chdir(preprocess_dir)
 
     # create params.yaml
     params = {
@@ -343,14 +351,14 @@ def download_OGGM_shop(rgi_id_dir, rgi_id):
     }
 
     # Write YAML
-    with open(os.path.join('experiment', 'params.yaml'), 'w') as f:
+    with open(os.path.join('experiment', 'params_oggm_shop.yaml'), 'w') as f:
         f.write("# @package _global_\n")
         yaml.dump(params, f, sort_keys=False)
 
     # Run the igm_run command
     import sys
     from igm.igm_run import main as igm_main
-    sys.argv = ["igm_run", "+experiment=params"]
+    sys.argv = ["igm_run", "+experiment=params_oggm_shop"]
     igm_main()
     # subprocess.run(["igm_run", "+experiment=params"], check=True)
     # TODO remove unnecessary files
@@ -645,10 +653,10 @@ def download_hugonnet(rgi_id_dir, year_interval, hugonnet_directory):
     """
 
     # Retrieve relative directory path for OGGMshop
-    oggm_shop_dir = os.path.join(rgi_id_dir, 'OGGM_shop')
+    preprocess_dir = os.path.join(rgi_id_dir, 'Preprocess')
 
     # Join directory and filename
-    oggm_shop_file = os.path.join(oggm_shop_dir, 'data', 'input.nc')
+    oggm_shop_file = os.path.join(preprocess_dir, 'data', 'input.nc')
 
     # Load file from oggm_shop and retrieve relevant variables
     oggm_shop_dataset = Dataset(oggm_shop_file, 'a')

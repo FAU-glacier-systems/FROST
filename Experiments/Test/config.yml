@@ -3,7 +3,7 @@
    smb_model: "ELA"
    pipeline_steps:
      download: true
-     inversion: false
+     inversion: true
      calibrate: false
    download:
      oggm_shop: true

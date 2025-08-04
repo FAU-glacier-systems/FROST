@@ -6,14 +6,14 @@
 #SBATCH --time=00:59:59
 #SBATCH --job-name=frost
 #SBATCH --gres=gpu:a100:1
-#SBATCH --output=Experiments/Log/frost_%j.out
-#SBATCH --error=Experiments/Log/frost_%j.err
+#SBATCH --output=Results/Log/frost_%j.out
+#SBATCH --error=Results/Log/frost_%j.err
 
 export http_proxy=http://proxy:80
 export https_proxy=http://proxy:80
 
 module load python
-conda activate igm_gpu
+conda activate igm3
 
-bash FROST_pipeline.sh
+python frost_pipeline.py
 
