@@ -1,8 +1,5 @@
 import os.path
-
 import yaml
-import subprocess
-from pathlib import Path
 import argparse
 import frost.Preprocess.download_data as download_data
 import frost.Preprocess.igm_inversion as igm_inversion
@@ -17,7 +14,7 @@ def run_frost_pipeline(cfg):
 
     # create experiment folder
     experiment_path = os.path.join('Data', 'Results', cfg['experiment_name'])
-    os.makedirs(experiment_path,exist_ok=True)
+    os.makedirs(experiment_path, exist_ok=True)
 
     if cfg['pipeline_steps']['download']:
         #####################################
@@ -26,7 +23,7 @@ def run_frost_pipeline(cfg):
         #         (input data, domain, ...) #
         #                                   #
         #####################################
-        rgi_id_dir=os.path.join(experiment_path, 'Glaciers', cfg['rgi_id'])
+        rgi_id_dir = os.path.join(experiment_path, 'Glaciers', cfg['rgi_id'])
         download_data.main(rgi_id=cfg['rgi_id'],
                            rgi_id_dir=rgi_id_dir,
                            **cfg['download'])
@@ -38,7 +35,7 @@ def run_frost_pipeline(cfg):
         #         (ice dynamics, ...)       #
         #                                   #
         #####################################
-        igm_inversion.main(rgi_id=cfg['rgi_id'])
+        igm_inversion.main(rgi_id_dir=rgi_id_dir)
 
     if cfg['pipeline_steps']['calibrate']:
         #####################################
