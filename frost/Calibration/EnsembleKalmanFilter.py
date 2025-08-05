@@ -42,8 +42,10 @@ class EnsembleKalmanFilter:
         reference_smb (dict)          - Reference SMB values
     """
 
-    def __init__(self, rgi_id, SMB_model, ensemble_size, inflation, seed, start_year,
-                 output_dir, usurf_ensemble, init_offset=0):
+    def __init__(self, rgi_id, rgi_id_dir, SMB_model, ensemble_size, inflation,
+                 seed, start_year, smb_prior_mean, smb_prior_std,
+                 smb_reference_mean, smb_reference_std, usurf_ensemble,
+                 init_offset=0):
         """
         Initializes the Ensemble Kalman Filter by loading required data and setting up
         the initial ensemble.
@@ -65,22 +67,21 @@ class EnsembleKalmanFilter:
         # Store arguments
         self.rgi_id = rgi_id
         self.SMB_model = SMB_model
-        self.rgi_id_dir = os.path.join('Data', 'Glaciers', rgi_id)
+        self.rgi_id_dir = rgi_id_dir
         self.ensemble_size = ensemble_size
         self.inflation = inflation
         self.seed = seed
         self.start_year = start_year
         self.current_year = start_year
-        self.output_dir = output_dir
 
         # Create ensemble directory if not existing
         ensemble_dir = os.path.join(self.rgi_id_dir, 'Ensemble')
         os.makedirs(ensemble_dir, exist_ok=True)
 
         # Load geology file (bedrock and initial icemask)
-        inversion_dir = os.path.join(self.rgi_id_dir, 'Inversion')
-        geology_file = os.path.join(inversion_dir, 'geology-optimized.nc')
-        with Dataset(geology_file, 'r') as geology_dataset:
+        inversion_dir = os.path.join(self.rgi_id_dir, 'Preprocess', 'outputs')
+        inversion_file = os.path.join(inversion_dir, 'output.nc')
+        with Dataset(inversion_file, 'r') as geology_dataset:
             self.icemask_init = np.array(geology_dataset['icemask'])
             self.bedrock = np.array(geology_dataset['topg'])
             init_divflux = np.array(geology_dataset['divflux'])
@@ -95,46 +96,42 @@ class EnsembleKalmanFilter:
         self.ensemble_velsurf_mag_raster = np.zeros_like(self.ensemble_smb_raster)
         self.ensemble_divflux_raster = np.zeros_like(self.ensemble_smb_raster)
 
-
-        # Load glacier-specific parameters
-        params_file_path = os.path.join('Experiments', rgi_id,
-                                        'params_calibration_'+SMB_model+'.json')
-        with open(params_file_path, 'r') as file:
-            params = json.load(file)
-            self.initial_smb = params['initial_smb']
-            self.initial_spread = params['initial_spread']
-            self.reference_smb = params['reference_smb']
-            self.reference_variability = params['reference_variability']
+        self.initial_smb = smb_prior_mean
+        self.initial_spread = smb_prior_std
+        self.reference_smb = smb_reference_mean
+        self.reference_variability = smb_reference_std
 
         self.init_offset = init_offset
         if not init_offset == 0:
             sign = np.random.choice([-1, 1], 3)
             if str(SMB_model) == "ELA":
-                self.initial_smb['ela'] = self.reference_smb['ela'] + (500 * init_offset
-                                                                   / 100 *
-                                                                   sign[0])
+                self.initial_smb['ela'] = self.reference_smb['ela'] + (
+                        500 * init_offset / 100 * sign[0])
                 self.initial_smb['gradabl'] = self.reference_smb[
-                                              'gradabl'] + 5 * init_offset / 100 * \
-                                          sign[1]
+                                                  'gradabl'] + 5 * init_offset / 100 * \
+                                              sign[1]
                 self.initial_smb['gradacc'] = self.reference_smb[
-                                              'gradacc'] + 5 * init_offset / 100 * \
-                                          sign[2]
+                                                  'gradacc'] + 5 * init_offset / 100 * \
+                                              sign[2]
 
                 self.initial_spread['ela'] = 500
                 self.initial_spread['gradabl'] = 5
                 self.initial_spread['gradacc'] = 5
             elif str(SMB_model) == "TI":
-                self.initial_smb['melt_f'] = self.reference_smb['melt_f'] + (4 * init_offset
-                                                                   / 100 *
-                                                                   sign[0])
+                self.initial_smb['melt_f'] = self.reference_smb['melt_f'] + (
+                        4 * init_offset
+                        / 100 *
+                        sign[0])
                 self.initial_spread['melt_f'] = 4
-                self.initial_smb['prcp_fac'] = self.reference_smb['prcp_fac'] + (0.25 * init_offset
-                                                                   / 100 *
-                                                                   sign[1])
+                self.initial_smb['prcp_fac'] = self.reference_smb['prcp_fac'] + (
+                        0.25 * init_offset
+                        / 100 *
+                        sign[1])
                 self.initial_spread['prcp_fac'] = 1.0
-                self.initial_smb['temp_bias'] = self.reference_smb['temp_bias'] + (2.00 * init_offset
-                                                                   / 100 *
-                                                                   sign[1])
+                self.initial_smb['temp_bias'] = self.reference_smb['temp_bias'] + (
+                        2.00 * init_offset
+                        / 100 *
+                        sign[1])
                 self.initial_spread['temp_bias'] = 2.0
 
         # Initialize random generator and SMB ensemble
@@ -156,10 +153,13 @@ class EnsembleKalmanFilter:
 
             # Create member directory
             member_dir = os.path.join(ensemble_dir, f'Member_{e}')
-            os.makedirs(member_dir, exist_ok=True)
+            exp_dir = os.path.join(member_dir, 'experiment')
+            os.makedirs(exp_dir, exist_ok=True)
 
             # Copy geology file as the initial input.nc
-            shutil.copy2(geology_file, os.path.join(member_dir, "input.nc"))
+            data_dir = os.path.join(member_dir, 'data')
+            os.makedirs(data_dir, exist_ok=True)
+            shutil.copy2(inversion_file, os.path.join(data_dir, 'input.nc'))
 
             # Copy iceflow-model directory
             member_iceflow_dir = os.path.join(member_dir, "iceflow-model")
@@ -205,21 +205,20 @@ class EnsembleKalmanFilter:
         new_divflux_ensemble = np.empty_like(self.ensemble_smb_raster)
 
         # Calibration run setting
-        exp="Calibration"
-        output1D=False
-        output2D_3D=True
+        exp = "Calibration"
+        output1D = False
+        output2D_3D = True
 
         if forward_parallel:
 
             with ThreadPoolExecutor() as executor:
                 futures = [
-                    executor.submit(IGM_wrapper.forward, exp, output1D, output2D_3D, 
+                    executor.submit(IGM_wrapper.forward, exp, output1D, output2D_3D,
                                     member_id, self.rgi_id_dir,
                                     self.SMB_model, usurf, smb, year_interval)
                     for member_id, (usurf, smb) in
                     enumerate(zip(self.ensemble_usurf, self.ensemble_smb))
                 ]
-
 
                 for future in concurrent.futures.as_completed(futures):
                     member_id, new_usurf, new_smb_raster, init_usurf, new_velsurf_mag, new_divflux = future.result()
@@ -232,17 +231,16 @@ class EnsembleKalmanFilter:
 
         else:
 
-
             for member_id, (usurf, smb) in enumerate(
                     zip(self.ensemble_usurf, self.ensemble_smb)):
                 member_id, new_usurf, new_smb_raster, init_usurf, new_velsurf_mag, new_divflux = IGM_wrapper.forward(
-                                                                           exp, output1D, output2D_3D,
-                                                                           member_id,
-                                                                           self.rgi_id_dir,
-                                                                           self.SMB_model,
-                                                                           usurf,
-                                                                           smb,
-                                                                           year_interval)
+                    exp, output1D, output2D_3D,
+                    member_id,
+                    self.rgi_id_dir,
+                    self.SMB_model,
+                    usurf,
+                    smb,
+                    year_interval)
                 new_usurf_ensemble[member_id] = new_usurf
                 new_smb_raster_ensemble[member_id] = new_smb_raster
                 new_init_surf_ensemble[member_id] = init_usurf
@@ -346,16 +344,6 @@ class EnsembleKalmanFilter:
         self.params['seed'] = self.seed
         self.params['inflation'] = self.inflation
 
-        from pathlib import Path
-
-        # Ensure self.output_dir is a Path object
-        self.output_dir = Path(self.output_dir)
-
-        # Use / operator to join paths
-        output_path = self.output_dir / (
-            f"result.json"
-
-            # Write to the file
-        )
-        with open(output_path, 'w') as f:
+        with open(os.path.join(self.rgi_id_dir, 'calibration_results.json'),
+                  'w') as f:
             json.dump(self.params, f, indent=4, separators=(',', ': '))

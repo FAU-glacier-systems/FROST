@@ -11,9 +11,10 @@ from frost.Calibration.ObservationProvider import ObservationProvider
 from frost.Visualization.Monitor import Monitor
 
 
-def main(rgi_id, SMB_model, synthetic, ensemble_size, inflation, iterations, seed,
-         init_offset, elevation_step, forward_parallel, results_dir,
-         obs_uncertainty):
+def main(rgi_id, rgi_id_dir, SMB_model, synthetic, ensemble_size, inflation,
+         smb_prior_mean, smb_prior_std, smb_reference_mean, smb_reference_std,
+         iterations, seed, init_offset, elev_band_height, forward_parallel,
+         synth_obs_std=None):
     """
     main function to run the calibration, handles the interaction between
     observation, ensemble and visualization. It saves the results in the experiment
@@ -26,18 +27,20 @@ def main(rgi_id, SMB_model, synthetic, ensemble_size, inflation, iterations, see
            rgi_id(str)           - glacier ID
            SMB_model(str)        - chosen SMB model (ELA, TI, ...)
            synthetic(bool)       - switch to synthetic observations
-           obs_uncertainty(float)- factor of synthetic observation uncertainty
+           synth_obs_std(float)- factor of synthetic observation uncertainty
            ensemble_size(int)    - ensemble size
            inflation(float)      - inflation factor
            iterations(int)       - number of iterations
            seed(int)             - random seed
-           elevation_step(int)   - elevation step
+           elev_band_height(int)   - elevation band height
            forward_parallel(int) - forward parallel
-           results_dir(str)      - results directory
 
     Returns:
            none
     """
+
+    if not os.path.exists(rgi_id_dir):
+        os.makedirs(rgi_id_dir, exist_ok=True)
 
     print(f'Running calibration for glacier: {rgi_id}')
     print(f'SMB model: {SMB_model}')
@@ -45,21 +48,19 @@ def main(rgi_id, SMB_model, synthetic, ensemble_size, inflation, iterations, see
           f'Inflation: {inflation}',
           f'Iterations: {iterations}',
           f'Seed: {seed}',
-          f'Elevation step: {elevation_step}',
-          f'Observation uncertainty: {obs_uncertainty}',
+          f'Elevation step: {elev_band_height}',
+          f'Observation uncertainty: {synth_obs_std}',
           f'Synthetic: {synthetic}',
           f'Initial offset: {init_offset}'
-          f'Results directory: {results_dir}'
+          f'Results directory: {rgi_id_dir}'
           f'Forward parallel: {forward_parallel}')
-
-    if not os.path.exists(results_dir):
-        os.mkdir(results_dir)
 
     # Initialise the Observation provider
     print("Initializing Observation Provider")
     obs_provider = ObservationProvider(rgi_id=rgi_id,
-                                       elevation_step=int(elevation_step),
-                                       obs_uncertainty=obs_uncertainty,
+                                       rgi_id_dir=rgi_id_dir,
+                                       elevation_step=int(elev_band_height),
+                                       obs_uncertainty=synth_obs_std,
                                        synthetic=synthetic)
     print("Initializing Usurf 2000")
     year, usurf_ensemble, binned_usurf, init_surf_bin = obs_provider.initial_usurf(
@@ -68,6 +69,7 @@ def main(rgi_id, SMB_model, synthetic, ensemble_size, inflation, iterations, see
     # Initialise an ensemble kalman filter object
     print("Initializing Ensemble Kalman Filter")
     ensembleKF = EnsembleKalmanFilter(rgi_id=rgi_id,
+                                      rgi_id_dir=rgi_id_dir,
                                       SMB_model=SMB_model,
                                       ensemble_size=ensemble_size,
                                       inflation=inflation,
@@ -75,12 +77,15 @@ def main(rgi_id, SMB_model, synthetic, ensemble_size, inflation, iterations, see
                                       start_year=year,
                                       usurf_ensemble=usurf_ensemble,
                                       init_offset=init_offset,
-                                      output_dir=results_dir)
+                                      smb_prior_mean=smb_prior_mean,
+                                      smb_prior_std=smb_prior_std,
+                                      smb_reference_mean=smb_reference_mean,
+                                      smb_reference_std=smb_reference_std)
 
     # Initialise a monitor for visualising the process
     monitor = Monitor(EnKF_object=ensembleKF,
                       ObsProvider=obs_provider,
-                      output_dir=results_dir,
+                      output_dir=rgi_id_dir,
                       max_iterations=iterations,
                       synthetic=synthetic,
                       binned_usurf_init=binned_usurf,
@@ -133,9 +138,9 @@ def main(rgi_id, SMB_model, synthetic, ensemble_size, inflation, iterations, see
 
     #################################################################################
 
-    ensembleKF.save_results(elevation_step=elevation_step,
+    ensembleKF.save_results(elevation_step=elev_band_height,
                             iterations=iterations,
-                            obs_uncertainty=obs_uncertainty,
+                            obs_uncertainty=synth_obs_std,
                             synthetic=synthetic)
     print('Done')
 
@@ -146,6 +151,9 @@ if __name__ == '__main__':
         description='Run glacier calibration experiments.')
 
     # Add arguments for parameters
+    parser.add_argument('--experiment_name', type=str,
+                        help='name of the experiment', required=True)
+
     parser.add_argument('--rgi_id', type=str,
                         default="RGI2000-v7.0-G-11-01706",
                         help='RGI ID of the glacier for the model.')
@@ -177,9 +185,6 @@ if __name__ == '__main__':
     parser.add_argument('--init_offset', type=int, default=0,
                         help='Random seed for the model.')
 
-    parser.add_argument('--results_dir', type=str,
-                        help='path to the results directory.', required=True)
-
     parser.add_argument('--SMB_model', type=str,
                         default="ELA",
                         help='Flag to decide for SMB model (ELA, TI, ...).')
@@ -192,6 +197,7 @@ if __name__ == '__main__':
 
     # Call the main function with the parsed arguments
     main(rgi_id=args.rgi_id,
+         experiment_name=args.experiment_name,
          SMB_model=args.SMB_model,
          synthetic=synthetic,
          ensemble_size=args.ensemble_size,
@@ -199,8 +205,7 @@ if __name__ == '__main__':
          iterations=args.iterations,
          seed=args.seed,
          forward_parallel=forward_parallel,
-         elevation_step=args.elevation_step,
-         obs_uncertainty=args.obs_uncertainty,
-         results_dir=args.results_dir,
+         elev_band_height=args.elevation_step,
+         synth_obs_std=args.obs_uncertainty,
          init_offset=args.init_offset
          )
