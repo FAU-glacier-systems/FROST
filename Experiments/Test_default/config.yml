@@ -1,10 +1,10 @@
    experiment_name: "Test_default"
-   rgi_id: "RGI2000-v7.0-G-11-01706"
+   rgi_id: "RGI2000-v7.0-G-11-02596"
    smb_model: "ELA"
    pipeline_steps:
      download: true
      inversion: true
-     calibrate: false
+     calibrate: true
    download:
      oggm_shop: true
      hugonnet: true
@@ -20,3 +20,24 @@
      elev_band_height: 50
      forward_parallel: true
      synthetic: false
+     smb_prior_mean:
+       ela: 3000
+       abl_grad: 5
+       acc_grad: 5
+
+     smb_prior_std:
+       ela: 200
+       abl_grad: 5
+       acc_grad: 5
+
+     smb_reference_mean:
+       ela: 3000
+       abl_grad: 4
+       acc_grad: 2
+
+     smb_reference_std:
+       ela: 200
+       abl_grad: 5
+       acc_grad: 5
+
+

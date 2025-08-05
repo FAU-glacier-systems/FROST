@@ -4,7 +4,7 @@
 # Published under the GNU GPL (Version 3), check the LICENSE file
 
 import argparse
-import subprocess
+from pathlib import Path
 import os
 import shutil
 import yaml
@@ -20,7 +20,7 @@ def main(rgi_id_dir):
 
     # Prepare inversion directory
     preprocess_dir = os.path.join(rgi_id_dir, 'Preprocess')
-    #shutil.rmtree(inversion_dir, ignore_errors=True)
+    # shutil.rmtree(inversion_dir, ignore_errors=True)
     exp_dir = os.path.join(preprocess_dir, 'experiment')
     os.makedirs(exp_dir, exist_ok=True)
 
@@ -63,7 +63,7 @@ def main(rgi_id_dir):
                     "plot2d": False
                 },
                 "control_list": ["thk", "slidingco", "usurf"],
-                "cost_list": ["velsurf", "thk", "icemask", "usurf", "divfluxfcz"] ,
+                "cost_list": ["velsurf", "thk", "icemask", "usurf", "divfluxfcz"],
                 "optimization": {
                     "retrain_iceflow_model": True,
                     "nbitmax": 1000,
@@ -71,7 +71,7 @@ def main(rgi_id_dir):
                 },
                 "fitting": {
                     "usurfobs_std": 0.3,
-                    "velsurfobs_std": 0.25,
+                    "velsurfobs_std": 1,
                     "uniformize_thkobs": True,
                     "thkobs_std": 1,
                     "divfluxobs_std": 0.1
@@ -88,9 +88,9 @@ def main(rgi_id_dir):
     }
 
     # Write to YAML file
-    with open(os.path.join('experiment', 'params_inversion.yaml'), 'w') as f:
-        f.write("# @package _global_\n")
-        yaml.dump(params, f, sort_keys=False)
+    with open(os.path.join('experiment', 'params_inversion.yaml'), 'w') as file:
+        file.write("# @package _global_\n")
+        yaml.dump(params, file, sort_keys=False)
 
     # Run IGM inversion
     # Run the igm_run command
@@ -100,7 +100,17 @@ def main(rgi_id_dir):
     igm_main()
     # subprocess.run(["igm_run", "+experiment=params"], check=True)
     # TODO remove unnecessary files
+    latest = max(Path("outputs").glob("*/*"), key=lambda p: p.stat().st_mtime)
 
+    src = os.path.join(latest, 'iceflow-model')
+    dst = os.path.join('outputs', 'iceflow-model')
+
+    # Delete destination if it exists
+    if os.path.exists(dst):
+        shutil.rmtree(dst)
+
+    # Copy source to destination
+    shutil.copytree(src, dst)
 
     os.chdir(original_dir)
 

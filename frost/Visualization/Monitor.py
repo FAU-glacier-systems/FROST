@@ -36,7 +36,7 @@ class Monitor:
         self.binned_usurf_init = binned_usurf_init
         self.plot_dhdt = plot_dhdt
 
-        self.monitor_dir = output_dir
+        self.monitor_dir = os.path.join(output_dir, 'Monitor')
         if not os.path.exists(self.monitor_dir):
             os.makedirs(self.monitor_dir)
 
@@ -52,8 +52,8 @@ class Monitor:
         if synthetic:
             if str(self.SMB_model) == "ELA":
                 self.density_factor = {'ela': 1,
-                                       'gradabl': 1,
-                                       'gradacc': 1,
+                                       'abl_grad': 1,
+                                       'acc_grad': 1,
                                        }
             elif str(self.SMB_model) == "TI":
                 self.density_factor = {'melt_f': 1,
@@ -63,8 +63,8 @@ class Monitor:
         else:
             if str(self.SMB_model) == "ELA":
                 self.density_factor = {'ela': 1,
-                                       'gradabl': 0.91,
-                                       'gradacc': 0.55,
+                                       'abl_grad': 0.91,
+                                       'acc_grad': 0.55,
                                        }
             elif str(self.SMB_model) == "TI":
                 self.density_factor = {'melt_f': 1,
@@ -84,8 +84,8 @@ class Monitor:
                                         f'top ('
                                         f'm)'),
                     ela=dict(y_label='Equilibrium Line\nAltitude (m)'),
-                    gradabl=dict(y_label='Ablation Gradient\n(m a$^{-1}$ km$^{-1}$)'),
-                    gradacc=dict(
+                    abl_grad=dict(y_label='Ablation Gradient\n(m a$^{-1}$ km$^{-1}$)'),
+                    acc_grad=dict(
                        y_label='Accumulation Gradient\n(m a$^{-1}$ km$^{-1}$)'),
                 )
             elif str(self.SMB_model) == "TI":
@@ -118,8 +118,8 @@ class Monitor:
                 prcp_fac=dict(y_label='Precipitation Factor \n( - )'),
                 temp_bias=dict(y_label='Temperature Bias ( C )'),
                 ela=dict(y_label='Equilibrium Line\nAltitude (m)'),
-                gradabl=dict(y_label='Ablation Gradient\n(m a$^{-1}$ km$^{-1}$)'),
-                gradacc=dict(
+                abl_grad=dict(y_label='Ablation Gradient\n(m a$^{-1}$ km$^{-1}$)'),
+                acc_grad=dict(
                     y_label='Accumulation Gradient\n(m a$^{-1}$ km$^{-1}$)'),
                 # end JJF
             )
@@ -135,8 +135,8 @@ class Monitor:
                                         f'top ('
                                         f'm)'),
                     ela=dict(y_label='Equilibrium Line\nAltitude (m)'),
-                    gradabl=dict(y_label='Ablation Gradient\n(m a$^{-1}$ km$^{-1}$)'),
-                    gradacc=dict(
+                    abl_grad=dict(y_label='Ablation Gradient\n(m a$^{-1}$ km$^{-1}$)'),
+                    acc_grad=dict(
                        y_label='Accumulation Gradient\n(m a$^{-1}$ km$^{-1}$)'),
                 )
             elif str(self.SMB_model) == "TI":

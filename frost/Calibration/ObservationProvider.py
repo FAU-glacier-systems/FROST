@@ -63,7 +63,8 @@ class ObservationProvider:
         None
     """
 
-    def __init__(self, rgi_id, elevation_step, obs_uncertainty, synthetic):
+    def __init__(self, rgi_id_dir, rgi_id, elevation_step, obs_uncertainty,
+                 synthetic):
         """
         Initializes the ObservationProvider by loading glacier observation data
         from a NetCDF file and computing elevation bins.
@@ -77,12 +78,9 @@ class ObservationProvider:
         """
 
         # Path to the NetCDF file containing glacier observation data
-        if synthetic:
-            observation_file = os.path.join('Data', 'Glaciers', rgi_id,
-                                            'SyntheticData', 'observations_synth.nc')
-        else:
-            observation_file = os.path.join('Data', 'Glaciers', rgi_id,
-                                            'observations.nc')
+
+
+        observation_file = os.path.join(rgi_id_dir, 'observations.nc')
 
         # Load important values from the observation file
         with Dataset(observation_file, 'r') as ds:
