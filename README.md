@@ -1,41 +1,85 @@
-# FROST 
+# ❄️ FROST
 
-Framework for assimilating Remote-sensing Observations for Surface Mass Balance Tuning
+**F**ramework for assimilating **R**emote-sensing **O**bservations for **S**urface
+mass balance **T**uning
 
+FROST is a data assimilation framework tailored for glacier modeling.
+It couples the [IGM](https://github.com/instructed-glacier-model/igm) 3D glacier
+model
+with an Ensemble Kalman Filter (EnKF) to calibrate glacier-specific surface mass
+balance (SMB) parameters using remote sensing observations. The method is
+derivative-free, and scalable. It also provides uncertainty estimates alongside 
+calibrated
+results.
 
-## Installation
+---
 
-1. Clone the repository:
+## 🏗️ Installation
+
+1. Clone the repository
+
    ```bash
    git clone git@github.com:FAU-glacier-systems/FROST.git
    cd FROST
+   git checkout hydra
+   ```
 
 2. Create a virtual environment with conda
+
    ```bash
    conda env create -f environment.yml
    conda activate frost_env
-      ```
-
-## FROST Pipeline
-
-1. Download data e.g. Rhone Glacier (RGI2000-v7.0-G-11-01706 )
-   ```bash
-   cd Scripts/Preprocess
-   python download_data.py --rgi_id RGI2000-v7.0-G-11-01706 --download_oggm --download_hugonnet
-   cd ../..
-      ```
-   If you want to calibrate other glaciers you have to provide all dhdt tiles from Hugonnet: https://www.sedoo.fr/theia-publication-products/?uuid=c428c5b9-df8f-4f86-9b75-e04c778e29b9
-
-2. IGM inversion for thickness and sliding
-   ```bash
-   cd Scripts/Preprocess
-   python igm_inversion.py --rgi_id RGI2000-v7.0-G-11-01706 
-   cd ../..
    ```
 
-3. Run calibration
+3. Install the IGM model (Hydra-compatible)
+
    ```bash
-   python run_calibration.py --rgi_id RGI2000-v7.0-G-11-01706  --ensemble_size 3 --iterations 5
+   git clone https://github.com/jouvetg/igm 
+   cd igm
+   git checkout feature/hydra
+   pip install -e .
    ```
-   Results can be seen in Experitment/RGI2000-v7.0-G-11-1706/..
-   ![Alt text](assets/status_006_2020.png)
+
+---
+
+## 🚀 Pipeline for Calibration 
+
+1. Duplicate the `experiments/test_default` folder and rename it to your custom
+   experiment name, e.g., `experiments/my_run`.
+   Adapt the `config.yml` to your target glacier and desired setup e.g rgi_id
+
+2. Run the pipeline
+
+   ```bash
+   python frost_pipeline.py --config experiments/<experiment-name>/config.yml 
+   ```
+
+3. View the results:
+
+* **Calibration Results**
+  `data/results/<experiment-name>/glaciers/<rgi-id>/calibration_results.json`
+
+* **Monitoring Images**
+  `monitor/status.png`
+
+* **Example**
+  ![Status Example](assets/status_006_2020.png)
+
+---
+
+## 🏛️ Architecture
+
+A schematic overview of the FROST calibration workflow:
+![FROST Architecture](assets/FROST_architecture.svg)
+
+---
+
+## 📎 Reference
+
+If you use FROST, please cite:
+
+> Herrmann et al. (2025). A Kalman Filter-based Framework for Assimilating Remote
+> Sensing Observations into a Surface Mass Balance Model. *Annals of Glaciology*, 66(
+> 94).
+> \[DOI & bibtex placeholder]
+

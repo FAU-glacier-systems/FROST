@@ -48,7 +48,8 @@ def main(rgi_id_dir):
                     "init_slidingco": 0.045
                 },
                 "emulator": {
-                    "save_model": True
+                    "save_model": True,
+                    "retrain_freq": 10
                 }
             },
             "data_assimilation": {
@@ -66,21 +67,20 @@ def main(rgi_id_dir):
                 "cost_list": ["velsurf", "thk", "icemask", "usurf", "divfluxfcz"],
                 "optimization": {
                     "retrain_iceflow_model": True,
-                    "nbitmax": 1000,
+                    "nbitmax": 100,
 
                 },
                 "fitting": {
                     "usurfobs_std": 0.3,
-                    "velsurfobs_std": 1,
-                    "uniformize_thkobs": True,
-                    "thkobs_std": 1,
+                    "velsurfobs_std": 0.1,
+                    "thkobs_std": 10,
                     "divfluxobs_std": 0.1
                 },
                 "regularization": {
                     "thk": 1.0,
                     "slidingco": 1.0e6,
                     "smooth_anisotropy_factor": 1.0,
-                    "convexity_weight": 0.002,
+                    "convexity_weight": 0.0,
                 }
             }
         },
