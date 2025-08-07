@@ -80,13 +80,15 @@ class Monitor:
                     point1=dict(
                         y_label='Mean surface elevation change\nof fifth bin from front ('
                                 'm)'),
-                    point2=dict(y_label=f'Mean surface elevation change\nof fifth bin from '
-                                        f'top ('
-                                        f'm)'),
+                    point2=dict(
+                        y_label=f'Mean surface elevation change\nof fifth bin from '
+                                f'top ('
+                                f'm)'),
                     ela=dict(y_label='Equilibrium Line\nAltitude (m)'),
-                    abl_grad=dict(y_label='Ablation Gradient\n(m a$^{-1}$ km$^{-1}$)'),
+                    abl_grad=dict(
+                        y_label='Ablation Gradient\n(m a$^{-1}$ km$^{-1}$)'),
                     acc_grad=dict(
-                       y_label='Accumulation Gradient\n(m a$^{-1}$ km$^{-1}$)'),
+                        y_label='Accumulation Gradient\n(m a$^{-1}$ km$^{-1}$)'),
                 )
             elif str(self.SMB_model) == "TI":
                 self.plot_style = dict(
@@ -96,13 +98,14 @@ class Monitor:
                     point1=dict(
                         y_label='Mean surface elevation change\nof fifth bin from front ('
                                 'm)'),
-                    point2=dict(y_label=f'Mean surface elevation change\nof fifth bin from '
-                                        f'top ('
-                                        f'm)'),
+                    point2=dict(
+                        y_label=f'Mean surface elevation change\nof fifth bin from '
+                                f'top ('
+                                f'm)'),
                     melt_f=dict(y_label='Melt Factor OGGM\n( mm w.e. / (C day) )'),
                     prcp_fac=dict(y_label='Precipitation Factor \n( - )'),
                     temp_bias=dict(y_label='Temperature Bias ( C )'),
-            )
+                )
 
         else:
             self.plot_style = dict(
@@ -135,9 +138,10 @@ class Monitor:
                                         f'top ('
                                         f'm)'),
                     ela=dict(y_label='Equilibrium Line\nAltitude (m)'),
-                    abl_grad=dict(y_label='Ablation Gradient\n(m a$^{-1}$ km$^{-1}$)'),
+                    abl_grad=dict(
+                        y_label='Ablation Gradient\n(m a$^{-1}$ km$^{-1}$)'),
                     acc_grad=dict(
-                       y_label='Accumulation Gradient\n(m a$^{-1}$ km$^{-1}$)'),
+                        y_label='Accumulation Gradient\n(m a$^{-1}$ km$^{-1}$)'),
                 )
             elif str(self.SMB_model) == "TI":
                 self.plot_style = dict(
@@ -153,7 +157,7 @@ class Monitor:
                     melt_f=dict(y_label='Melt Factor OGGM\n( mm w.e. / (C day) )'),
                     prcp_fac=dict(y_label='Precipitation Factor \n( - )'),
                     temp_bias=dict(y_label='Temperature Bias ( C )'),
-            )
+                )
 
     def summarise_observables(self, ensemble_observables, new_observables,
                               uncertainty_matrix, noise_samples):
@@ -286,28 +290,30 @@ class Monitor:
             # ax[1, i].plot(iteration_axis,
             #               key_mean_smb, color='orange', marker='o', markersize=10,
             #               markevery=[-1], zorder=2, label='Ensemble Mean')
-            referenc_smb_line = np.array([self.reference_smb[key] /
-                                          self.density_factor[key] for _ in
-                                          range(self.max_iterations + 1)])
-            if self.synthetic:
-                label = 'Reference Mean [Synthetic]'
-            else:
-                label = 'Reference Mean [GLAMOS]'
-            ax[1, i].plot(self.max_iteration_axis,
-                          referenc_smb_line,
-                          color=self.colorscale(8), zorder=5, label=label
-                          )
+            if self.reference_smb is not None:
+                referenc_smb_line = np.array([self.reference_smb[key] /
+                                              self.density_factor[key] for _ in
+                                              range(self.max_iterations + 1)])
+                if self.synthetic:
+                    label = 'Reference Mean [Synthetic]'
+                else:
+                    label = 'Reference Mean [GLAMOS]'
+                ax[1, i].plot(self.max_iteration_axis,
+                              referenc_smb_line,
+                              color=self.colorscale(8), zorder=5, label=label
+                              )
 
-            std_plus = referenc_smb_line + self.reference_variability[key]
-            std_minus = referenc_smb_line - self.reference_variability[key]
+                std_plus = referenc_smb_line + self.reference_variability[key]
+                std_minus = referenc_smb_line - self.reference_variability[key]
 
-            if not self.synthetic:
-                ax[1, i].fill_between(self.max_iteration_axis,
-                                      std_minus,
-                                      std_plus,
-                                      zorder=2,
-                                      color=self.colorscale(8), alpha=0.2,
-                                      label='Annual Variability [GLAMOS]')
+                if not self.synthetic:
+                    ax[1, i].fill_between(self.max_iteration_axis,
+                                          std_minus,
+                                          std_plus,
+                                          zorder=2,
+                                          color=self.colorscale(8), alpha=0.2,
+                                          label='Annual Variability [GLAMOS]')
+
             set_axis_style(ax[1, i], show_x=True)
 
         handles, labels = ax[1, 0].get_legend_handles_labels()
@@ -382,7 +388,7 @@ class Monitor:
         """
         if mask is None:
             mask = self.icemask_init == 1
-        data_map[mask==0] = np.nan  # Mask non-glacier areas
+        data_map[mask == 0] = np.nan  # Mask non-glacier areas
         cropped = data_map[crop_padding:-crop_padding, crop_padding:-crop_padding]
 
         img = ax.imshow(cropped, cmap=cmap, vmin=vmin, vmax=vmax,
@@ -499,7 +505,6 @@ class Monitor:
                                        vmax=np.nanmax(obs_velsurf_mag_raster),
                                        cmap='magma')
 
-
         # Surface Mass Balance (SMB) Map
         mean_smb_raster = np.mean(ensembleKF.ensemble_smb_raster, axis=0)
         mean_smb_raster[self.icemask_init == 0] = np.nan  # Mask ice-free areas
@@ -512,7 +517,7 @@ class Monitor:
                                        title='Modelled\nSurface Mass Balance',
                                        colorlabel='Surface Mass Balance (m a$^{'
                                                   '-1}$)', mask=new_mask)
-  
+
         # Flux Divergence Map
         mean_smb_raster = np.mean(ensembleKF.ensemble_divflux_raster, axis=0)
         mean_smb_raster[self.icemask_init == 0] = np.nan  # Mask ice-free areas

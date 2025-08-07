@@ -6,15 +6,15 @@
 import argparse
 import os.path
 
-from frost.Calibration.EnsembleKalmanFilter import EnsembleKalmanFilter
-from frost.Calibration.ObservationProvider import ObservationProvider
-from frost.Visualization.Monitor import Monitor
+from frost.calibration.ensemble_kalman_filter import EnsembleKalmanFilter
+from frost.calibration.observation_provider import ObservationProvider
+from frost.visualization.monitor import Monitor
 
 
 def main(rgi_id, rgi_id_dir, SMB_model, synthetic, ensemble_size, inflation,
-         smb_prior_mean, smb_prior_std, smb_reference_mean, smb_reference_std,
+         smb_prior_mean, smb_prior_std,
          iterations, seed, init_offset, elev_band_height, forward_parallel,
-         synth_obs_std=None):
+         synth_obs_std=None, smb_reference_mean=None, smb_reference_std=None):
     """
     main function to run the calibration, handles the interaction between
     observation, ensemble and visualization. It saves the results in the experiment

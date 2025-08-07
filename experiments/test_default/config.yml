@@ -1,0 +1,39 @@
+experiment_name: "test_default"     # Name of the experiment
+rgi_id: "RGI2000-v7.0-G-11-01706"   # Glacier ID
+smb_model: "ELA"                    # Type of SMB model used
+
+pipeline_steps:
+  download: false                   # Enable downloading input data
+  inversion: false                  # Enable inversion step
+  calibrate: true                  # Enable EnKF calibration step
+
+download:
+  oggm_shop: true                  # Use OGGM-shop data
+  hugonnet: true                   # Download Hugonnet et al. dh/dt data
+  year_interval: 20                # Temporal span for Hugonnet data
+  target_resolution: None          # Leave unset to use native resolution
+  # Custom path to Hugonnet data
+  hugonnet_directory: 'data/raw/hugonnet/11_rgi60_2000-01-01_2020-01-01'
+
+EnKF:
+  seed: 6                          # Random seed for reproducibility
+  inflation: 1                     # Ensemble inflation factor
+  ensemble_size: 16                # Number of ensemble members
+  iterations: 6                    # Number of EnKF iterations
+  init_offset: 0                   # ELA offset for initialization
+  elev_band_height: 50             # Height of elevation bands
+  forward_parallel: true           # Enable parallel forward simulation
+  synthetic: false                 # Use real observations, not synthetic test
+
+  smb_prior_mean:
+    ela: 3144                      # Prior mean ELA
+    abl_grad: 7.55                 # Prior mean ablation gradient
+    acc_grad: 3.09                 # Prior mean accumulation gradient
+
+  smb_prior_std:
+    ela: 498                       # Std. dev. of ELA prior
+    abl_grad: 9.04                 # Std. dev. of ablation gradient prior
+    acc_grad: 3.39                 # Std. dev. of accumulation gradient prior
+
+
+
