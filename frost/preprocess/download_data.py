@@ -396,6 +396,7 @@ def crop_hugonnet_to_glacier(date_range, hugonnet_dir, oggm_shop_dataset):
     # Use netCDF file from OGGMshop and extract projection details
     # (no idea what happens if another DEM source is taken - instead of SRTM)
     zone_number = int(oggm_shop_dataset.pyproj_srs.split('=')[2][0:2])
+    print(zone_number)
     # Convert to CRS object
     from pyproj import CRS
     crs = CRS.from_proj4(oggm_shop_dataset.pyproj_srs)
@@ -404,10 +405,11 @@ def crop_hugonnet_to_glacier(date_range, hugonnet_dir, oggm_shop_dataset):
     epsg_code = crs.to_epsg()
     oggm_shop_dataset.epsg = f"EPSG:{epsg_code}"
 
-    if zone_number > 0:
+    if zone_number > 0:        ## not correct, for Schiaparelli the zone number = 19 but letter is S
         zone_letter = "N"
     else:
         zone_letter = "S"
+    zone_letter = "S"          ## manually set zone letter to "S"
 
     # Determine if glacier is in western or eastern longitude range
     if zone_number <= 30:
@@ -417,6 +419,7 @@ def crop_hugonnet_to_glacier(date_range, hugonnet_dir, oggm_shop_dataset):
 
     # Determine maximum and minimum values for longitude and latitude
     x_range = np.array([min_x, min_x, max_x, max_x])
+    print(x_range)
     # ATTENTION: Hugonnet uses 'S' labels for UTM so all y-values are positive for Huggonet
     if zone_letter == "S":
         # ATTENTION: Hugonnet uses 'S' label for UTM zone (EPSG:327??) in southern hemisphere
@@ -428,7 +431,7 @@ def crop_hugonnet_to_glacier(date_range, hugonnet_dir, oggm_shop_dataset):
 
     # OGGM file format uses exclusive northern hemisphere UTM (EPSG:326??)
     # --> y-coordinate is negative for southern hemisphere
-    lat_lon_corner = utm.to_latlon(x_range, y_range, zone_number, "N")
+    lat_lon_corner = utm.to_latlon(x_range, y_range, zone_number, zone_letter)
     lat_lon_corner = np.abs(lat_lon_corner)
     min_lat, max_lat = min(lat_lon_corner[0]), max(lat_lon_corner[0])
     min_lon, max_lon = min(lat_lon_corner[1]), max(lat_lon_corner[1])
