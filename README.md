@@ -31,9 +31,10 @@ results.
    conda activate frost_env
    ```
 
-3. Install the IGM model (Hydra-compatible)
+3. Install the IGM model next to FROST (Hydra-compatible)
 
    ```bash
+   cd ..
    git clone https://github.com/jouvetg/igm 
    cd igm
    git checkout feature/hydra
