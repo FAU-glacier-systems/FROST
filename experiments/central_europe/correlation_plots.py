@@ -85,7 +85,7 @@ def plot_colored_correlation_points(data, factors, targets):
     # Tight layout for better spacing and adjustments
  # Adjust to include colorbar and titles
     plt.tight_layout(rect=[0, 0, 1, 0.88])
-    plt.savefig("../../Plots/correlation.png", dpi=200)
+    plt.savefig("plots/correlation.png", dpi=200)
 
 
 # Load data

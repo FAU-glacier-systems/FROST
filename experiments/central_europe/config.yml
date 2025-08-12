@@ -4,15 +4,15 @@ smb_model: "ELA"
 pipeline_steps:
   download: false
   inversion: false
-  calibrate: true
+  calibrate: false
 download:
   oggm_shop: true
   hugonnet: true
   year_interval: 20
   target_resolution: None
-  hugonnet_directory: 'Data/Raw/Hugonnet/11_rgi60_2000-01-01_2020-01-01'
+  hugonnet_directory: 'data/raw/hugonnet/11_rgi60_2000-01-01_2020-01-01'
 EnKF:
-  seed: 6
+  seed: 1
   inflation: 1
   ensemble_size: 32
   iterations: 6

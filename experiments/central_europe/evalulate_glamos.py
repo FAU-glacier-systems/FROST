@@ -9,13 +9,13 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.patches import Ellipse
-from Scripts.Visualization.utils import scatter_plot
+from frost.visualization.utils import scatter_plot
 
 # Paths
-glamos_results = "../../Data/GLAMOS/GLAMOS_analysis_results.csv"
-predicted_results = "../../Scripts/CentralEurope/aggregated_results.csv"
+glamos_results = "../../data/raw/glamos/GLAMOS_analysis_results.csv"
+predicted_results = "../../experiments/central_europe/aggregated_results.csv"
 #predicted_results = "../../Scripts/CentralEurope/velocity_results_merged.csv"
-sla_path = "../../Data/CentralEurope/Alps_EOS_SLA_2000-2019_mean.csv"
+sla_path = ("../../data/raw/central_europe/Alps_EOS_SLA_2000-2019_mean.csv")
 
 glamos_df = pd.read_csv(glamos_results)
 predicted_df = pd.read_csv(predicted_results)
@@ -124,7 +124,7 @@ for ax, label in zip(axes_with_label, labels_subplot):
     ax.text(0, 1.02, label, transform=ax.transAxes,
             fontsize=12, va='bottom', ha='left', fontweight='bold')
 fig.tight_layout()
-plt.savefig("../../Plots/GLAMOS_regional_run.pdf", bbox_inches="tight")
+plt.savefig("plots/GLAMOS_regional_run.pdf", bbox_inches="tight")
 plt.clf()
 
 fig, axes = plt.subplots(1, 1, figsize=(5, 5))
@@ -140,7 +140,7 @@ scatter_handles_sla = scatter_plot(ax=axes,
                                    ticks=np.arange(2200, 4000, 500),
                                    color=ae_ela)
 
-plt.savefig("../../Plots/SLA_comparison.pdf", bbox_inches="tight")
+plt.savefig("plots/SLA_comparison.pdf", bbox_inches="tight")
 
 fig, axes = plt.subplots(1, 2, figsize=(7, 4))
 axes = axes.flatten()
@@ -186,4 +186,4 @@ fig.legend(scatter_handles_ela, glacier_names, loc="upper left",
            bbox_to_anchor=(1, 0.9), fontsize=10)
 
 fig.tight_layout()
-plt.savefig("../../Plots/SLA_comparison_selection.pdf", bbox_inches="tight")
+plt.savefig("plots/SLA_comparison_selection.pdf", bbox_inches="tight")

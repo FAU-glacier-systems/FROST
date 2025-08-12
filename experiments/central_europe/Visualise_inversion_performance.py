@@ -68,18 +68,18 @@ def scatter_plot(ax, x, y, xlabel, ylabel, title, ticks, glacier_names=None,
 
 
 # Read both CSV files
-velocity_df = pd.read_csv('velocity_results.csv')
-aggregated_df = pd.read_csv('aggregated_results.csv')
+velocity_df = pd.read_csv('velocity_5_results.csv')
+#aggregated_df = pd.read_csv('aggregated_results.csv')
 
 # Merge the dataframes on RGI_ID
-merged_df = pd.merge(velocity_df, aggregated_df, on='rgi_id', how='inner')
+#merged_df = pd.merge(velocity_df, aggregated_df, on='rgi_id', how='inner')
 
 # Compute the velocity error for each glacier
-merged_df['velocity_error'] = abs(
-    merged_df['Mean_velsurf_mag'] - merged_df['Mean_velsurfobs_mag'])
+velocity_df['velocity_error'] = abs(
+    velocity_df['Mean_velsurf_mag'] - velocity_df['Mean_velsurfobs_mag'])
 
 # Find the glacier with the highest velocity error
-highest_error_row = merged_df.loc[merged_df['velocity_error'].idxmax()]
+highest_error_row = velocity_df.loc[velocity_df['velocity_error'].idxmax()]
 highest_error_rgi_id = highest_error_row['rgi_id']
 highest_error_value = highest_error_row['velocity_error']
 
@@ -87,7 +87,7 @@ print(f"The glacier with the highest velocity error is: {highest_error_rgi_id}")
 print(f"The highest velocity error value is: {highest_error_value}")
 
 # Save the merged results
-merged_df.to_csv('velocity_results_merged.csv', index=False)
+velocity_df.to_csv('velocity_results_merged.csv', index=False)
 print("Results merged and saved to merged_results.csv")
 
 # Define velocity statistics to compare
@@ -95,16 +95,18 @@ vel_stats = [
     ('Mean_velsurf_mag', 'Mean_velsurfobs_mag', 'Mean'),
     ('Q1_velsurf_mag', 'Q1_velsurfobs_mag', 'Q1'),
     ('Max_velsurf_mag', 'Max_velsurfobs_mag', 'Max'),
+    ('Std_velsurf_mag', 'Std_velsurfobs_mag', 'Std'),
     ('Q3_velsurf_mag', 'Q3_velsurfobs_mag', 'Q3'),
-    ('Std_velsurf_mag', 'Std_velsurfobs_mag', 'Std')
+    ('Median_velsurf_mag', 'Median_velsurfobs_mag', 'Median'),
+
 ]
 
 fig, axes = plt.subplots(2, 3, figsize=(12, 7))
 axes = axes.flatten()
 
 for idx, (mod_col, obs_col, stat_name) in enumerate(vel_stats):
-    velsurf = merged_df[mod_col].to_numpy()
-    velsurf_obs = merged_df[obs_col].to_numpy()
+    velsurf = velocity_df[mod_col].to_numpy()
+    velsurf_obs = velocity_df[obs_col].to_numpy()
 
     scatter_handles = scatter_plot(ax=axes[idx],
                                    x=velsurf_obs,
@@ -123,4 +125,4 @@ for ax, label in zip(axes, labels_subplot):
     ax.text(0, 1.02, label, transform=ax.transAxes,
             fontsize=12, va='bottom', ha='left', fontweight='bold')
 fig.tight_layout()
-plt.savefig("../../Plots/Inversion_effect.pdf", bbox_inches="tight")
+plt.savefig("plots/Inversion_effect.pdf", bbox_inches="tight")
