@@ -165,8 +165,9 @@ scatter_handlessla = scatter_plot(ax=axes[1],
                                   ticks=np.arange(2200, 4000, 500))
 
 # Calculate absolute differences between SLA and ELA
-merged_df_glamos_sla['difference'] = abs(
-    merged_df_sla['sla'] - merged_df_sla['ela'])
+merged_df_glamos_sla['difference'] = (
+    merged_df_glamos_sla['ela'] - merged_df_glamos_sla['sla']
+).abs()
 
 # Get top 10 differences
 top_10_diff = merged_df_glamos_sla.nlargest(10, 'difference')[
