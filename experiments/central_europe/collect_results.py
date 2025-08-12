@@ -4,9 +4,9 @@ import pandas as pd
 import numpy as np
 
 # Global paths
-RGI_FILES_PATH = "../../Data/CentralEurope/Split_Files"
-EXPERIMENTS_PATH = "../../Experiments"
-OUTPUT_CSV = "../../Scripts/CentralEurope/aggregated_results.csv"
+RGI_FILES_PATH = "../../data/raw/central_europe/Split_Files"
+EXPERIMENTS_PATH = "../../data/results/central_europe/glaciers"
+OUTPUT_CSV = "aggregated_results.csv"
 
 
 def load_and_collect_results(parts):
@@ -33,8 +33,7 @@ def load_and_collect_results(parts):
         for _, row in rgi_data.iterrows():
             rgi_id = row["rgi_id"]
             result_path = os.path.join(
-                EXPERIMENTS_PATH, f"RGI_SELECT_PART_{part}", rgi_id,
-                "regional_run_v1", "result.json"
+                EXPERIMENTS_PATH, rgi_id, "calibration_results.json"
             )
             if not os.path.exists(result_path):
                 print(f"Warning: Missing results.json for RGI ID {rgi_id}.")
@@ -43,6 +42,7 @@ def load_and_collect_results(parts):
             try:
                 # Read JSON results
                 with open(result_path, "r") as file:
+                    print(f"Found results.json for RGI ID {rgi_id}.")
                     data = json.load(file)
                     final_mean = data.get("final_mean", [])
                     final_std = data.get("final_std", [])
@@ -79,12 +79,10 @@ def main():
     """
     Main function to run the script.
     """
-    parts = np.arange(1, 27)  # Update as needed
+    parts = np.arange(1, 3)  # Update as needed
     combined_results = load_and_collect_results(parts)
 
     if not combined_results.empty:
-        # Ensure directory for OUTPUT_CSV exists
-        os.makedirs(os.path.dirname(OUTPUT_CSV), exist_ok=True)
 
         # Save results to CSV
         combined_results.to_csv(OUTPUT_CSV, index=False)

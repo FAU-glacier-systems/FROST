@@ -5,10 +5,10 @@ import numpy as np
 import pandas as pd
 
 # Define directories
-data_dir = "../../Data/Glaciers"
+data_dir = "../../data/results/central_europe/glaciers"
 
 # Create CSV file for results
-csv_file_path = "velocity_2_results.csv"
+csv_file_path = "velocity_5_results.csv"
 with open(csv_file_path, 'w', newline='') as csvfile:
     writer = csv.writer(csvfile)
     writer.writerow([
@@ -27,11 +27,11 @@ for rgi_file in os.listdir(data_dir):
         print(f"Processing RGI: {rgi_file}")
 
         # Construct the path to the Inversion folder
-        inversion_path = os.path.join(rgi_path, "Inversion_2")
+        inversion_path = os.path.join(rgi_path, "Preprocess", "outputs",)
 
         if os.path.exists(inversion_path):
             # Load the geology-optimized.nc file
-            geo_file_path = os.path.join(inversion_path, "geology-optimized.nc")
+            geo_file_path = os.path.join(inversion_path, "output.nc")
 
             if os.path.isfile(geo_file_path):
                 print(f"  Loading {geo_file_path}")
