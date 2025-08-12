@@ -14,7 +14,7 @@ from frost.visualization.utils import scatter_plot
 # Paths
 glamos_results = "../../data/raw/glamos/GLAMOS_analysis_results.csv"
 predicted_results = "../../experiments/central_europe/aggregated_results.csv"
-#predicted_results = "../../Scripts/CentralEurope/velocity_results_merged.csv"
+# predicted_results = "../../Scripts/CentralEurope/velocity_results_merged.csv"
 sla_path = ("../../data/raw/central_europe/Alps_EOS_SLA_2000-2019_mean.csv")
 
 glamos_df = pd.read_csv(glamos_results)
@@ -24,7 +24,7 @@ sla_df = pd.read_csv(sla_path)
 merged_df_glamos = pd.merge(glamos_df, predicted_df, on="rgi_id", how="left",
                             suffixes=('', '_drop'))
 merged_df_glamos = merged_df_glamos.loc[:,
-                   ~merged_df_glamos.columns.str.endswith('_drop')]
+~merged_df_glamos.columns.str.endswith('_drop')]
 merged_df_glamos = merged_df_glamos.dropna(subset=["ela"])
 merged_df_glamos = merged_df_glamos.sort_values(by="area_km2",
                                                 ascending=True).reset_index(
@@ -57,8 +57,14 @@ reference_grad_abl_std = merged_df_glamos[
 reference_grad_acc_std = merged_df_glamos[
     'Annual_Variability_Accumulation_Gradient'].to_numpy()
 
+# Combine glacier name with last digits of RGI ID for labels
+glacier_names = [
+    f"{name} ({rgi.split('-')[-1]})"
+    for name, rgi in zip(merged_df_glamos['Glacier_Name'], merged_df_glamos['rgi_id'])
+]
+
 # Combine glacier name with shortened RGI ID for labels
-glacier_names = [f"{name}" for name in merged_df_glamos['Glacier_Name']]
+#glacier_names = [f"{name}" for name in merged_df_glamos['Glacier_Name']]
 # \n({rgi.split('-')[-1]})" for name, rgi in zip(
 # merged_df_glamos[
 #                                               'Glacier_Name'],
@@ -166,7 +172,7 @@ scatter_handlessla = scatter_plot(ax=axes[1],
 
 # Calculate absolute differences between SLA and ELA
 merged_df_glamos_sla['difference'] = (
-    merged_df_glamos_sla['ela'] - merged_df_glamos_sla['sla']
+        merged_df_glamos_sla['ela'] - merged_df_glamos_sla['sla']
 ).abs()
 
 # Get top 10 differences
