@@ -18,6 +18,7 @@ import rasterio
 import shutil
 import yaml
 
+
 """
 TODOs:
 - make netCDF file names variables (input_saved.nc, observations.nc)
@@ -32,7 +33,8 @@ def main(rgi_id,
          oggm_shop,
          hugonnet,
          hugonnet_directory,
-         year_interval):  # Parse command-line arguments
+         year_interval,
+         zone_letter):  # Parse command-line arguments
 
     # Create output folder
     os.makedirs(rgi_id_dir, exist_ok=True)
@@ -47,7 +49,7 @@ def main(rgi_id,
         print(f"Downloading Hugonnet data with the following parameters:")
         print(f"  RGI directory: {rgi_id_dir}")
         print(f"  Year interval: {year_interval}")
-        download_hugonnet(rgi_id_dir, year_interval, hugonnet_directory)
+        download_hugonnet(rgi_id_dir, year_interval, hugonnet_directory, zone_letter)
         print("Hugonnet data download completed.")
 
     # TODO
@@ -366,7 +368,7 @@ def download_OGGM_shop(rgi_id, rgi_id_dir,):
     os.chdir(original_dir)
 
 
-def crop_hugonnet_to_glacier(date_range, hugonnet_dir, oggm_shop_dataset):
+def crop_hugonnet_to_glacier(date_range, hugonnet_dir, oggm_shop_dataset, zone_letter):
     """
     Fuse multiple dh/dt tiles and crop to a specified OGGM dataset area.
 
@@ -396,7 +398,6 @@ def crop_hugonnet_to_glacier(date_range, hugonnet_dir, oggm_shop_dataset):
     # Use netCDF file from OGGMshop and extract projection details
     # (no idea what happens if another DEM source is taken - instead of SRTM)
     zone_number = int(oggm_shop_dataset.pyproj_srs.split('=')[2][0:2])
-    print(zone_number)
     # Convert to CRS object
     from pyproj import CRS
     crs = CRS.from_proj4(oggm_shop_dataset.pyproj_srs)
@@ -404,12 +405,6 @@ def crop_hugonnet_to_glacier(date_range, hugonnet_dir, oggm_shop_dataset):
     # Try to get the EPSG code
     epsg_code = crs.to_epsg()
     oggm_shop_dataset.epsg = f"EPSG:{epsg_code}"
-
-    if zone_number > 0:        ## not correct, for Schiaparelli the zone number = 19 but letter is S
-        zone_letter = "N"
-    else:
-        zone_letter = "S"
-    zone_letter = "S"          ## manually set zone letter to "S"
 
     # Determine if glacier is in western or eastern longitude range
     if zone_number <= 30:
@@ -419,7 +414,6 @@ def crop_hugonnet_to_glacier(date_range, hugonnet_dir, oggm_shop_dataset):
 
     # Determine maximum and minimum values for longitude and latitude
     x_range = np.array([min_x, min_x, max_x, max_x])
-    print(x_range)
     # ATTENTION: Hugonnet uses 'S' labels for UTM so all y-values are positive for Huggonet
     if zone_letter == "S":
         # ATTENTION: Hugonnet uses 'S' label for UTM zone (EPSG:327??) in southern hemisphere
@@ -638,7 +632,7 @@ def interpolate_nans(grid):
     return grid_interpolated
 
 
-def download_hugonnet(rgi_id_dir, year_interval, hugonnet_directory):
+def download_hugonnet(rgi_id_dir, year_interval, hugonnet_directory, zone_letter):
     """
     Script to bilinearly interpolate NaNs in input field
     - it creates a netCDF file (observations.nc)
@@ -707,7 +701,7 @@ def download_hugonnet(rgi_id_dir, year_interval, hugonnet_directory):
         dhdt, dhdt_err = crop_hugonnet_to_glacier(date_range=date_range,
                                                   hugonnet_dir=hugonnet_dir,
                                                   oggm_shop_dataset=oggm_shop_dataset,
-                                                  )
+                                                  zone_letter=zone_letter)
 
         dhdt_masked = dhdt[::-1] * icemask_2000
         dhdts.append(dhdt_masked)
