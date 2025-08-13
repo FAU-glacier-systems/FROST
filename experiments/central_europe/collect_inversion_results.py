@@ -8,7 +8,7 @@ import pandas as pd
 data_dir = "../../data/results/central_europe/glaciers"
 
 # Create CSV file for results
-csv_file_path = "velocity_5_results.csv"
+csv_file_path = "inversion_results.csv"
 with open(csv_file_path, 'w', newline='') as csvfile:
     writer = csv.writer(csvfile)
     writer.writerow([
