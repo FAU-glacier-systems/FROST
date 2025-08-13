@@ -10,7 +10,7 @@ import shutil
 import yaml
 
 
-def main(rgi_id_dir):
+def main(rgi_id_dir, params_inversion_path):
     """
     Generates params.json for IGM inversion and runs igm_run.
 
@@ -24,70 +24,11 @@ def main(rgi_id_dir):
     exp_dir = os.path.join(preprocess_dir, 'experiment')
     os.makedirs(exp_dir, exist_ok=True)
 
+    shutil.copy(params_inversion_path, exp_dir)
+
     # Change to inversion directory and save params
     original_dir = os.getcwd()
     os.chdir(preprocess_dir)
-
-    params = {
-        "core": {
-            "url_data": ""
-        },
-        "defaults": [
-            {"override /inputs": ["load_ncdf"]},
-            {"override /processes": ["data_assimilation", "iceflow"]},
-            {"override /outputs": []}
-        ],
-        "inputs": {
-            "load_ncdf": {
-                "input_file": "input.nc"
-            }
-        },
-        "processes": {
-            "iceflow": {
-                "physics": {
-                    "init_slidingco": 0.045
-                },
-                "emulator": {
-                    "save_model": True,
-                    "retrain_freq": 1
-                }
-            },
-            "data_assimilation": {
-                "output": {
-                    "save_result_in_ncdf": "../../output.nc",
-                    "vars_to_save": [
-                        "usurf", "topg", "thk", "slidingco",
-                        "velsurf_mag", "velsurfobs_mag", "divflux", "icemask",
-                        "arrhenius", "thkobs", "dhdt"
-                    ],
-                    "plot2d_live": False,
-                    "plot2d": False
-                },
-                "control_list": ["thk"],
-                "cost_list": ["velsurf", "thk", "icemask"],
-                "optimization": {
-                    "retrain_iceflow_model": True,
-                    "nbitmax": 500,
-
-                },
-                "fitting": {
-                    "velsurfobs_std": 0.25,
-                    "thkobs_std": 10,
-                },
-                "regularization": {
-                    "thk": 1.0,
-                    "smooth_anisotropy_factor": 1.0,
-                    "convexity_weight": 1.0,
-                }
-            }
-        },
-        "outputs": {}
-    }
-
-    # Write to YAML file
-    with open(os.path.join('experiment', 'params_inversion.yaml'), 'w') as file:
-        file.write("# @package _global_\n")
-        yaml.dump(params, file, sort_keys=False)
 
     # Run IGM inversion
     # Run the igm_run command
@@ -116,8 +57,10 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Generates params.json for IGM inversion and runs igm_run.')
     parser.add_argument('--rgi_id_dir', type=str,
-                        default="../Results/Test_default/Glaciers/RGI2000"
+                        default="../../results/test_default/glaciers/RGI2000"
                                 "-v7.0-G-11-01706/",
                         help='Path to Glacier dir with OGGM_shop output')
+    parser.add_argument('--params_inversion_path', type=str,
+                        default='../../experiments/test_default/params_inversion.yaml')
     args = parser.parse_args()
-    main(args.rgi_id_dir)
+    main(args.rgi_id_dir, args.params_inversion_path)

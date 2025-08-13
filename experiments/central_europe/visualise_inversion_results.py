@@ -68,7 +68,7 @@ def scatter_plot(ax, x, y, xlabel, ylabel, title, ticks, glacier_names=None,
 
 
 # Read both CSV files
-velocity_df = pd.read_csv('velocity_5_results.csv')
+velocity_df = pd.read_csv('inversion_results.csv')
 #aggregated_df = pd.read_csv('aggregated_results.csv')
 
 # Merge the dataframes on RGI_ID
@@ -87,7 +87,6 @@ print(f"The glacier with the highest velocity error is: {highest_error_rgi_id}")
 print(f"The highest velocity error value is: {highest_error_value}")
 
 # Save the merged results
-velocity_df.to_csv('velocity_results_merged.csv', index=False)
 print("Results merged and saved to merged_results.csv")
 
 # Define velocity statistics to compare
@@ -125,4 +124,4 @@ for ax, label in zip(axes, labels_subplot):
     ax.text(0, 1.02, label, transform=ax.transAxes,
             fontsize=12, va='bottom', ha='left', fontweight='bold')
 fig.tight_layout()
-plt.savefig("plots/Inversion_effect.pdf", bbox_inches="tight")
+plt.savefig("plots/inversion_results.pdf", bbox_inches="tight")
