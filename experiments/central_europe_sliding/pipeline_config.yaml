@@ -2,9 +2,9 @@ experiment_name: "central_europe_sliding"
 rgi_id: None
 smb_model: "ELA"
 pipeline_steps:
-  download: true
-  inversion: true
-  calibrate: false
+  download: false
+  inversion: false
+  calibrate: true
 download:
   oggm_shop: true
   hugonnet: true
@@ -16,7 +16,7 @@ download:
 EnKF:
   seed: 1
   inflation: 1
-  ensemble_size: 32
+  ensemble_size: 64
   iterations: 6
   init_offset: 0
   elev_band_height: 50

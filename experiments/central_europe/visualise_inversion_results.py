@@ -68,7 +68,7 @@ def scatter_plot(ax, x, y, xlabel, ylabel, title, ticks, glacier_names=None,
 
 
 # Read both CSV files
-velocity_df = pd.read_csv('inversion_results.csv')
+velocity_df = pd.read_csv('../central_europe_sliding/inversion_results.csv')
 #aggregated_df = pd.read_csv('aggregated_results.csv')
 
 # Merge the dataframes on RGI_ID
@@ -124,4 +124,5 @@ for ax, label in zip(axes, labels_subplot):
     ax.text(0, 1.02, label, transform=ax.transAxes,
             fontsize=12, va='bottom', ha='left', fontweight='bold')
 fig.tight_layout()
-plt.savefig("plots/inversion_results.pdf", bbox_inches="tight")
+plt.savefig("../central_europe_sliding/plots/inversion_results.pdf",
+            bbox_inches="tight")

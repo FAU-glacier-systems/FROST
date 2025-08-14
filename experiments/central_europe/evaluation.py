@@ -241,10 +241,13 @@ def main():
     parser.add_argument("--glamos_results", type=str,
                         default="../../data/raw/glamos/GLAMOS_analysis_results.csv")
     parser.add_argument("--predicted_results", type=str,
-                        default="../../experiments/central_europe/aggregated_results.csv")
+                        default="../../experiments/central_europe_sliding"
+                                "/aggregated_results.csv")
     parser.add_argument("--sla_path", type=str,
-                        default="../../data/raw/central_europe/Alps_EOS_SLA_2000-2019_mean.csv")
-    parser.add_argument("--output_dir", type=str, default="plots")
+                        default="../../data/raw/central_europe"
+                                "/Alps_EOS_SLA_2000-2019_mean.csv")
+    parser.add_argument("--output_dir", type=str,
+                        default="../central_europe_sliding/plots")
     parser.add_argument("--top_n", type=int, default=10, help="How many top SLA-ELA differences to print")
     args = parser.parse_args()
 

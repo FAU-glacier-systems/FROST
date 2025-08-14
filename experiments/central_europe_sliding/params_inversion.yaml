@@ -1,13 +1,12 @@
 # @package _global_
-core:
-  url_data: ''
+
 defaults:
-- override /inputs:
-  - load_ncdf
-- override /processes:
-  - data_assimilation
-  - iceflow
-- override /outputs: []
+  - override /inputs:
+      - load_ncdf
+  - override /processes:
+      - data_assimilation
+      - iceflow
+  - override /outputs: [ ]
 inputs:
   load_ncdf:
     input_file: input.nc
@@ -22,33 +21,40 @@ processes:
     output:
       save_result_in_ncdf: ../../output.nc
       vars_to_save:
-      - usurf
-      - topg
-      - thk
-      - slidingco
-      - velsurf_mag
-      - velsurfobs_mag
-      - divflux
-      - icemask
-      - arrhenius
-      - thkobs
-      - dhdt
+        - usurf
+        - topg
+        - thk
+        - slidingco
+        - velsurf_mag
+        - velsurfobs_mag
+        - divflux
+        - icemask
+        - arrhenius
+        - thkobs
+        - dhdt
       plot2d_live: false
       plot2d: false
     control_list:
-    - thk
+      - thk
+      - slidingco
+      - usurf
     cost_list:
-    - velsurf
-    - thk
-    - icemask
+      - velsurf
+      - icemask
+      - thk
+      - usurf
+      - divfluxfcz
     optimization:
       retrain_iceflow_model: true
       nbitmax: 500
     fitting:
-      velsurfobs_std: 0.25
-      thkobs_std: 10
+       usurfobs_std: 0.3
+       velsurfobs_std: 0.25
+       thkobs_std: 10
+       divfluxobs_std: 0.1
     regularization:
-      thk: 1.0
-      smooth_anisotropy_factor: 1.0
-      convexity_weight: 1.0
-outputs: {}
+       thk: 1.0
+       slidingco: 1.0e6
+       smooth_anisotropy_factor: 1.0
+       convexity_weight: 0.0
+
