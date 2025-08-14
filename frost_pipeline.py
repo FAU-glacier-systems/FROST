@@ -20,7 +20,7 @@ def run_frost_pipeline(cfg):
     # create experiment folder
     experiment_path = os.path.join('data', 'results', cfg['experiment_name'])
     params_inversion_path = os.path.join('experiments', cfg['experiment_name'],
-                                                            'params_inversion.yaml')
+                                         'params_inversion.yaml')
     os.makedirs(experiment_path, exist_ok=True)
     rgi_id_dir = os.path.join(experiment_path, 'glaciers', cfg['rgi_id'])
 
@@ -71,8 +71,6 @@ if __name__ == "__main__":
                         help="Path to YAML config file")
     parser.add_argument("--rgi_id", type=str,
                         help="RGI ID to override config file")
-    parser.add_argument("--experiment_name", type=str,
-                        help="Experiment name to override config file")
 
     args = parser.parse_args()
 
@@ -81,8 +79,5 @@ if __name__ == "__main__":
 
     if args.rgi_id is not None:
         config['rgi_id'] = args.rgi_id
-
-    if args.experiment_name is not None:
-        config['experiment_name'] = args.experiment_name
 
     run_frost_pipeline(config)

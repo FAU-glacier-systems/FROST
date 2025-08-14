@@ -5,8 +5,8 @@ import numpy as np
 
 # Global paths
 RGI_FILES_PATH = "../../data/raw/central_europe/Split_Files"
-EXPERIMENTS_PATH = "../../data/results/central_europe/glaciers"
-OUTPUT_CSV = "aggregated_results.csv"
+EXPERIMENTS_PATH = "../../data/results/central_europe_sliding/glaciers"
+OUTPUT_CSV = "../central_europe_sliding/aggregated_results.csv"
 
 
 def load_and_collect_results(parts):
@@ -79,7 +79,7 @@ def main():
     """
     Main function to run the script.
     """
-    parts = np.arange(1, 20)  # Update as needed
+    parts = np.arange(1, 15)  # Update as needed
     combined_results = load_and_collect_results(parts)
 
     if not combined_results.empty:
