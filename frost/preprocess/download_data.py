@@ -406,7 +406,7 @@ def download_OGGM_shop(rgi_id, rgi_id_dir, flag_OGGM_climate):
         with Dataset(input_nc, 'r+') as input_dataset:
             # Update usurf with DEM data - flip y axis
             input_dataset['usurf'][:] = dem.data[::-1]
->>>>>>> refs/remotes/origin/hydra
+
 
     os.chdir(original_dir)
 

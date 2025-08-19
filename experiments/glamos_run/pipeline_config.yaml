@@ -1,10 +1,10 @@
 experiment_name: "glamos_run"
-rgi_id: None
+rgi_id: "RGI2000-v7.0-G-11-01706"
 smb_model: "ELA"
 pipeline_steps:
   download: true
   inversion: true
-  calibrate: true
+  calibrate: false
 download:
   oggm_shop: true
   hugonnet: true
