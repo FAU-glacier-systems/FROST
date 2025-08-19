@@ -7,3 +7,4 @@ dependencies:
       - gstools
       - dash
       - utm
+      - rioxarray
