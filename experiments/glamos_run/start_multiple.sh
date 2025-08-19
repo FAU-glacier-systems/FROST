@@ -15,7 +15,8 @@ tail -n +2 "$CSV_FILE" | cut -d, -f1 | while read -r RGI_ID; do
    sbatch --output="data/results/log/${SHORT_ID}.out"\
    --job-name="${SHORT_ID}"\
    --error="data/results/log/${SHORT_ID}.err" \
-   hpc_sbatch.sh "experiments/central_europe/pipeline_config.yaml" "$RGI_ID"
+   hpc_sbatch.sh "experiments/glamos_run/pipeline_config.yaml" \
+   "$RGI_ID"
 
 
 done

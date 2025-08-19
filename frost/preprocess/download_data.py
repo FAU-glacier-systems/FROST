@@ -17,7 +17,8 @@ import scipy.interpolate
 import rasterio
 import shutil
 import yaml
-
+import xarray as xr
+import rioxarray
 
 """
 TODOs:
@@ -305,7 +306,7 @@ def scale_raster(input_file, output_file, scale_factor):
 
 
 # Function to handle the main logic
-def download_OGGM_shop(rgi_id, rgi_id_dir,):
+def download_OGGM_shop(rgi_id, rgi_id_dir, ):
     """
     wrapper to call 'igm_run'
     - JSON file needs to specify the oggm_shop routine of IGM
@@ -320,7 +321,7 @@ def download_OGGM_shop(rgi_id, rgi_id_dir,):
            none
     """
 
-    # Define the params to be saved in params.json
+
 
     # Check if the directory exists, and create it if not
     preprocess_dir = os.path.join(rgi_id_dir, 'Preprocess')
@@ -365,10 +366,27 @@ def download_OGGM_shop(rgi_id, rgi_id_dir,):
     # subprocess.run(["igm_run", "+experiment=params"], check=True)
     # TODO remove unnecessary files
 
+
+    # Replace the usurf with NASADEM  data
+    dem_path = f"data/{rgi_id}/NASADEM/dem.tif"
+    input_nc = 'data/input.nc'
+
+    # Load and update usurf in input.nc after IGM creates it
+    if os.path.exists(dem_path) and os.path.exists(input_nc):
+        # Read DEM
+        dem = rioxarray.open_rasterio(dem_path)
+        dem = dem.squeeze()
+
+        # Read input.nc
+        with Dataset(input_nc, 'r+') as input_dataset:
+            # Update usurf with DEM data - flip y axis
+            input_dataset['usurf'][:] = dem.data[::-1]
+
     os.chdir(original_dir)
 
 
-def crop_hugonnet_to_glacier(date_range, hugonnet_dir, oggm_shop_dataset, zone_letter):
+def crop_hugonnet_to_glacier(date_range, hugonnet_dir, oggm_shop_dataset,
+                             zone_letter):
     """
     Fuse multiple dh/dt tiles and crop to a specified OGGM dataset area.
 
