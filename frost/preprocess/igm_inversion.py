@@ -18,6 +18,24 @@ def main(rgi_id_dir):
         rgi_id (str) - Glacier RGI ID
     """
 
+    # Check if velocity observations are available
+    flag_velsurfobs = False
+    try:
+        # Define input and output file names
+        input_file = os.path.join(rgi_id_dir, 'Preprocess', 'data', 'input_saved.nc')
+
+        # Open the input netCDF file in read mode
+        with Dataset(input_file, 'r') as src:
+
+
+            # try reading velocity data
+            var1 = input_dataset.variables['uvelsurfobs']
+            var2 = input_dataset.variables['vvelsurfobs']
+
+        flag_velsurfobs = True
+    except:
+        flag_velsurfobs = False
+
     # Prepare inversion directory
     preprocess_dir = os.path.join(rgi_id_dir, 'Preprocess')
     # shutil.rmtree(inversion_dir, ignore_errors=True)
@@ -28,66 +46,84 @@ def main(rgi_id_dir):
     original_dir = os.getcwd()
     os.chdir(preprocess_dir)
 
-    params = {
-        "core": {
+    # Set inversion parameters
+    # depend on availaibity of velocity observations
+    inv_params = dict()
+    inv_params["core"] = {
             "url_data": ""
-        },
-        "defaults": [
+        }
+    inv_params["defaults"] = [
             {"override /inputs": ["load_ncdf"]},
             {"override /processes": ["data_assimilation", "iceflow"]},
             {"override /outputs": []}
-        ],
-        "inputs": {
-            "load_ncdf": {
-                "input_file": "input.nc"
+            ]
+
+    inv_params["inputs"] = {
+            "load_ncdf": {"input_file": "input.nc"}
             }
-        },
-        "processes": {
-            "iceflow": {
-                "physics": {
+
+    iceflow_params = dict()
+    iceflow_params["physics"] = {
                     "init_slidingco": 0.045
-                },
-                "emulator": {
+                    }
+    iceflow_params["emulator"] = {
                     "save_model": True,
                     "retrain_freq": 1
-                }
-            },
-            "data_assimilation": {
-                "output": {
-                    "save_result_in_ncdf": "../../output.nc",
-                    "vars_to_save": [
-                        "usurf", "topg", "thk", "slidingco",
-                        "velsurf_mag", "velsurfobs_mag", "divflux", "icemask",
-                        "arrhenius", "thkobs", "dhdt"
-                    ],
-                    "plot2d_live": False,
-                    "plot2d": False
-                },
-                "control_list": ["thk"],
-                "cost_list": ["velsurf", "thk", "icemask"],
-                "optimization": {
+                    }
+
+    DA_output_params = dict()
+    DA_output_params["save_result_in_ncdf"] = "../../output.nc"
+    if flag_velsurfobs :
+        DA_output_params["vars_to_save"] = [
+                            "usurf", "topg", "thk", "slidingco",
+                            "velsurf_mag", "velsurfobs_mag", "divflux", "icemask",
+                            "arrhenius", "thkobs", "dhdt"
+                            ]
+    else:
+        DA_output_params["vars_to_save"] = [
+                            "usurf", "topg", "thk", "slidingco",
+                            "velsurf_mag", "divflux", "icemask",
+                            "arrhenius", "thkobs", "dhdt"
+                            ]
+    DA_output_params["plot2d_live"] = False
+    DA_output_params["plot2d"] = False
+
+    DA_params = dict()
+    DA_params = {"output":DA_output_params}
+
+    DA_params["control_list"] = ["thk"]
+    if flag_velsurfobs :
+        DA_params["cost_list"] = ["velsurf", "thk", "icemask"]
+        DA_params["fitting"] = {
+                        "velsurfobs_std": 0.25,
+                        "thkobs_std": 10,
+                        }
+    else:
+        DA_params["cost_list"] = ["thk", "icemask"]
+        DA_params["fitting"] = {
+                        "thkobs_std": 10,
+                        }
+    DA_params["optimization"] = {
                     "retrain_iceflow_model": True,
                     "nbitmax": 500,
-
-                },
-                "fitting": {
-                    "velsurfobs_std": 0.25,
-                    "thkobs_std": 10,
-                },
-                "regularization": {
+                }
+    DA_params["regularization"] = {
                     "thk": 1.0,
                     "smooth_anisotropy_factor": 1.0,
                     "convexity_weight": 1.0,
                 }
-            }
-        },
-        "outputs": {}
-    }
+
+    inv_params["processes"] = {"iceflow":iceflow_params, "data_assimilation":DA_params}
+
+    inv_params["outputs"] = {}
+
+    #print(params)
+    print(inv_params)
 
     # Write to YAML file
     with open(os.path.join('experiment', 'params_inversion.yaml'), 'w') as file:
         file.write("# @package _global_\n")
-        yaml.dump(params, file, sort_keys=False)
+        yaml.dump(inv_params, file, sort_keys=False)
 
     # Run IGM inversion
     # Run the igm_run command

@@ -22,7 +22,7 @@ os.environ["XLA_FLAGS"] = "--xla_force_host_platform_device_count=1"
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"  # 0 = all, 1 = info, 2 = warning, 3 = error
 
 
-def forward(exp, output1D, output2D_3D, member_id, rgi_dir, SMB_model, usurf, smb,
+def forward(exp, output1D, output2D_3D, member_id, rgi_dir, smb_model, usurf, smb,
             year_interval):
     '''
     Runs a single forward model simulation for an ensemble member.
@@ -35,7 +35,7 @@ def forward(exp, output1D, output2D_3D, member_id, rgi_dir, SMB_model, usurf, sm
         output2D_3D(bool)     - if TRUE: 2D/3D output from IGM is provided
         member_id (int)       - ID of the ensemble member
         rgi_dir (str)         - Path to the glacier directory
-        SMB_model(str)        - chosen SMB model (ELA, TI, ...)
+        smb_model(str)        - chosen SMB model (ELA, TI, ...)
         usurf (ndarray)       - Initial surface elevation array
         smb (dict)            - Surface mass balance parameters:
                                   * 'ela' (float)      - Equilibrium line altitude
@@ -50,11 +50,11 @@ def forward(exp, output1D, output2D_3D, member_id, rgi_dir, SMB_model, usurf, sm
     '''
 
     # Extract SMB parameters and convert gradients from m/km to m/m
-    if str(SMB_model) == 'ELA':
+    if str(smb_model) == 'ELA':
         ela = smb['ela']
         abl_grad = smb['abl_grad'] / 1000
         acc_grad = smb['acc_grad'] / 1000
-    elif str(SMB_model) == 'TI':
+    elif str(smb_model) == 'TI':
         melt_f = smb['melt_f']
         prcp_fac = smb['prcp_fac']
         temp_bias = smb['temp_bias']
@@ -67,11 +67,6 @@ def forward(exp, output1D, output2D_3D, member_id, rgi_dir, SMB_model, usurf, sm
         "core": {
             "url_data": "",
         },
-        "defaults": [
-            {"override /inputs": ["load_ncdf"]},
-            {"override /processes": ['smb_simple', 'iceflow', 'time', 'thk']},
-            {"override /outputs": ['write_ncdf']}
-        ],
         "inputs": {
             "load_ncdf": {
                 "input_file": "input.nc"
@@ -88,55 +83,86 @@ def forward(exp, output1D, output2D_3D, member_id, rgi_dir, SMB_model, usurf, sm
                 "start": 2000.,
                 "end": 2000. + year_interval,
             },
-            "smb_simple": {
-                "array": []
-            }
-
-        },
-        "outputs": {
-            "write_ncdf": {
-                "output_file": "../../output.nc",
-                "vars_to_save": ['topg', 'usurf', 'thk', 'smb', 'velbar_mag',
-                                 'velsurf_mag', 'divflux'],
-            }
         }
     }
-    # if str(SMB_model) == 'TI':
-    #     igm_params['defaults'][0]['overrite /processes'] = ['clim_1D-3D',
-    #                                                       'smb_oggm_TI_local',
-    #                                                       'iceflow', 'time', 'thk']
 
-    # if output1D and output2D_3D:
-    #     igm_params['defaults'][0]['overrite /outputs'] = ['write_ncdf',
-    #                                                       'print_info',
-    #                                                       'write_ts']
-    # elif output1D:
-    #     igm_params['defaults'][0]['overrite /outputs'] = ['print_info', 'write_ts']
-    # elif output2D_3D:
-    #     igm_params['defaults'][0]['overrite /outputs'] = ['write_ncdf',
-    #                                                       'print_info']
+    if str(smb_model) == 'TI':
+        ## USER-DEFINED FUNCTION PATHS HAVE TO BE DEFINED FIRST
+        ## - if activated please add '+' to 'override/inputs 
+        ##
+        ## absolute path option
+        #igm_params['defaults'] = [{"//home/hpc/gwgi/gwgi17/projects/2025_eALPS/FROST/frost/igm-user/conf/processes@processes.clim_1D-3D": "clim_1D-3D"}]
+        ## relative path option
+        #igm_params['defaults'] = [{"/user/conf/processes@processes.clim_1D-3D": "clim_1D-3D"}]
 
+        igm_params['defaults'] = [{"override /inputs": ["load_ncdf"]}]
+        igm_params['defaults'] += [{'override /processes': ["clim_1D_3D", "smb_1D_3D", "iceflow", "time", "thk"]}]
 
-    # TODO TI
-    if str(SMB_model) == 'TI':
-        igm_params['clim_oggm_clim_trend_array'] = [
-            ['time', 'delta_temp', 'prec_scal'],
-            [1900, 0.0, 1.0],
-            [2020, 0.0, 1.0],
-        ]
-        igm_params['clim_oggm_ref_period'] = [2000, 2019]
-    elif str(SMB_model) == 'ELA':
+        igm_params['processes']["clim_1D_3D"] = {
+                "clim_trend_array": []
+            }
+        igm_params['processes']['clim_1D_3D']['clim_trend_array']      = [
+                                ['time', 'delta_temp', 'prec_scal'],
+                                [1900, 0.0, 1.0],
+                                [2020, 0.0, 1.0],
+                            ]
+        igm_params['processes']['clim_1D_3D']['ref_period']            = [2000, 2019]
+        igm_params['processes']['clim_1D_3D']['temp_bias']             = temp_bias
+        igm_params['processes']['clim_1D_3D']['prcp_fac']              = prcp_fac
+        igm_params['processes']['clim_1D_3D']['prcp_gradient']         = 0.00035 # https://hess.copernicus.org/articles/24/5355/2020/
+        igm_params['processes']['clim_1D_3D']['temp_default_gradient'] = -0.0065
+        igm_params['processes']['clim_1D_3D']['update_freq']     = 1
+
+        igm_params['processes']["smb_1D_3D"] = {
+                "temp_all_solid": 0.0
+            }
+
+        igm_params['processes']['smb_1D_3D']['temp_all_liquid'] = 2.0
+        igm_params['processes']['smb_1D_3D']['temp_melt']       = -1.0
+        igm_params['processes']['smb_1D_3D']['melt_f']          = melt_f
+        igm_params['processes']['smb_1D_3D']['wat_density']     = 1000.0
+        igm_params['processes']['smb_1D_3D']['ice_density']     = 910.0
+        igm_params['processes']['smb_1D_3D']['melt_enhancer']   = 1
+        igm_params['processes']['smb_1D_3D']['update_freq']     = 1
+
+    elif str(smb_model) == 'ELA':
+        
+        igm_params['defaults'] = [{"override /inputs": ["load_ncdf"]}]
+        igm_params['defaults'] += [{'override /processes': ["smb_simple", "iceflow", "time", "thk"]}]
+
+        igm_params['processes']["smb_simple"] = {
+                "array": []
+            }
         igm_params['processes']['smb_simple']['array'] = [
             ['time', 'gradabl', 'gradacc', 'ela', 'accmax'],
             [0, abl_grad, acc_grad, ela, 100],
             [year_interval, abl_grad, acc_grad, ela, 100]
         ]
 
-    if output1D:
-        igm_params['outputs']['write_ncdf']['output_file'] = '../../output_ts.nc'
-    if output2D_3D:
+
+    if output1D and output2D_3D :
+        igm_params['defaults'] += [{'override /outputs': ["write_ts", "write_ncdf"]}]
+    elif output1D :
+        igm_params['defaults'] += [{'override /outputs': ["write_ts"]}]
+    elif output2D_3D :
+        igm_params['defaults'] += [{'override /outputs': ["write_ncdf"]}]
+
+    if output1D :
+        igm_params['outputs'] = {
+            "write_ts": {
+                "output_file": []
+            }
+            }
+        igm_params['outputs']['write_ts']['output_file'] = '../../output_ts.nc'
+    if output2D_3D :
+        igm_params['outputs'] = {
+            "write_ncdf": {
+                "output_file": [],
+                "vars_to_save": [],
+            }
+            }
         igm_params['outputs']['write_ncdf']['output_file'] = '../../output.nc'
-        if str(SMB_model) == 'TI':
+        if str(smb_model) == 'TI':
             igm_params['outputs']['write_ncdf']['vars_to_save'] = ['topg',
                                                                    'usurf',
                                                                    'thk',
@@ -171,7 +197,7 @@ def forward(exp, output1D, output2D_3D, member_id, rgi_dir, SMB_model, usurf, sm
     #         # https://hess.copernicus.org/articles/24/5355/2020/
     #         'smb_oggm_TI_melt_f': melt_f
     #     }
-    #
+
     # Create directory for the ensemble member
     if str(exp) == 'Projection':
         member_dir = os.path.join(rgi_dir, 'Projection', f'Member_{member_id}')
@@ -304,7 +330,7 @@ if __name__ == '__main__':
     year_interval = 100
 
     # Define SMB model
-    SMB_model = 'TI'
+    smb_model = 'TI'
 
     # Simulation Path
     rgi_id_dir = os.path.join('.', 'Data', 'Glaciers', args.rgi_id)
@@ -377,5 +403,5 @@ if __name__ == '__main__':
     print('usurf', np.shape(usurf_init))
     print('smb', new_smb)
     print('year_interval', year_interval)
-    member_id = forward(exp, output1D, output2D_3D, member_id, rgi_id_dir, SMB_model,
+    member_id = forward(exp, output1D, output2D_3D, member_id, rgi_id_dir, smb_model,
                         usurf_init, new_smb, year_interval)

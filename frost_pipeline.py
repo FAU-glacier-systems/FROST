@@ -30,6 +30,7 @@ def run_frost_pipeline(cfg):
 
         download_data.main(rgi_id=cfg['rgi_id'],
                            rgi_id_dir=rgi_id_dir,
+                           smb_model=cfg['smb_model'],
                            **cfg['download'])
 
     if cfg['pipeline_steps']['inversion']:
@@ -51,7 +52,7 @@ def run_frost_pipeline(cfg):
         frost_calibration.main(
             rgi_id=cfg['rgi_id'],
             rgi_id_dir=rgi_id_dir,
-            SMB_model=cfg['smb_model'],
+            smb_model=cfg['smb_model'],
             **cfg['EnKF']
         )
 

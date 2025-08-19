@@ -1,0 +1,17 @@
+clim_1D_3D:
+  update_freq: 1
+  file: file.txt
+  clim_trend_array:
+    - ["time", "delta_temp", "prec_scal"]
+    - [1900, 0.0, 1.0]
+    - [2020, 0.0, 1.0]
+  ref_period: [1960, 1990]
+  temp_bias: 0.0
+  prcp_fac: 1.0
+  prcp_gradient: 0.00035
+  temp_default_gradient: -0.0065
+  temp_all_solid: 0.0
+  temp_all_liquid: 2.0
+  temp_melt: -1.0
+  melt_f: 6.5
+  seed_par: 123
