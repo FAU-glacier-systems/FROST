@@ -122,7 +122,8 @@ def main(rgi_id,
                     original_data = np.array(variable[:])
                     modified_data = np.where(np.abs(original_data) == 0, np.nan, original_data)
                     if np.nansum(np.nansum(modified_data)) != 0 and not(np.isnan(np.nansum(np.nansum(modified_data)))) :
-                        if np.nanpercentile(np.abs(original_data.flatten()), 90) > 10.0:
+                        if np.nanpercentile(np.abs(original_data.flatten()),
+                                            99) > 10.0:
                             # Create a mask for NaN values and set them to zero
                             dst_var = dst.createVariable(name, variable.datatype, variable.dimensions)
                             dst_var[:] = np.where(np.abs(original_data) == 0, np.nan, original_data)
@@ -132,7 +133,8 @@ def main(rgi_id,
                     modified_data = np.where(np.abs(original_data) == 0, np.nan, original_data)
                     if np.nansum(np.nansum(modified_data)) != 0 and not(np.isnan(np.nansum(np.nansum(modified_data)))) :
                         #print('PERCENTILE PERCENTILE 90 : ',np.nanpercentile(np.abs(modified_data.flatten()), 90))
-                        if np.nanpercentile(np.abs(modified_data.flatten()), 90) > 10.0:
+                        if np.nanpercentile(np.abs(modified_data.flatten()),
+                                            99) > 10.0:
                             # Create a mask for NaN values and set them to zero
                             dst_var = dst.createVariable(name, variable.datatype, variable.dimensions)
                             dst_var[:] = np.where(np.abs(original_data) == 0, np.nan,original_data)

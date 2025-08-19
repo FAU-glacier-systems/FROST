@@ -8,6 +8,7 @@ from pathlib import Path
 import os
 import shutil
 import yaml
+from netCDF4 import Dataset
 
 
 def main(rgi_id_dir, params_inversion_path):
@@ -22,15 +23,15 @@ def main(rgi_id_dir, params_inversion_path):
     flag_velsurfobs = False
     try:
         # Define input and output file names
-        input_file = os.path.join(rgi_id_dir, 'Preprocess', 'data', 'input_saved.nc')
+        input_file = os.path.join(rgi_id_dir, 'Preprocess', 'data', 'input.nc')
 
         # Open the input netCDF file in read mode
         with Dataset(input_file, 'r') as src:
 
 
             # try reading velocity data
-            var1 = input_dataset.variables['uvelsurfobs']
-            var2 = input_dataset.variables['vvelsurfobs']
+            var1 = src.variables['uvelsurfobs']
+            var2 = src.variables['vvelsurfobs']
 
         flag_velsurfobs = True
     except:
@@ -42,7 +43,7 @@ def main(rgi_id_dir, params_inversion_path):
     exp_dir = os.path.join(preprocess_dir, 'experiment')
     os.makedirs(exp_dir, exist_ok=True)
 
-    #shutil.copy(params_inversion_path, exp_dir)
+    shutil.copy(params_inversion_path, exp_dir)
 
     # Change to inversion directory and save params
     original_dir = os.getcwd()
@@ -85,7 +86,7 @@ def main(rgi_id_dir, params_inversion_path):
         DA_output_params["vars_to_save"] = [
                             "usurf", "topg", "thk", "slidingco",
                             "velsurf_mag", "divflux", "icemask",
-                            "arrhenius", "thkobs", "dhdt"
+                            "arrhenius", "thkobs", "dhdt",
                             ]
     DA_output_params["plot2d_live"] = False
     DA_output_params["plot2d"] = False

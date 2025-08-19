@@ -300,10 +300,10 @@ def print_top_differences(df_with_diff: pd.DataFrame, top_n: int = 10) -> None:
 def main():
     parser = argparse.ArgumentParser(description="Evaluate predicted ELA and gradients using already-merged aggregated results.")
     parser.add_argument("--predicted_results", type=str,
-                        default="../../experiments/central_europe/aggregated_results"
+                        default="../../experiments/glamos_run/aggregated_results"
                                 ".csv")
     parser.add_argument("--output_dir", type=str,
-                        default="../central_europe/plots")
+                        default="../glamos_run/plots")
     parser.add_argument("--top_n", type=int, default=10, help="How many top SLA-ELA differences to print")
     args = parser.parse_args()
 

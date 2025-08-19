@@ -10,7 +10,6 @@ download:
   hugonnet: true
   year_interval: 20
   target_resolution: None
-  zone_letter: "N"
   hugonnet_directory: 'data/raw/hugonnet/11_rgi60_2000-01-01_2020-01-01'
 
 EnKF:
