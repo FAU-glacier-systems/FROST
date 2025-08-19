@@ -5,7 +5,7 @@
 #SBATCH --nodes=1
 #SBATCH --time=00:59:59
 #SBATCH --job-name=frost
-##SBATCH --gres=gpu:a100:1
+#SBATCH --gres=gpu:a40:1
 #SBATCH --output=data/results/Log/frost_%j.out
 #SBATCH --error=data/results/Log/frost_%j.err
 
