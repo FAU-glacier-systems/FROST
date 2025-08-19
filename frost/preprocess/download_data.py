@@ -35,8 +35,7 @@ def main(rgi_id,
          oggm_shop,
          hugonnet,
          hugonnet_directory,
-         year_interval,
-         zone_letter):  # Parse command-line arguments
+         year_interval):  # Parse command-line arguments
 
     # Create output folder
     os.makedirs(rgi_id_dir, exist_ok=True)
@@ -70,7 +69,7 @@ def main(rgi_id,
         print(f"Downloading Hugonnet data with the following parameters:")
         print(f"  RGI directory: {rgi_id_dir}")
         print(f"  Year interval: {year_interval}")
-        download_hugonnet(rgi_id_dir, year_interval, hugonnet_directory, zone_letter)
+        download_hugonnet(rgi_id_dir, year_interval, hugonnet_directory)
         print("Hugonnet data download completed.")
 
     # TODO
@@ -406,13 +405,11 @@ def download_OGGM_shop(rgi_id, rgi_id_dir, flag_OGGM_climate):
         with Dataset(input_nc, 'r+') as input_dataset:
             # Update usurf with DEM data - flip y axis
             input_dataset['usurf'][:] = dem.data[::-1]
->>>>>>> refs/remotes/origin/hydra
 
     os.chdir(original_dir)
 
 
-def crop_hugonnet_to_glacier(date_range, hugonnet_dir, oggm_shop_dataset,
-                             zone_letter):
+def crop_hugonnet_to_glacier(date_range, hugonnet_dir, oggm_shop_dataset):
     """
     Fuse multiple dh/dt tiles and crop to a specified OGGM dataset area.
 
@@ -471,6 +468,12 @@ def crop_hugonnet_to_glacier(date_range, hugonnet_dir, oggm_shop_dataset,
         zone_letter = "N"
     else:
         zone_letter = "S"
+
+    # Determine if glacier is in western or eastern longitude range
+    if zone_number <= 30:
+        east_west = "W"
+    else:
+        east_west = "E"
 
     # Determine maximum and minimum values for longitude and latitude
     x_range = np.array([min_x, min_x, max_x, max_x])
@@ -692,7 +695,7 @@ def interpolate_nans(grid):
     return grid_interpolated
 
 
-def download_hugonnet(rgi_id_dir, year_interval, hugonnet_directory, zone_letter):
+def download_hugonnet(rgi_id_dir, year_interval, hugonnet_directory):
     """
     Script to bilinearly interpolate NaNs in input field
     - it creates a netCDF file (observations.nc)
@@ -760,8 +763,7 @@ def download_hugonnet(rgi_id_dir, year_interval, hugonnet_directory, zone_letter
         print('Hugonnet dh/dt filename : ', folder_name)
         dhdt, dhdt_err = crop_hugonnet_to_glacier(date_range=date_range,
                                                   hugonnet_dir=hugonnet_dir,
-                                                  oggm_shop_dataset=oggm_shop_dataset,
-                                                  zone_letter=zone_letter)
+                                                  oggm_shop_dataset=oggm_shop_dataset)
 
         dhdt_masked = dhdt[::-1] * icemask_2000
         dhdts.append(dhdt_masked)
