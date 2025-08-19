@@ -8,7 +8,7 @@ import pandas as pd
 data_dir = "../../data/results/central_europe/glaciers"
 
 # Create CSV file for results
-csv_file_path = "velocity_5_results.csv"
+csv_file_path = "../central_europe/inversion_results.csv"
 with open(csv_file_path, 'w', newline='') as csvfile:
     writer = csv.writer(csvfile)
     writer.writerow([
@@ -16,7 +16,7 @@ with open(csv_file_path, 'w', newline='') as csvfile:
         'Q1_velsurf_mag', 'Median_velsurf_mag', 'Q3_velsurf_mag', 'Max_velsurf_mag',
         'Mean_velsurfobs_mag', 'Std_velsurfobs_mag', 'Min_velsurfobs_mag',
         'Q1_velsurfobs_mag', 'Median_velsurfobs_mag', 'Q3_velsurfobs_mag',
-        'Max_velsurfobs_mag'
+        'Max_velsurfobs_mag', 'MAE_velsurf_mag'
     ])
 
 # Iterate over all RGI-NetCDF files in the specified directory
@@ -66,8 +66,13 @@ for rgi_file in os.listdir(data_dir):
                         median_velsurfobs_mag = velsurfobs_mag.quantile(0.5).item()
                         q3_velsurfobs_mag = velsurfobs_mag.quantile(0.75).item()
 
+                        # Mean Absolute Error (pixel-wise) between modeled and observed velocity magnitudes
+                        
+                        mae_velsurf_mag = np.abs(velsurf_mag - velsurfobs_mag).mean(skipna=True).item()
+
                         print(f"    Mean velsurf_mag: {mean_velsurf_mag}")
                         print(f"    Mean velsurfobs_mag: {mean_velsurfobs_mag}")
+                        print(f"    MAE velsurf_mag: {mae_velsurf_mag}")
 
                         # Write results to CSV
                         with open(csv_file_path, 'a', newline='') as csvfile:
@@ -79,7 +84,7 @@ for rgi_file in os.listdir(data_dir):
                                 mean_velsurfobs_mag, std_velsurfobs_mag,
                                 min_velsurfobs_mag, q1_velsurfobs_mag,
                                 median_velsurfobs_mag, q3_velsurfobs_mag,
-                                max_velsurfobs_mag
+                                max_velsurfobs_mag, mae_velsurf_mag
                             ])
                     else:
                         print(
@@ -90,7 +95,6 @@ for rgi_file in os.listdir(data_dir):
                 except Exception as e:
                     print(f"    Error processing {geo_file_path}: {e}")
             else:
-                print(f"  geology-optimized.nc not found in {inversion_path}")
+                print(f"  output.nc not found in {inversion_path}")
         else:
             print(f"  Inversion folder not found for {rgi_file}")
-

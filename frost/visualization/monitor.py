@@ -175,16 +175,25 @@ class Monitor:
         uncertainty = np.std(noise_samples, axis=0)
         ensemble_mean = np.mean(ensemble_observables, axis=1)
         ensemble_std = np.std(ensemble_observables, axis=1)
-        ensemble_point1 = ensemble_observables[:, 4]
-        ensemble_point2 = ensemble_observables[:, -5]
+
+        size = ensemble_observables.shape[1]
+        if size < 5:
+            ensemble_point1 = ensemble_observables[:, 0]
+            ensemble_point2 = ensemble_observables[:, -1]
+            obs_point1 = new_observables[0]
+            obs_point2 = new_observables[-1]
+            var_point1 = uncertainty[0]
+            var_point2 = uncertainty[-1]
+        else:
+            ensemble_point1 = ensemble_observables[:, 2]
+            ensemble_point2 = ensemble_observables[:, -3]
+            obs_point1 = new_observables[2]
+            obs_point2 = new_observables[-3]
+            var_point1 = uncertainty[2]
+            var_point2 = uncertainty[-3]
 
         obs_mean = np.mean(new_observables)
-        obs_point1 = new_observables[4]
-        obs_point2 = new_observables[-5]
-
         var_mean = np.mean(uncertainty)
-        var_point1 = uncertainty[4]
-        var_point2 = uncertainty[-5]
 
         self.observation_log['mean_usurf'].append(obs_mean)
         self.observation_log['point1'].append(obs_point1)

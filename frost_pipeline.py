@@ -7,7 +7,9 @@ import frost_calibration
 
 os.environ["CUDA_VISIBLE_DEVICES"] = ""  # Hides all GPUs
 os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"  # Optional for JAX
-os.environ["XLA_FLAGS"] = "--xla_force_host_platform_device_count=1"  # Makes JAX use only CPU
+os.environ[
+    "XLA_FLAGS"] = "--xla_force_host_platform_device_count=1"  # Makes JAX use only CPU
+
 
 def run_frost_pipeline(cfg):
     print(f"Running FROST for RGI ID: {cfg['rgi_id']}")
@@ -17,6 +19,8 @@ def run_frost_pipeline(cfg):
 
     # create experiment folder
     experiment_path = os.path.join('data', 'results', cfg['experiment_name'])
+    params_inversion_path = os.path.join('experiments', cfg['experiment_name'],
+                                         'params_inversion.yaml')
     os.makedirs(experiment_path, exist_ok=True)
     rgi_id_dir = os.path.join(experiment_path, 'glaciers', cfg['rgi_id'])
 
@@ -40,7 +44,8 @@ def run_frost_pipeline(cfg):
         #         (ice dynamics, ...)       #
         #                                   #
         #####################################
-        igm_inversion.main(rgi_id_dir=rgi_id_dir)
+        igm_inversion.main(rgi_id_dir=rgi_id_dir,
+                           params_inversion_path=params_inversion_path)
 
     if cfg['pipeline_steps']['calibrate']:
         #####################################
@@ -67,8 +72,6 @@ if __name__ == "__main__":
                         help="Path to YAML config file")
     parser.add_argument("--rgi_id", type=str,
                         help="RGI ID to override config file")
-    parser.add_argument("--experiment_name", type=str,
-                        help="Experiment name to override config file")
 
     args = parser.parse_args()
 
@@ -77,9 +80,5 @@ if __name__ == "__main__":
 
     if args.rgi_id is not None:
         config['rgi_id'] = args.rgi_id
-
-    if args.experiment_name is not None:
-        config['experiment_name'] = args.experiment_name
-
 
     run_frost_pipeline(config)

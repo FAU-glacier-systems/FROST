@@ -38,8 +38,9 @@ def scatter_plot(ax, x, y, xlabel, ylabel, title, ticks, glacier_names=None,
         if color is None:
             scatter = ax.scatter(x, y, c=np.log(np.abs(y - x)))
         else:
-            scatter = ax.scatter(x, y, c=color, cmap="Spectral_r")
-        plt.colorbar(scatter, ax=ax, label='Absolute Error (m)', shrink=0.8)
+            #scatter = ax.scatter(x, y, c=color, cmap="Spectral_r")
+            scatter = ax.scatter(x, y)
+        plt.colorbar(scatter, ax=ax, label='Absolute Error (m)', shrink=0.6)
 
     else:
         for i, label in enumerate(glacier_names):
