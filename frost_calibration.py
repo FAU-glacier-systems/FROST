@@ -5,13 +5,15 @@
 
 import argparse
 import os.path
+import shutil
+import igm
 
 from frost.calibration.ensemble_kalman_filter import EnsembleKalmanFilter
 from frost.calibration.observation_provider import ObservationProvider
 from frost.visualization.monitor import Monitor
 
 
-def main(rgi_id, rgi_id_dir, SMB_model, synthetic, ensemble_size, inflation,
+def main(rgi_id, rgi_id_dir, smb_model, synthetic, ensemble_size, inflation,
          smb_prior_mean, smb_prior_std,
          iterations, seed, init_offset, elev_band_height, forward_parallel,
          synth_obs_std=None, smb_reference_mean=None, smb_reference_std=None):
@@ -25,7 +27,7 @@ def main(rgi_id, rgi_id_dir, SMB_model, synthetic, ensemble_size, inflation,
 
     Args:
            rgi_id(str)           - glacier ID
-           SMB_model(str)        - chosen SMB model (ELA, TI, ...)
+           smb_model(str)        - chosen SMB model (ELA, TI, ...)
            synthetic(bool)       - switch to synthetic observations
            synth_obs_std(float)- factor of synthetic observation uncertainty
            ensemble_size(int)    - ensemble size
@@ -43,7 +45,7 @@ def main(rgi_id, rgi_id_dir, SMB_model, synthetic, ensemble_size, inflation,
         os.makedirs(rgi_id_dir, exist_ok=True)
 
     print(f'Running calibration for glacier: {rgi_id}')
-    print(f'SMB model: {SMB_model}')
+    print(f'SMB model: {smb_model}')
     print(f'Ensemble size: {ensemble_size}',
           f'Inflation: {inflation}',
           f'Iterations: {iterations}',
@@ -54,6 +56,58 @@ def main(rgi_id, rgi_id_dir, SMB_model, synthetic, ensemble_size, inflation,
           f'Initial offset: {init_offset}'
           f'Results directory: {rgi_id_dir}'
           f'Forward parallel: {forward_parallel}')
+
+    # Copy igm_user functions
+    if str(smb_model) == 'TI':
+        script_list = ['clim_1D_3D', 'smb_1D_3D']
+        for afname in script_list:
+            # etraxt igm library path
+            igm_lib_path = os.path.dirname(igm.__file__)
+
+            # local igm library folder
+            dst_dir = os.path.join(igm_lib_path,'processes')
+
+            # check if user functions are already in local IGM library
+            # then remove them
+            if os.path.exists(os.path.join(dst_dir,afname)):
+                # Remove pre-existing folder
+                shutil.rmtree(os.path.join(dst_dir,afname))
+
+            # Copy user-defined scripts 
+            # Source directory of user defined function
+            src_dir = os.path.join('frost','igm_user','code','processes',afname)
+
+            # Check the operating system and use the respective command
+            if os.name == 'nt':  # Windows
+                cmd = f'copy -r "{src_dir}" "{dst_dir}"'
+            else:  # Unix/Linux
+                cmd = f'cp -r "{src_dir}" "{dst_dir}"'
+
+            # Copy Directory
+            os.system(cmd)
+
+            dst_dir = os.path.join(igm_lib_path,'conf','processes')
+
+            # check if user config files (function sepcific yaml) are already in local IGM library
+            # then remove them
+            if os.path.exists(os.path.join(igm_lib_path,'conf','processes')+'/'+afname+'.yaml'):
+                # Remove pre-existing file
+                os.remove(os.path.join(igm_lib_path,'conf','processes')+'/'+afname+'.yaml')
+
+            # Copy user-defined configuration files (yaml)
+            # Source directory of user defined function
+            src_dir = os.path.join('frost','igm_user','conf','processes')+'/'+afname+'.yaml'
+                
+            # Check the operating system and use the respective command
+            if os.name == 'nt':  # Windows
+                cmd = f'copy "{src_dir}" "{dst_dir}"'
+            else:  # Unix/Linux
+                cmd = f'cp "{src_dir}" "{dst_dir}"'
+
+            # Copy Directory
+            os.system(cmd)
+            
+
 
     # Initialise the Observation provider
     print("Initializing Observation Provider")
@@ -70,7 +124,7 @@ def main(rgi_id, rgi_id_dir, SMB_model, synthetic, ensemble_size, inflation,
     print("Initializing Ensemble Kalman Filter")
     ensembleKF = EnsembleKalmanFilter(rgi_id=rgi_id,
                                       rgi_id_dir=rgi_id_dir,
-                                      SMB_model=SMB_model,
+                                      smb_model=smb_model,
                                       ensemble_size=ensemble_size,
                                       inflation=inflation,
                                       seed=seed,
@@ -142,6 +196,28 @@ def main(rgi_id, rgi_id_dir, SMB_model, synthetic, ensemble_size, inflation,
                             iterations=iterations,
                             obs_uncertainty=synth_obs_std,
                             synthetic=synthetic)
+
+    # Remove igm_user functions from igm library path
+    if str(smb_model) == 'TI':
+        for afname in script_list:
+
+            # local igm library folder
+            dst_dir = os.path.join(igm_lib_path,'processes')
+
+            # check if user functions are already in local IGM library
+            # then remove them
+            if os.path.exists(os.path.join(dst_dir,afname)):
+                # Remove pre-existing folder
+                shutil.rmtree(os.path.join(dst_dir,afname))
+
+            dst_dir = os.path.join(igm_lib_path,'conf','processes')
+
+            # check if user config files (function sepcific yaml) are already in local IGM library
+            # then remove them
+            if os.path.exists(os.path.join(igm_lib_path,'conf','processes')+'/'+afname+'.yaml'):
+                # Remove pre-existing file
+                os.remove(os.path.join(igm_lib_path,'conf','processes')+'/'+afname+'.yaml')
+
     print('Done')
 
 
@@ -185,7 +261,7 @@ if __name__ == '__main__':
     parser.add_argument('--init_offset', type=int, default=0,
                         help='Random seed for the model.')
 
-    parser.add_argument('--SMB_model', type=str,
+    parser.add_argument('--smb_model', type=str,
                         default="ELA",
                         help='Flag to decide for SMB model (ELA, TI, ...).')
 
@@ -198,7 +274,7 @@ if __name__ == '__main__':
     # Call the main function with the parsed arguments
     main(rgi_id=args.rgi_id,
          experiment_name=args.experiment_name,
-         SMB_model=args.SMB_model,
+         smb_model=args.smb_model,
          synthetic=synthetic,
          ensemble_size=args.ensemble_size,
          inflation=args.inflation,

@@ -28,6 +28,7 @@ TODOs:
 
 def main(rgi_id,
          rgi_id_dir,
+         smb_model,
          target_resolution,
          oggm_shop,
          hugonnet,
@@ -37,13 +38,32 @@ def main(rgi_id,
     # Create output folder
     os.makedirs(rgi_id_dir, exist_ok=True)
 
+    # SMB model
+    if str(smb_model) == "ELA":
+        flag_OGGM_climate=False
+    elif str(smb_model) == "TI":
+        flag_OGGM_climate = True
+    else:
+        flag_OGGM_climate = False
+
     # Call functions based on flags
     if oggm_shop:
         print(f"Downloading OGGM shop data for RGI ID: {rgi_id}...")
-        download_OGGM_shop(rgi_id, rgi_id_dir)
+        download_OGGM_shop(rgi_id, rgi_id_dir,flag_OGGM_climate)
         print("OGGM shop data download completed.")
 
     if hugonnet:
+        # check if OGGM original input file exists already
+            # Define input and output file names
+        input_orig_file = os.path.join(rgi_id_dir, 'Preprocess', 'data', 'input_OGGM_orig.nc')
+        input_file = os.path.join(rgi_id_dir, 'Preprocess', 'data', 'input.nc')
+        if os.path.exists(input_orig_file):
+            print('OGGM original file exists.')
+            os.remove(input_file)
+            os.rename(input_orig_file, input_file)
+        else:
+            print('OGGM original file does not exist')
+
         print(f"Downloading Hugonnet data with the following parameters:")
         print(f"  RGI directory: {rgi_id_dir}")
         print(f"  Year interval: {year_interval}")
@@ -54,88 +74,72 @@ def main(rgi_id,
     # Check input file from download for consistency
     # - no 'NaN' in the thickness fields (thkinit, thk)
     # - 90% percentile of observed velocities must be above 10m/yr (mangitude of both x- and y-components)
-    # os.rename(os.path.join(rgi_id_dir, 'OGGM_shop', 'data', 'input.nc'),
-    #           os.path.join(rgi_id_dir, 'OGGM_shop', 'data',
-    #                        'input_OGGM_orig.nc'))
-    #
-    # # Define input and output file names
-    # input_file = os.path.join(rgi_id_dir, 'OGGM_shop',
-    #                           'data', 'input_OGGM_orig.nc')
-    # output_file = os.path.join(rgi_id_dir, 'OGGM_shop', 'data', 'input.nc')
-    #
-    #
-    #
-    # # Open the input netCDF file in read mode
-    # with Dataset(input_file, 'r') as src:
-    #     # Create a new netCDF file in write mode
-    #     with Dataset(output_file, 'w') as dst:
-    #
-    #         # Copy all dimensions from the source file to the destination file
-    #         for name, dimension in src.dimensions.items():
-    #             dst.createDimension(name,
-    #                                 len(dimension) if not dimension.isunlimited() else None)
-    #
-    #         # Copy all variables from the source file to the destination file
-    #         for name, variable in src.variables.items():
-    #             # dst_var = dst.createVariable(name, variable.datatype, variable.dimensions)
-    #             # dst_var[:] = variable[:]  # Copy variable data
-    #
-    #             # Check if variable is 'thi' and its original values are all NaN
-    #             if name == 'thk':
-    #                 # Set values to zero where they are NaN
-    #                 original_data = variable[:]
-    #                 # Create a mask for NaN values and set them to zero
-    #                 # dst_var[:] = np.where(np.isnan(original_data), 0, original_data)
-    #                 dst_var = dst.createVariable(name, variable.datatype,
-    #                                              variable.dimensions)
-    #                 dst_var[:] = np.where(np.abs(original_data) > 10000, 0,
-    #                                       original_data)
-    #                 dst_var[:] = np.where(np.abs(original_data) < 0, 0, dst_var)
-    #             elif name == 'thkinit':
-    #                 # Set values to zero where they are NaN
-    #                 original_data = variable[:]
-    #                 # Create a mask for NaN values and set them to zero
-    #                 # dst_var[:] = np.where(np.isnan(original_data), 0, original_data)
-    #                 dst_var = dst.createVariable(name, variable.datatype,
-    #                                              variable.dimensions)
-    #                 dst_var[:] = np.where(np.abs(original_data) > 10000, 0,
-    #                                       original_data)
-    #                 dst_var[:] = np.where(np.abs(original_data) < 0, 0, dst_var)
-    #             elif name == 'uvelsurfobs':
-    #                 # Set values to zero where they are NaN
-    #                 original_data = np.array(variable[:])
-    #                 modified_data = np.where(np.abs(original_data) == 0, np.nan,
-    #                                          original_data)
-    #                 if np.nansum(np.nansum(modified_data)) != 0:
-    #                     if np.nanpercentile(np.abs(original_data.flatten()),
-    #                                         90) > 10.0:
-    #                         # Create a mask for NaN values and set them to zero
-    #                         dst_var = dst.createVariable(name, variable.datatype,
-    #                                                      variable.dimensions)
-    #                         dst_var[:] = np.where(np.abs(original_data) == 0, np.nan,
-    #                                               original_data)
-    #             elif name == 'vvelsurfobs':
-    #                 # Set values to zero where they are NaN
-    #                 original_data = np.array(variable[:])
-    #                 modified_data = np.where(np.abs(original_data) == 0, np.nan,
-    #                                          original_data)
-    #                 print('PERCENTILE PERCENTILE 90 : ',
-    #                       np.nanpercentile(np.abs(modified_data.flatten()), 90))
-    #                 if np.nansum(np.nansum(modified_data)) != 0:
-    #                     if np.nanpercentile(np.abs(modified_data.flatten()),
-    #                                         90) > 10.0:
-    #                         # Create a mask for NaN values and set them to zero
-    #                         dst_var = dst.createVariable(name, variable.datatype,
-    #                                                      variable.dimensions)
-    #                         dst_var[:] = np.where(np.abs(original_data) == 0, np.nan,
-    #                                               original_data)
-    #             else:
-    #                 dst_var = dst.createVariable(name, variable.datatype,
-    #                                              variable.dimensions)
-    #                 dst_var[:] = variable[:]  # Copy variable data
-    #
-    #         # Copy global attributes from the source file to the destination file
-    #         dst.setncatts({k: src.getncattr(k) for k in src.ncattrs()})
+
+    # Define input and output file names
+    input_orig_file = os.path.join(rgi_id_dir, 'Preprocess', 'data', 'input_OGGM_orig.nc')
+    input_file = os.path.join(rgi_id_dir, 'Preprocess', 'data', 'input.nc')
+    if os.path.exists(input_orig_file):
+        print('OGGM original file exists.')
+    else:
+        print('OGGM original file does not exist')
+        print(input_file)
+        os.rename(input_file, input_orig_file)
+   
+    # Open the input netCDF file in read mode
+    with Dataset(input_orig_file, 'r') as src:
+        # Create a new netCDF file in write mode
+        with Dataset(input_file, 'w') as dst:
+   
+            # Copy all dimensions from the source file to the destination file
+            for name, dimension in src.dimensions.items():
+                dst.createDimension(name,
+                                    len(dimension) if not dimension.isunlimited() else None)
+   
+            # Copy all variables from the source file to the destination file
+            for name, variable in src.variables.items():
+                # dst_var = dst.createVariable(name, variable.datatype, variable.dimensions)
+                # dst_var[:] = variable[:]  # Copy variable data
+   
+                # Check if variable is 'thi' and its original values are all NaN
+                if name == 'thk':
+                    # Set values to zero where they are NaN
+                    original_data = variable[:]
+                    # Create a mask for NaN values and set them to zero
+                    dst_var = dst.createVariable(name, variable.datatype, variable.dimensions)
+                    dst_var[:] = np.where(np.abs(original_data) > 10000, 0, original_data)
+                    dst_var[:] = np.where(np.abs(original_data) < 0, 0, dst_var)
+                elif name == 'thkinit':
+                    # Set values to zero where they are NaN
+                    original_data = variable[:]
+                    # Create a mask for NaN values and set them to zero
+                    dst_var = dst.createVariable(name, variable.datatype, variable.dimensions)
+                    dst_var[:] = np.where(np.abs(original_data) > 10000, 0, original_data)
+                    dst_var[:] = np.where(np.abs(original_data) < 0, 0, dst_var)
+                elif name == 'uvelsurfobs':
+                    # Set values to zero where they are NaN
+                    original_data = np.array(variable[:])
+                    modified_data = np.where(np.abs(original_data) == 0, np.nan, original_data)
+                    if np.nansum(np.nansum(modified_data)) != 0 and not(np.isnan(np.nansum(np.nansum(modified_data)))) :
+                        if np.nanpercentile(np.abs(original_data.flatten()), 90) > 10.0:
+                            # Create a mask for NaN values and set them to zero
+                            dst_var = dst.createVariable(name, variable.datatype, variable.dimensions)
+                            dst_var[:] = np.where(np.abs(original_data) == 0, np.nan, original_data)
+                elif name == 'vvelsurfobs':
+                    # Set values to zero where they are NaN
+                    original_data = np.array(variable[:])
+                    modified_data = np.where(np.abs(original_data) == 0, np.nan, original_data)
+                    if np.nansum(np.nansum(modified_data)) != 0 and not(np.isnan(np.nansum(np.nansum(modified_data)))) :
+                        #print('PERCENTILE PERCENTILE 90 : ',np.nanpercentile(np.abs(modified_data.flatten()), 90))
+                        if np.nanpercentile(np.abs(modified_data.flatten()), 90) > 10.0:
+                            # Create a mask for NaN values and set them to zero
+                            dst_var = dst.createVariable(name, variable.datatype, variable.dimensions)
+                            dst_var[:] = np.where(np.abs(original_data) == 0, np.nan,original_data)
+                else:
+                    dst_var = dst.createVariable(name, variable.datatype,variable.dimensions)
+                    dst_var[:] = variable[:]  # Copy variable data
+   
+            # Copy global attributes from the source file to the destination file
+            dst.setncatts({k: src.getncattr(k) for k in src.ncattrs()})
 
     # Rescale all output netCDF to a given target resolution
     # check if target resolution is defined as a float
@@ -275,35 +279,37 @@ def scale_raster(input_file, output_file, scale_factor):
                  input_dataset.ncattrs()})
 
             # TODO
-            # # adjust dxdx values§
-            # dst_proj2 = str(
-            #     scaled_dataset.pyproj_crs.split('dxdy')[0]) + "dxdy\': [" + str(
-            #     1.0 / scale_factor * (input_dataset.variables['x'][1] -
-            #                           input_dataset.variables['x'][
-            #                               0])) + ', -' + str(1.0 / scale_factor * (
-            #         input_dataset.variables['y'][1] -
-            #         input_dataset.variables['y'][0])) + '],' + "\'pixel " + str(
-            #     scaled_dataset.pyproj_crs.split('pixel')[1])
-            # # adjust nxny values
-            # dst_proj3 = str(dst_proj2.split('nxny')[0]) + "nxny\': [" + str(
-            #     len(scaled_dataset.variables['x'][:])) + ', ' + str(
-            #     len(scaled_dataset.variables['y'][:])) + ']' + str(
-            #     "\'dxdy" + str(dst_proj2.split('dxdy')[1]))
-            # scaled_dataset.setncattr('pyproj_crs', str(dst_proj3))
+            ## Get global pyproj attribute
+            #dst_proj = scaled_dataset.pyproj_crs
+            ## adjust dxdx values§
+            #dst_proj2 = str(
+            #    scaled_dataset.pyproj_crs.split('dxdy')[0]) + "dxdy\': [" + str(
+            #    1.0 / scale_factor * (input_dataset.variables['x'][1] -
+            #                          input_dataset.variables['x'][
+            #                              0])) + ', -' + str(1.0 / scale_factor * (
+            #        input_dataset.variables['y'][1] -
+            #        input_dataset.variables['y'][0])) + '],' + "\'pixel " + str#(
+            #    scaled_dataset.pyproj_crs.split('pixel')[1])
+            ## adjust nxny values
+            #dst_proj3 = str(dst_proj2.split('nxny')[0]) + "nxny\': [" + str(
+            #    len(scaled_dataset.variables['x'][:])) + ', ' + str(
+            #    len(scaled_dataset.variables['y'][:])) + ']' + str(
+            #    "\'dxdy" + str(dst_proj2.split('dxdy')[1]))
+            #scaled_dataset.setncattr('pyproj_crs', str(dst_proj3))
             #
-            # # Handle CRS explicitly, if available
-            # if 'crs' in input_dataset.variables:
-            #     crs_var = input_dataset.variables['crs']
-            #     scaled_crs = scaled_dataset.createVariable('crs', crs_var.datatype)
-            #     scaled_crs.setncatts(
-            #         {attr: crs_var.getncattr(attr) for attr in crs_var.ncattrs()})
-            #     scaled_dataset.variables['crs'] = crs_var[:]
+            ## Handle CRS explicitly, if available
+            #if 'crs' in input_dataset.variables:
+            #    crs_var = input_dataset.variables['crs']
+            #    scaled_crs = scaled_dataset.createVariable('crs', crs_var.datatype)
+            #    scaled_crs.setncatts(
+            #        {attr: crs_var.getncattr(attr) for attr in crs_var.ncattrs()})
+            #    scaled_dataset.variables['crs'] = crs_var[:]
 
     print(f"Scaled raster saved to {output_file} with metadata.")
 
 
 # Function to handle the main logic
-def download_OGGM_shop(rgi_id, rgi_id_dir,):
+def download_OGGM_shop(rgi_id, rgi_id_dir, flag_OGGM_climate):
     """
     wrapper to call 'igm_run'
     - JSON file needs to specify the oggm_shop routine of IGM
@@ -363,6 +369,26 @@ def download_OGGM_shop(rgi_id, rgi_id_dir,):
     # subprocess.run(["igm_run", "+experiment=params"], check=True)
     # TODO remove unnecessary files
 
+    if flag_OGGM_climate:
+        # Rescue 'climate_historical.nc' created by oggm_shop.py
+        # this option requires that "oggm_remove_RGI_folder": false
+        #print('flag_OGGM_climate', flag_OGGM_climate, type(flag_OGGM_climate))
+        if flag_OGGM_climate:
+            print('OGGM climate data is retained for SMB model')
+            os.system('pwd')
+            os.listdir('./')
+            src = os.path.join('.', 'data', rgi_id,'climate_historical.nc')
+            dst = os.path.join('..', 'climate_historical.nc')
+
+            # Check the operating system and use the respective command
+            if os.name == 'nt':  # Windows
+                cmd = f'copy "{src}" "{dst}"'
+            else:  # Unix/Linux
+                cmd = f'cp "{src}" "{dst}"'
+
+            # Copy File
+            os.system(cmd)
+
     os.chdir(original_dir)
 
 
@@ -400,11 +426,28 @@ def crop_hugonnet_to_glacier(date_range, hugonnet_dir, oggm_shop_dataset):
     from pyproj import CRS
     crs = CRS.from_proj4(oggm_shop_dataset.pyproj_srs)
 
-    # Try to get the EPSG code
-    epsg_code = crs.to_epsg()
+    # Get the EPSG code
+    ## use EPSG number from proj_srs
+    ## (for some glaciers proj_srs is corrupted)
+    #epsg_code = crs.to_epsg()
+    # use EPSG number from reference DEM
+    # (might be more robust if on southern hemisphere)
+    epsg_code = oggm_shop_dataset.epsg.split(':')[1]
+    hemisphere_code = epsg_code[2]
     oggm_shop_dataset.epsg = f"EPSG:{epsg_code}"
 
-    if zone_number > 0:
+    if int(hemisphere_code) == 6:
+        print('UTM hemisphere code is 6 (northern hemisphere).')
+    elif int(hemisphere_code) == 7:
+        print('UTM hemisphere code is 7 (southern hemisphere).')
+    else:
+        print('UTM hemisphere code has no expected value (6 or 7) but is : ', hemisphere_code)
+        print('EPSG code : ', epsg_code)
+
+    # set zone letter
+    if min_y > 0 and int(hemisphere_code) == 6:
+        zone_letter = "N"
+    elif max_y < 0 and int(hemisphere_code) == 7:
         zone_letter = "N"
     else:
         zone_letter = "S"
@@ -839,6 +882,11 @@ if __name__ == '__main__':
                         default="../../Data/Results/Test_default/Glaciers/RGI2000"
                                 "-v7.0-G-11-01706/")
 
+    # Add argument for SMB model decision
+    parser.add_argument('--smb_model', type=str,
+                        default="ELA",
+                        help='Flag to decide for SMB model (ELA, TI, ...).')
+
     # Add argument for specific target resolution
     parser.add_argument('--target_resolution', type=str,
                         help='user-specific resolution for IGM run [meters] '
@@ -870,6 +918,7 @@ if __name__ == '__main__':
 
     main(rgi_id=args.rgi_id,
          rgi_id_dir=args.rgi_id_dir,
+         smb_model=args.smb_model,
          target_resolution=args.target_resolution,
          oggm_shop=args.download_oggm_shop,
          hugonnet=args.download_hugonnet,

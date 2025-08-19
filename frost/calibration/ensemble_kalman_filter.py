@@ -24,7 +24,7 @@ class EnsembleKalmanFilter:
 
     Args:
         rgi_id (str)          - Glacier ID
-        SMB_model(str)        - chosen SMB model (ELA, TI, ...)
+        smb_model(str)        - chosen SMB model (ELA, TI, ...)
         ensemble_size (int)   - Number of ensemble members
         inflation (float)     - Inflation factor for Kalman updates
         seed (int)            - Random seed for reproducibility
@@ -42,7 +42,7 @@ class EnsembleKalmanFilter:
         reference_smb (dict)          - Reference SMB values
     """
 
-    def __init__(self, rgi_id, rgi_id_dir, SMB_model, ensemble_size, inflation,
+    def __init__(self, rgi_id, rgi_id_dir, smb_model, ensemble_size, inflation,
                  seed, start_year, smb_prior_mean, smb_prior_std,
                  smb_reference_mean, smb_reference_std, usurf_ensemble,
                  init_offset=0):
@@ -52,7 +52,7 @@ class EnsembleKalmanFilter:
 
         Args:
             rgi_id (str)         - Glacier ID
-            SMB_model(str)        - chosen SMB model (ELA, TI, ...)
+            smb_model(str)        - chosen SMB model (ELA, TI, ...)
             ensemble_size (int)  - Number of ensemble members
             inflation (float)    - Inflation factor for Kalman updates
             seed (int)           - Random seed for reproducibility
@@ -66,7 +66,7 @@ class EnsembleKalmanFilter:
 
         # Store arguments
         self.rgi_id = rgi_id
-        self.SMB_model = SMB_model
+        self.smb_model = smb_model
         self.rgi_id_dir = rgi_id_dir
         self.ensemble_size = ensemble_size
         self.inflation = inflation
@@ -104,7 +104,7 @@ class EnsembleKalmanFilter:
         self.init_offset = init_offset
         if not init_offset == 0:
             sign = np.random.choice([-1, 1], 3)
-            if str(SMB_model) == "ELA":
+            if str(smb_model) == "ELA":
                 self.initial_smb['ela'] = self.reference_smb['ela'] + (
                         500 * init_offset / 100 * sign[0])
                 self.initial_smb['gradabl'] = self.reference_smb[
@@ -117,7 +117,7 @@ class EnsembleKalmanFilter:
                 self.initial_spread['ela'] = 500
                 self.initial_spread['gradabl'] = 5
                 self.initial_spread['gradacc'] = 5
-            elif str(SMB_model) == "TI":
+            elif str(smb_model) == "TI":
                 self.initial_smb['melt_f'] = self.reference_smb['melt_f'] + (
                         4 * init_offset
                         / 100 *
@@ -215,7 +215,7 @@ class EnsembleKalmanFilter:
                 futures = [
                     executor.submit(IGM_wrapper.forward, exp, output1D, output2D_3D,
                                     member_id, self.rgi_id_dir,
-                                    self.SMB_model, usurf, smb, year_interval)
+                                    self.smb_model, usurf, smb, year_interval)
                     for member_id, (usurf, smb) in
                     enumerate(zip(self.ensemble_usurf, self.ensemble_smb))
                 ]
@@ -237,7 +237,7 @@ class EnsembleKalmanFilter:
                     exp, output1D, output2D_3D,
                     member_id,
                     self.rgi_id_dir,
-                    self.SMB_model,
+                    self.smb_model,
                     usurf,
                     smb,
                     year_interval)

@@ -17,7 +17,7 @@ class Monitor:
                  synthetic, binned_usurf_init, plot_dhdt):
 
         self.rgi_id = EnKF_object.rgi_id
-        self.SMB_model = EnKF_object.SMB_model
+        self.smb_model = EnKF_object.smb_model
         self.ensemble_size = EnKF_object.ensemble_size
         self.seed = EnKF_object.seed
         self.icemask_init = EnKF_object.icemask_init
@@ -50,29 +50,29 @@ class Monitor:
         self.observation_std_log = {key: [] for key in self.keys}
 
         if synthetic:
-            if str(self.SMB_model) == "ELA":
+            if str(self.smb_model) == "ELA":
                 self.density_factor = {'ela': 1,
                                        'abl_grad': 1,
                                        'acc_grad': 1,
                                        }
-            elif str(self.SMB_model) == "TI":
+            elif str(self.smb_model) == "TI":
                 self.density_factor = {'melt_f': 1,
                                        'prcp_fac': 1,
                                        'temp_bias': 1}
 
         else:
-            if str(self.SMB_model) == "ELA":
+            if str(self.smb_model) == "ELA":
                 self.density_factor = {'ela': 1,
                                        'abl_grad': 0.91,
                                        'acc_grad': 0.55,
                                        }
-            elif str(self.SMB_model) == "TI":
+            elif str(self.smb_model) == "TI":
                 self.density_factor = {'melt_f': 1,
                                        'prcp_fac': 1,
                                        'temp_bias': 1}
 
         if self.plot_dhdt:
-            if str(self.SMB_model) == "ELA":
+            if str(self.smb_model) == "ELA":
                 self.plot_style = dict(
                     mean_usurf=dict(y_label='Mean surface elevation \n change 2000- '
                                             '2019 ('
@@ -90,7 +90,7 @@ class Monitor:
                     acc_grad=dict(
                         y_label='Accumulation Gradient\n(m a$^{-1}$ km$^{-1}$)'),
                 )
-            elif str(self.SMB_model) == "TI":
+            elif str(self.smb_model) == "TI":
                 self.plot_style = dict(
                     mean_usurf=dict(y_label='Mean surface elevation \n change 2000- '
                                             '2019 ('
@@ -126,7 +126,7 @@ class Monitor:
                     y_label='Accumulation Gradient\n(m a$^{-1}$ km$^{-1}$)'),
                 # end JJF
             )
-            if str(self.SMB_model) == "ELA":
+            if str(self.smb_model) == "ELA":
                 self.plot_style = dict(
                     mean_usurf=dict(y_label='Mean surface elevation \n change 2000- '
                                             '2019 ('
@@ -143,7 +143,7 @@ class Monitor:
                     acc_grad=dict(
                         y_label='Accumulation Gradient\n(m a$^{-1}$ km$^{-1}$)'),
                 )
-            elif str(self.SMB_model) == "TI":
+            elif str(self.smb_model) == "TI":
                 self.plot_style = dict(
                     mean_usurf=dict(y_label='Mean surface elevation \n 2000- '
                                             '2019 ('
