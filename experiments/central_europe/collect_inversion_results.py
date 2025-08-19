@@ -5,10 +5,10 @@ import numpy as np
 import pandas as pd
 
 # Define directories
-data_dir = "../../data/results/central_europe/glaciers"
+data_dir = "../../data/results/glamos_run/glaciers"
 
 # Create CSV file for results
-csv_file_path = "../central_europe/inversion_results.csv"
+csv_file_path = "../glamos_run/inversion_results.csv"
 with open(csv_file_path, 'w', newline='') as csvfile:
     writer = csv.writer(csvfile)
     writer.writerow([

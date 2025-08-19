@@ -102,7 +102,7 @@ def main():
     """
     Main function to run the script.
     """
-    parts = np.arange(1, 5)  # Update as needed
+    parts = np.arange(1, 22)  # Update as needed
     combined_results = load_and_collect_results(parts)
 
     if not combined_results.empty:
