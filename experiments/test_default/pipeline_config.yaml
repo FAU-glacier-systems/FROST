@@ -1,10 +1,10 @@
 experiment_name: "test_default"     # Name of the experiment
-rgi_id: "RGI2000-v7.0-G-11-00105"   # Glacier ID
+rgi_id: "RGI2000-v7.0-G-11-01706"   # Glacier ID
 smb_model: "ELA"                    # Type of SMB model used
 
 pipeline_steps:
-  download: false                   # Enable downloading input data
-  inversion: false                  # Enable inversion step
+  download: true                   # Enable downloading input data
+  inversion: true                  # Enable inversion step
   calibrate: true                  # Enable EnKF calibration step
 
 download:
@@ -12,6 +12,7 @@ download:
   hugonnet: true                   # Download Hugonnet et al. dh/dt data
   year_interval: 20                # Temporal span for Hugonnet data
   target_resolution: None          # Leave unset to use native resolution
+  zone_letter: "N"
   # Custom path to Hugonnet data
   hugonnet_directory: 'data/raw/hugonnet/11_rgi60_2000-01-01_2020-01-01'
 

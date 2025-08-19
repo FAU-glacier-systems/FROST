@@ -48,14 +48,15 @@ results.
 1. Duplicate the `experiments/test_default` folder and rename it to your custom
    experiment name, e.g., `experiments/my_run`.
    Adapt the `config.yml` to your target glacier and desired setup e.g rgi_id
-
-2. Run the pipeline
+2. Download elevation change product and adapt the path in `config.yml`:
+    https://www.sedoo.fr/theia-publication-products/?uuid=c428c5b9-df8f-4f86-9b75-e04c778e29b9
+3. Run the pipeline
 
    ```bash
    python frost_pipeline.py --config experiments/<experiment-name>/config.yml 
    ```
 
-3. View the results:
+4. View the results:
 
 * **Calibration Results**
   `data/results/<experiment-name>/glaciers/<rgi-id>/calibration_results.json`

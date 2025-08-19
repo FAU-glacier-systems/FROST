@@ -17,6 +17,8 @@ import scipy.interpolate
 import rasterio
 import shutil
 import yaml
+import xarray as xr
+import rioxarray
 
 """
 TODOs:
@@ -33,7 +35,8 @@ def main(rgi_id,
          oggm_shop,
          hugonnet,
          hugonnet_directory,
-         year_interval):  # Parse command-line arguments
+         year_interval,
+         zone_letter):  # Parse command-line arguments
 
     # Create output folder
     os.makedirs(rgi_id_dir, exist_ok=True)
@@ -67,7 +70,7 @@ def main(rgi_id,
         print(f"Downloading Hugonnet data with the following parameters:")
         print(f"  RGI directory: {rgi_id_dir}")
         print(f"  Year interval: {year_interval}")
-        download_hugonnet(rgi_id_dir, year_interval, hugonnet_directory)
+        download_hugonnet(rgi_id_dir, year_interval, hugonnet_directory, zone_letter)
         print("Hugonnet data download completed.")
 
     # TODO
@@ -324,7 +327,7 @@ def download_OGGM_shop(rgi_id, rgi_id_dir, flag_OGGM_climate):
            none
     """
 
-    # Define the params to be saved in params.json
+
 
     # Check if the directory exists, and create it if not
     preprocess_dir = os.path.join(rgi_id_dir, 'Preprocess')
@@ -389,10 +392,27 @@ def download_OGGM_shop(rgi_id, rgi_id_dir, flag_OGGM_climate):
             # Copy File
             os.system(cmd)
 
+    # Replace the usurf with NASADEM  data
+    dem_path = f"data/{rgi_id}/NASADEM/dem.tif"
+    input_nc = 'data/input.nc'
+
+    # Load and update usurf in input.nc after IGM creates it
+    if os.path.exists(dem_path) and os.path.exists(input_nc):
+        # Read DEM
+        dem = rioxarray.open_rasterio(dem_path)
+        dem = dem.squeeze()
+
+        # Read input.nc
+        with Dataset(input_nc, 'r+') as input_dataset:
+            # Update usurf with DEM data - flip y axis
+            input_dataset['usurf'][:] = dem.data[::-1]
+>>>>>>> refs/remotes/origin/hydra
+
     os.chdir(original_dir)
 
 
-def crop_hugonnet_to_glacier(date_range, hugonnet_dir, oggm_shop_dataset):
+def crop_hugonnet_to_glacier(date_range, hugonnet_dir, oggm_shop_dataset,
+                             zone_letter):
     """
     Fuse multiple dh/dt tiles and crop to a specified OGGM dataset area.
 
@@ -452,12 +472,6 @@ def crop_hugonnet_to_glacier(date_range, hugonnet_dir, oggm_shop_dataset):
     else:
         zone_letter = "S"
 
-    # Determine if glacier is in western or eastern longitude range
-    if zone_number <= 30:
-        east_west = "W"
-    else:
-        east_west = "E"
-
     # Determine maximum and minimum values for longitude and latitude
     x_range = np.array([min_x, min_x, max_x, max_x])
     # ATTENTION: Hugonnet uses 'S' labels for UTM so all y-values are positive for Huggonet
@@ -471,7 +485,7 @@ def crop_hugonnet_to_glacier(date_range, hugonnet_dir, oggm_shop_dataset):
 
     # OGGM file format uses exclusive northern hemisphere UTM (EPSG:326??)
     # --> y-coordinate is negative for southern hemisphere
-    lat_lon_corner = utm.to_latlon(x_range, y_range, zone_number, "N")
+    lat_lon_corner = utm.to_latlon(x_range, y_range, zone_number, zone_letter)
     lat_lon_corner = np.abs(lat_lon_corner)
     min_lat, max_lat = min(lat_lon_corner[0]), max(lat_lon_corner[0])
     min_lon, max_lon = min(lat_lon_corner[1]), max(lat_lon_corner[1])
@@ -678,7 +692,7 @@ def interpolate_nans(grid):
     return grid_interpolated
 
 
-def download_hugonnet(rgi_id_dir, year_interval, hugonnet_directory):
+def download_hugonnet(rgi_id_dir, year_interval, hugonnet_directory, zone_letter):
     """
     Script to bilinearly interpolate NaNs in input field
     - it creates a netCDF file (observations.nc)
@@ -747,7 +761,7 @@ def download_hugonnet(rgi_id_dir, year_interval, hugonnet_directory):
         dhdt, dhdt_err = crop_hugonnet_to_glacier(date_range=date_range,
                                                   hugonnet_dir=hugonnet_dir,
                                                   oggm_shop_dataset=oggm_shop_dataset,
-                                                  )
+                                                  zone_letter=zone_letter)
 
         dhdt_masked = dhdt[::-1] * icemask_2000
         dhdts.append(dhdt_masked)

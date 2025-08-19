@@ -3,7 +3,7 @@
 # Published under the GNU GPL (Version 3), check the LICENSE file
 
 #SBATCH --nodes=1
-#SBATCH --time=00:29:59
+#SBATCH --time=00:59:59
 #SBATCH --job-name=frost
 ##SBATCH --gres=gpu:a100:1
 #SBATCH --output=data/results/Log/frost_%j.out
@@ -15,6 +15,6 @@ export https_proxy=http://proxy:80
 module load python
 conda activate igm3
 
-python frost_pipeline.py --config "$1" --rgi_id "$2" --experiment_name "$3"
+python frost_pipeline.py --config "$1" --rgi_id "$2"
 
 

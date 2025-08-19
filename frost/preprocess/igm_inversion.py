@@ -10,7 +10,7 @@ import shutil
 import yaml
 
 
-def main(rgi_id_dir):
+def main(rgi_id_dir, params_inversion_path):
     """
     Generates params.json for IGM inversion and runs igm_run.
 
@@ -41,6 +41,8 @@ def main(rgi_id_dir):
     # shutil.rmtree(inversion_dir, ignore_errors=True)
     exp_dir = os.path.join(preprocess_dir, 'experiment')
     os.makedirs(exp_dir, exist_ok=True)
+
+    #shutil.copy(params_inversion_path, exp_dir)
 
     # Change to inversion directory and save params
     original_dir = os.getcwd()
@@ -117,9 +119,6 @@ def main(rgi_id_dir):
 
     inv_params["outputs"] = {}
 
-    #print(params)
-    print(inv_params)
-
     # Write to YAML file
     with open(os.path.join('experiment', 'params_inversion.yaml'), 'w') as file:
         file.write("# @package _global_\n")
@@ -152,8 +151,10 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Generates params.json for IGM inversion and runs igm_run.')
     parser.add_argument('--rgi_id_dir', type=str,
-                        default="../Results/Test_default/Glaciers/RGI2000"
+                        default="../../results/test_default/glaciers/RGI2000"
                                 "-v7.0-G-11-01706/",
                         help='Path to Glacier dir with OGGM_shop output')
+    parser.add_argument('--params_inversion_path', type=str,
+                        default='../../experiments/test_default/params_inversion.yaml')
     args = parser.parse_args()
-    main(args.rgi_id_dir)
+    main(args.rgi_id_dir, args.params_inversion_path)

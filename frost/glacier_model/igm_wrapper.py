@@ -77,6 +77,7 @@ def forward(exp, output1D, output2D_3D, member_id, rgi_dir, smb_model, usurf, sm
                 "emulator": {
                     "pretrained": True,
                     "name": 'iceflow-model',
+                    "retrain_freq": 0,
                 }
             },
             "time": {
