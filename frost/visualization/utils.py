@@ -53,7 +53,7 @@ def scatter_plot(ax, x, y, xlabel, ylabel, title, ticks, glacier_names=None,
                     width=2 * x_std[i],
                     height=2 * y_std[i],
                     edgecolor='none', facecolor=colors[i % len(colors)],
-                    alpha=0.3, zorder=-2
+                    alpha=0.2, zorder=-2
                 )
                 ax.add_patch(ellipse)
 

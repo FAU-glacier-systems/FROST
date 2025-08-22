@@ -79,7 +79,6 @@ class ObservationProvider:
 
         # Path to the NetCDF file containing glacier observation data
 
-
         observation_file = os.path.join(rgi_id_dir, 'observations.nc')
 
         # Load important values from the observation file
@@ -89,12 +88,12 @@ class ObservationProvider:
             self.icemask = np.array(ds['icemask'][:][0])  # Binary glacier mask
             self.usurf = ds['usurf'][:]  # Surface elevation
             self.usurf_err = ds['usurf_err'][:]
+            self.topg = ds['topg'][:]
             self.velsurf_mag = ds['velsurf_mag'][:]  #
             self.time_period = np.array(ds['time'][:]).astype(
                 int)  # Time period array
             self.x = ds['x'][:]  # X-coordinates (longitude)
             self.y = ds['y'][:]  # Y-coordinates (latitude)
-
 
         # Compute the spatial resolution from the coordinate grid
         self.resolution = int(self.x[1] - self.x[0])
@@ -103,13 +102,13 @@ class ObservationProvider:
         self.synthetic = synthetic
 
         # Masked surface elevation for glacier areas (year 2000)
-        usurf2000_masked = self.usurf[0][self.icemask == 1]
+        usurf2020_masked = self.usurf[-1][self.usurf[-1] > self.topg]
 
         # Define bin edges based on a fixed elevation step size
-        min_elev = np.floor(
-            usurf2000_masked.min() / self.elevation_step) * self.elevation_step
-        max_elev = np.ceil(
-            usurf2000_masked.max() / self.elevation_step) * self.elevation_step
+        min_elev = np.ceil(
+            usurf2020_masked.min() / self.elevation_step) * self.elevation_step
+        max_elev = np.floor(
+            usurf2020_masked.max() / self.elevation_step) * self.elevation_step
         self.bin_edges = np.arange(min_elev, max_elev + self.elevation_step,
                                    self.elevation_step)
 
@@ -162,6 +161,7 @@ class ObservationProvider:
         noise_samples = np.random.multivariate_normal(np.zeros_like(usurf_line),
                                                       noise_matrix,
                                                       size=num_samples)
+
         dhdt = self.dhdt[next_index]
         velocity = self.velsurf_mag[next_index]
         return year, usurf_line, noise_matrix, noise_samples, dhdt, velocity
@@ -190,7 +190,7 @@ class ObservationProvider:
             # Apply the correlation function to each distance
             correlations = self.variogram_model.cor(distances)
             pixel_uncertainties = usurf_err_masked[:, np.newaxis] * usurf_err_masked[
-                                                                    np.newaxis, :]
+                np.newaxis, :]
             covariance_matrix = correlations * pixel_uncertainties
 
             noise_samples = np.random.multivariate_normal(
@@ -208,6 +208,7 @@ class ObservationProvider:
                 ensemble_usurf[e] = usurf_sample
 
         binned_usurf = []
+
         for usurf in ensemble_usurf:
             binned_usurf.append(self.average_elevation_bin(usurf))
 
@@ -280,7 +281,6 @@ class ObservationProvider:
         # Average the correlations
         return correlations.mean()
 
-
     def compute_covariance_matrix(self, bin_variance):
         """
         Compute the covariance matrix for multiple bins.
@@ -306,7 +306,6 @@ class ObservationProvider:
 
         return cov_matrix
 
-
     def average_elevation_bin(self, usurf, nan_mask=None):
         # Apply mask to both surfaces
         # If no mask is provided, treat all values as valid
@@ -323,7 +322,6 @@ class ObservationProvider:
         # Convert results to a NumPy array
         return np.array(average_usurf)
 
-
     def get_ensemble_observables(self, EnKF_object):
         ensemble_usurf = EnKF_object.ensemble_usurf
         observables = []
@@ -332,7 +330,6 @@ class ObservationProvider:
             # observables.append(usurf[self.obs_locations[:, 0],
         # self.obs_locations[:, 1]])
         return np.array(observables)
-
 
     def get_new_geometrie(self, year):
         index = np.where(self.time_period == year)[0][0]

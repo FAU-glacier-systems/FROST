@@ -38,10 +38,12 @@ class GlacierAnalysis:
             elevation_bin_df = glacier_df_bin[glacier_df_bin['end date of observation'].dt.year == year]
             mb = np.array(elevation_bin_df['annual mass balance'])
             elevation = np.array(elevation_bin_df['upper elevation of bin']) - 50
-            abl_gradients.append(self.compute_gradient(mb, elevation, elas[i], 20, negative=True))
+            abl_gradients.append(self.compute_gradient(mb, elevation, elas[i], 30,
+                                                       negative=True))
             acc_gradients.append(self.compute_gradient(mb, elevation, elas[i], 10, negative=False))
         return [abl / 0.91 if abl is not np.nan else np.nan for abl in abl_gradients], \
-               [acc / 0.55 if acc is not np.nan else np.nan for acc in acc_gradients]
+               [acc / 0.91 if acc is not np.nan else np.nan for acc in \
+                acc_gradients]
 
     def compute_gradient(self, mb, elevation, ela, threshold, negative=True):
         if np.isnan(ela): return np.nan
@@ -78,11 +80,15 @@ class GlacierAnalysis:
         return pd.DataFrame(records)
 
     def add_rgi_id(self):
-        self.results_df = self.results_df.merge(self.glamos_rgi_df, left_on="Glacier_Name", right_on="GLAMOS Name", how="left")
+        self.results_df = self.results_df.merge(self.glamos_rgi_df,
+                                                left_on="Glacier_Name",
+                                                right_on="glamos_name", how="left")
 
     def merge_and_filter_results(self):
-        merged_df = pd.merge(self.rgi_df, self.glamos_rgi_df, left_on="rgi_id", right_on="RGI_ID", how="inner")
-        merged2_df = pd.merge(merged_df, self.results_df, left_on="GLAMOS Name", right_on="Glacier_Name", how="inner")
+        merged_df = pd.merge(self.rgi_df, self.glamos_rgi_df, left_on="rgi_id",
+                             right_on="rgi_id", how="inner")
+        merged2_df = pd.merge(merged_df, self.results_df, left_on="rgi_id",
+                              right_on="rgi_id", how="inner")
         filtered_df = merged2_df[merged2_df["area_km2"] >= 1]
         filtered_df = filtered_df[filtered_df["Years_with_ELA"] >= 5]
         filtered_df.to_csv(self.output_file, index=False, sep=",")
@@ -98,7 +104,7 @@ class GlacierAnalysis:
                           "Mean_Accumulation_Gradient",
                           "Accumulation Gradient:\n{:.2f} ± {:.2f} m a$^{{-1}}$ km$^{{-1}}$", "c")
         plt.tight_layout()
-        plt.savefig('../../Plots/all_gradients.pdf')
+        plt.savefig('all_gradients.pdf')
 
     def plot_subplot(self, ax, key, ylabel, mean_key, title_fmt, label):
         std = np.nanstd(self.results_df[mean_key])
@@ -138,5 +144,5 @@ if __name__ == "__main__":
         '-11_central_europe-attributes.csv',
         '../../data/raw/glamos/GLAMOS_RGI.csv',
 
-        '../../Data/GLAMOS/GLAMOS_analysis_results.csv'
+        '../../data/raw/glamos/GLAMOS_analysis_results.csv'
     )

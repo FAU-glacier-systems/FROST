@@ -3,6 +3,7 @@ import yaml
 import argparse
 import frost.preprocess.download_data as download_data
 import frost.preprocess.igm_inversion as igm_inversion
+import frost.preprocess.create_observation as create_observation
 import frost_calibration
 
 os.environ["CUDA_VISIBLE_DEVICES"] = ""  # Hides all GPUs
@@ -35,7 +36,8 @@ def run_frost_pipeline(cfg):
         download_data.main(rgi_id=cfg['rgi_id'],
                            rgi_id_dir=rgi_id_dir,
                            smb_model=cfg['smb_model'],
-                           **cfg['download'])
+                           target_resolution=cfg['download']['target_resolution'],
+                           oggm_shop=cfg['download']['oggm_shop'],)
 
     if cfg['pipeline_steps']['inversion']:
         #####################################
@@ -48,6 +50,12 @@ def run_frost_pipeline(cfg):
                            params_inversion_path=params_inversion_path)
 
     if cfg['pipeline_steps']['calibrate']:
+        create_observation.main(rgi_id_dir=rgi_id_dir,
+                                year_interval=cfg['download']['year_interval'],
+                                hugonnet_directory=cfg['download'][
+                                    'hugonnet_directory'],
+                                target_resolution=cfg['download'][
+                                    'target_resolution'])
         #####################################
         #                                   #
         # STEP 3: TRANSIENT ASSIMILATION    #

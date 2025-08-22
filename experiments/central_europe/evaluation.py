@@ -89,7 +89,7 @@ def plot_glamos_vs_predictions(merged_df_glamos: pd.DataFrame, out_path: Path) -
         ylabel="Predicted Ablation Gradient (m/yr/km)",
         title="Ablation Gradient",
         glacier_names=glacier_names,
-        ticks=np.arange(0, 21, 5),
+        ticks=np.arange(0, 31, 5),
     )
 
     # Accumulation gradient
@@ -103,7 +103,7 @@ def plot_glamos_vs_predictions(merged_df_glamos: pd.DataFrame, out_path: Path) -
         ylabel="Predicted Accumulation Gradient (m/yr/km)",
         title="Accumulation Gradient",
         glacier_names=glacier_names,
-        ticks=np.arange(0, 10, 3),
+        ticks=np.arange(-1, 10, 3),
     )
 
     # Single legend outside the plotting grid
