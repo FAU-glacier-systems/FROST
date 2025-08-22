@@ -1,0 +1,17 @@
+# Data & results
+data/
+experiments/*/plots/
+experiments/*/*.csv
+experiments/*/*.png
+experiments/*/*.pdf
+experiments/*/*.nc
+
+# Python cache
+__pycache__/
+*.pyc
+
+# IDE configs
+.idea/
+.vscode/
+
+
