@@ -107,32 +107,22 @@ def main(rgi_id,
                     if np.nansum(np.nansum(modified_data)) != 0 and not (
                             np.isnan(np.nansum(np.nansum(modified_data)))):
                         if np.nanpercentile(np.abs(original_data.flatten()),
-                                            90) > 10.0:
+                                            99) > 10.0:
                             # Create a mask for NaN values and set them to zero
                             dst_var = dst.createVariable(name, variable.datatype,
                                                          variable.dimensions)
                             dst_var[:] = np.where(np.abs(original_data_vx) == 0,
                                                   np.nan, original_data_vx)
-                elif name == 'vvelsurfobs':
-                    # Set values to zero where they are NaN
-                    original_data_vy = np.array(variable[:])
-                    original_data_vx = np.array(src.variables['uvelsurfobs'][:])
-                    # original_data = sqrt(original_data_vx**2+original_data_vy**2)
-                    modified_data_vx = np.where(np.abs(original_data_vx) == 0,
-                                                np.nan, original_data_vx)
-                    modified_data_vy = np.where(np.abs(original_data_vy) == 0,
-                                                np.nan, original_data_vy)
-                    modified_data = np.sqrt(
-                        modified_data_vx ** 2 + modified_data_vy ** 2)
-                    if np.nansum(np.nansum(modified_data)) != 0 and not (
-                            np.isnan(np.nansum(np.nansum(modified_data)))):
-                        if np.nanpercentile(np.abs(modified_data.flatten()),
-                                            90) > 10.0:
+
                             # Create a mask for NaN values and set them to zero
-                            dst_var = dst.createVariable(name, variable.datatype,
+                            dst_var = dst.createVariable('vvelsurfobs',
+                                                         variable.datatype,
                                                          variable.dimensions)
                             dst_var[:] = np.where(np.abs(original_data_vy) == 0,
                                                   np.nan, original_data_vy)
+                elif name == 'vvelsurfobs':
+                    continue
+
                 else:
                     dst_var = dst.createVariable(name, variable.datatype,
                                                  variable.dimensions)
@@ -172,8 +162,6 @@ def main(rgi_id,
                          scale_factor)
             shutil.move(input_nc, input_nc.replace('.nc', '_OGGM.nc'))
             shutil.move(input_nc.replace('.nc', '_scaled.nc'), input_nc)
-
-
 
 
 def scale_raster(input_file, output_file, scale_factor):
