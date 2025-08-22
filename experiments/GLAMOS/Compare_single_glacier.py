@@ -13,7 +13,6 @@ import matplotlib.gridspec as gridspec
 import os
 from netCDF4 import Dataset
 
-from Scripts.Visualization.visualise_inversion import resolution
 
 
 def extract_gradients(ela, mb, elevation):
@@ -88,7 +87,7 @@ def create_elevation_bins(ela, gradabl, gradacc, elevation):
 
 def main(params):
     ### GET GEODETIC SPECIFIC MASS BALANCE ####
-    time = np.arange(2006, 2020)
+    time = np.arange(2000, 2020)
     hugonnet_nc = xr.open_dataset(params['file_path_hugonnet'])
     dhdt = np.array(hugonnet_nc['dhdt'])[1]
     icemask = np.array(hugonnet_nc['icemask'])[0]
@@ -101,15 +100,22 @@ def main(params):
     hugonnet_mass_balance *= 0.91  # conversion to water equivalent
 
     ### COMPUTE SPECIFIC MASS BALANCE OF ENSEMBLE
-    with open(params['results_file'], 'r') as f:
-        results = json.load(f)
 
-    ensemble = np.array(results['final_ensemble'])
-    ensemble_mean_ela, ensemble_mean_abl, ensemble_mean_acc = np.array(
-        results['final_mean'])
-    ensemble_mean_abl *= params['ablation_density']
-    ensemble_mean_acc *= params['accumulation_density']
-    ensemble_mean_acc *= params['accumulation_density']
+    if 'results_file' in params and os.path.exists(params['results_file']):
+        with open(params['results_file'], 'r') as f:
+            results = json.load(f)
+
+        ensemble = np.array(results['final_ensemble'])
+        ensemble_mean_ela, ensemble_mean_abl, ensemble_mean_acc = np.array(
+            results['final_mean'])
+        ensemble_mean_abl *= params['ablation_density']
+        ensemble_mean_acc *= params['accumulation_density']
+        ensemble_mean_acc *= params['accumulation_density']
+
+    else:
+        ensemble = None
+
+
 
     mbs = []
 
@@ -117,25 +123,27 @@ def main(params):
     with Dataset(output_file, 'r') as new_ds:
         usurf = np.array(new_ds['usurf'])  # Final surface elevation
 
-    for ensemble_member in ensemble:
-        member_ela = ensemble_member[0]
-        grad_abl = ensemble_member[1] * 0.91 # hugonnet uses 0.91 so we are going to
-        # use
-        grad_acc = ensemble_member[2]* 0.91 # it here too
-        mbs.append(
-            compute_specific_mass_balance_from_ela(member_ela, grad_abl / 1000,
-                                                   grad_acc / 1000, usurf,
-                                                   icemask))
+    if ensemble is not None:
 
-    mean_mb = np.mean(mbs)
-    std_mb = np.std(mbs)
-    print("Ensemble mean specific mass balance and std: ", mean_mb, std_mb)
-    #######################################################################
+        for ensemble_member in ensemble:
+            member_ela = ensemble_member[0]
+            grad_abl = ensemble_member[1] * 0.91 # hugonnet uses 0.91 so we are going to
+            # use
+            grad_acc = ensemble_member[2]* 0.91 # it here too
+            mbs.append(
+                compute_specific_mass_balance_from_ela(member_ela, grad_abl / 1000,
+                                                       grad_acc / 1000, usurf,
+                                                       icemask))
+
+        mean_mb = np.mean(mbs)
+        std_mb = np.std(mbs)
+        print("Ensemble mean specific mass balance and std: ", mean_mb, std_mb)
+        #######################################################################
 
     ### GET GLACIOLOGICAL DATA ###
     file_path_glamos_bin = (
-        '../../Data/GLAMOS/massbalance_observation_elevationbins.csv')
-    file_path_glamos = '../../Data/GLAMOS/massbalance_observation.csv'
+        '../../data/raw/glamos/massbalance_observation_elevationbins.csv')
+    file_path_glamos = '../../data/raw/glamos/massbalance_observation.csv'
 
     # Read the CSV file into a pandas DataFrame, skipping the first 6 lines
     df_glamos_bin = pd.read_csv(file_path_glamos_bin, delimiter=';', skiprows=6)
@@ -226,28 +234,29 @@ def main(params):
             f'$\gamma_{{acc}}$: {avg_grad_acc * 1000:.2f}', rotation=90,
             label='Mean Accumulation Gradient', color='blue')
 
-    # create mean elevation_bins of ENSEMBLE
-    elevation_bins, elevation_mb = create_elevation_bins(ensemble_mean_ela,
-                                                         ensemble_mean_abl / 1000,
-                                                         ensemble_mean_acc / 1000,
-                                                         elevation)
-    a0.scatter([2026] * len(elevation_mb), elevation_bins, c=elevation_mb,
-               cmap='seismic_r',
-               vmin=-6, vmax=6,
-               marker='s', s=300, zorder=2)
-    a0.scatter([2026], ensemble_mean_ela, alpha=0.3, c='black', marker='_', s=250,
-               zorder=3)
-    a0.text(2027, ensemble_mean_ela - y_range / 10,
-            f'$s_{{ELA}}$: {int(ensemble_mean_ela)}', rotation=90, color='black')
-    a0.text(2027, min(elevation), f'$\gamma_{{abl}}$: {ensemble_mean_abl:.2f}',
-            rotation=90,
-            label='Mean Ablation Gradient', color='red')
-    a0.text(2027, max(elevation) - y_range / 4,
-            f'$\gamma_{{acc}}$: {ensemble_mean_acc:.2f}', rotation=90,
-            label='Mean Accumulation Gradient', color='blue')
+    if ensemble is not None:
+        # create mean elevation_bins of ENSEMBLE
+        elevation_bins, elevation_mb = create_elevation_bins(ensemble_mean_ela,
+                                                             ensemble_mean_abl / 1000,
+                                                             ensemble_mean_acc / 1000,
+                                                             elevation)
+        a0.scatter([2026] * len(elevation_mb), elevation_bins, c=elevation_mb,
+                   cmap='seismic_r',
+                   vmin=-6, vmax=6,
+                   marker='s', s=300, zorder=2)
+        a0.scatter([2026], ensemble_mean_ela, alpha=0.3, c='black', marker='_', s=250,
+                   zorder=3)
+        a0.text(2027, ensemble_mean_ela - y_range / 10,
+                f'$s_{{ELA}}$: {int(ensemble_mean_ela)}', rotation=90, color='black')
+        a0.text(2027, min(elevation), f'$\gamma_{{abl}}$: {ensemble_mean_abl:.2f}',
+                rotation=90,
+                label='Mean Ablation Gradient', color='red')
+        a0.text(2027, max(elevation) - y_range / 4,
+                f'$\gamma_{{acc}}$: {ensemble_mean_acc:.2f}', rotation=90,
+                label='Mean Accumulation Gradient', color='blue')
 
-    a0.set_xticks(list(np.array(time)[::4]) + [2023, 2026],
-                  list(np.array(time)[::4]) + ['GLAMOS\n Mean', 'EnKF\n Mean'])
+        a0.set_xticks(list(np.array(time)[::4]) + [2023, 2026],
+                      list(np.array(time)[::4]) + ['GLAMOS\n Mean', 'EnKF\n Mean'])
 
     a0.set_xlabel('Year of Measurement')
     a0.set_ylabel('Elevation (m)')
@@ -278,16 +287,17 @@ def main(params):
     a1.text(2032, geodetic_table_dmdtda[-1] + 0.03, f'{hugonnet_mass_balance:.4f}',
             color='C0', zorder=10)
 
-    ensemble_var0_list = [mean_mb - std_mb] * 2
-    ensemble_var1_list = [mean_mb + std_mb] * 2
+    if ensemble is not None:
+        ensemble_var0_list = [mean_mb - std_mb] * 2
+        ensemble_var1_list = [mean_mb + std_mb] * 2
 
-    a1.plot([2025, 2031], [mean_mb, mean_mb], color='orange')
-    a1.fill_between([2025, 2031], ensemble_var0_list, ensemble_var1_list, color='C1',
-                    alpha=0.1, zorder=0, )
-    a1.text(2025, mean_mb + 0.03, f'{mean_mb:.4f}', color='C1', zorder=10)
+        a1.plot([2025, 2031], [mean_mb, mean_mb], color='orange')
+        a1.fill_between([2025, 2031], ensemble_var0_list, ensemble_var1_list, color='C1',
+                        alpha=0.1, zorder=0, )
+        a1.text(2025, mean_mb + 0.03, f'{mean_mb:.4f}', color='C1', zorder=10)
 
-    a1.set_xticks(list(np.array(time)[::6]) + [2028, 2035],
-                  list(np.array(time)[::6]) + ['EnKF\n Mean', 'Geodetic\n Mean'])
+        a1.set_xticks(list(np.array(time)[::6]) + [2028, 2035],
+                      list(np.array(time)[::6]) + ['EnKF\n Mean', 'Geodetic\n Mean'])
 
     a1.set_ylabel('Mass Balance (m w.e. a$^{-1}$)')
     a1.set_ylim(-2.1, 1.1)
