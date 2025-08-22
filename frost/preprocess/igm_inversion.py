@@ -20,22 +20,15 @@ def main(rgi_id_dir, params_inversion_path):
     """
 
     # Check if velocity observations are available
-    flag_velsurfobs = False
-    try:
-        # Define input and output file names
-        input_file = os.path.join(rgi_id_dir, 'Preprocess', 'data', 'input.nc')
 
-        # Open the input netCDF file in read mode
-        with Dataset(input_file, 'r') as src:
+    # Define input and output file names
+    input_file = os.path.join(rgi_id_dir, 'Preprocess', 'data', 'input.nc')
 
+    with Dataset(input_file, 'r') as input_dataset:
 
-            # try reading velocity data
-            var1 = src.variables['uvelsurfobs']
-            var2 = src.variables['vvelsurfobs']
-
-        flag_velsurfobs = True
-    except:
-        flag_velsurfobs = False
+        flag_velsurfobs = "uvelsurfobs" in input_dataset.variables and "vvelsurfobs" in input_dataset.variables
+        epsg = input_dataset.getncattr('epsg')
+        pyproj_srs = input_dataset.getncattr('pyproj_srs')
 
     # Prepare inversion directory
     preprocess_dir = os.path.join(rgi_id_dir, 'Preprocess')
@@ -53,70 +46,73 @@ def main(rgi_id_dir, params_inversion_path):
     # depend on availaibity of velocity observations
     inv_params = dict()
     inv_params["core"] = {
-            "url_data": ""
-        }
+        "url_data": ""
+    }
     inv_params["defaults"] = [
-            {"override /inputs": ["load_ncdf"]},
-            {"override /processes": ["data_assimilation", "iceflow"]},
-            {"override /outputs": []}
-            ]
+        {"override /inputs": ["load_ncdf"]},
+        {"override /processes": ["data_assimilation", "iceflow"]},
+        {"override /outputs": []}
+    ]
 
     inv_params["inputs"] = {
-            "load_ncdf": {"input_file": "input.nc"}
-            }
+        "load_ncdf": {"input_file": "input.nc"}
+    }
 
     iceflow_params = dict()
     iceflow_params["physics"] = {
-                    "init_slidingco": 0.045
-                    }
+        "init_slidingco": 0.045
+    }
     iceflow_params["emulator"] = {
-                    "save_model": True,
-                    "retrain_freq": 1
-                    }
+        "save_model": True,
+        "retrain_freq": 1
+    }
 
     DA_output_params = dict()
     DA_output_params["save_result_in_ncdf"] = "../../output.nc"
-    if flag_velsurfobs :
+    if flag_velsurfobs:
         DA_output_params["vars_to_save"] = [
-                            "usurf", "topg", "thk", "slidingco",
-                            "velsurf_mag", "velsurfobs_mag", "divflux", "icemask",
-                            "arrhenius", "thkobs", "dhdt"
-                            ]
+            "usurf", "topg", "thk", "slidingco",
+            "velsurf_mag", "velsurfobs_mag", "divflux", "icemask",
+            "arrhenius", "thkobs", "dhdt"
+        ]
     else:
         DA_output_params["vars_to_save"] = [
-                            "usurf", "topg", "thk", "slidingco",
-                            "velsurf_mag", "divflux", "icemask",
-                            "arrhenius", "thkobs", "dhdt",
-                            ]
+            "usurf", "topg", "thk", "slidingco",
+            "velsurf_mag", "divflux", "icemask",
+            "arrhenius", "thkobs", "dhdt",
+        ]
     DA_output_params["plot2d_live"] = False
     DA_output_params["plot2d"] = False
 
-    DA_params = dict()
-    DA_params = {"output":DA_output_params}
+    DA_params = {"output": DA_output_params}
 
-    DA_params["control_list"] = ["thk"]
-    if flag_velsurfobs :
-        DA_params["cost_list"] = ["velsurf", "thk", "icemask"]
+
+    if flag_velsurfobs:
+        DA_params["control_list"] = ["thk", "usurf", "slidingco"]
+        DA_params["cost_list"] = ["velsurf", "thk", "icemask", "usurf"]
         DA_params["fitting"] = {
-                        "velsurfobs_std": 0.25,
-                        "thkobs_std": 10,
-                        }
+            "usurfobs_std": 2.0,
+            "velsurfobs_std": 0.25,
+            "thkobs_std": 10,
+        }
     else:
-        DA_params["cost_list"] = ["thk", "icemask"]
+        DA_params["control_list"] = ["thk", "usurf"]
+        DA_params["cost_list"] = ["thk", "icemask", "usurf"]
         DA_params["fitting"] = {
-                        "thkobs_std": 10,
-                        }
+            "thkobs_std": 10,
+        }
     DA_params["optimization"] = {
-                    "retrain_iceflow_model": True,
-                    "nbitmax": 500,
-                }
+        "retrain_iceflow_model": True,
+        "nbitmax": 500,
+    }
     DA_params["regularization"] = {
-                    "thk": 1.0,
-                    "smooth_anisotropy_factor": 1.0,
-                    "convexity_weight": 1.0,
-                }
+        "thk": 1.0,
+        "smooth_anisotropy_factor": 1.0,
+        "convexity_weight": 1.0,
+    }
 
-    inv_params["processes"] = {"iceflow":iceflow_params, "data_assimilation":DA_params}
+    inv_params["processes"] = {"iceflow": iceflow_params,
+                               "data_assimilation": DA_params}
 
     inv_params["outputs"] = {}
 
@@ -132,6 +128,10 @@ def main(rgi_id_dir, params_inversion_path):
     sys.argv = ["igm_run", "+experiment=params_inversion"]
     igm_main()
     # subprocess.run(["igm_run", "+experiment=params"], check=True)
+
+    with Dataset(os.path.join('outputs', 'output.nc'), 'a') as output:
+        output.setncattr('epsg', epsg)
+        output.setncattr('pyproj_srs', pyproj_srs)
     # TODO remove unnecessary files
     latest = max(Path("outputs").glob("*/*"), key=lambda p: p.stat().st_mtime)
 
