@@ -8,7 +8,9 @@ from pathlib import Path
 import os
 import shutil
 import yaml
+import numpy as np
 from netCDF4 import Dataset
+import netCDF4
 
 
 def main(rgi_id_dir, params_inversion_path):
@@ -24,11 +26,45 @@ def main(rgi_id_dir, params_inversion_path):
     # Define input and output file names
     input_file = os.path.join(rgi_id_dir, 'Preprocess', 'data', 'input.nc')
 
+    flag_velsurfobs = False
     with Dataset(input_file, 'r') as input_dataset:
 
-        flag_velsurfobs = "uvelsurfobs" in input_dataset.variables and "vvelsurfobs" in input_dataset.variables
+        #flag_velsurfobs = "uvelsurfobs" in input_dataset.variables and "vvelsurfobs" in input_dataset.variables
         epsg = input_dataset.getncattr('epsg')
         pyproj_srs = input_dataset.getncattr('pyproj_srs')
+
+        for name in ['uvelsurfobs']:
+            # Read variable
+            variable = input_dataset.variables[name]
+            try:
+                fillvalue = variable.get_fill_value()
+            except:
+                fillvalue = netCDF4.default_fillvals['f8']
+
+            # Set values to zero where they are NaN
+            original_data_v1 = np.array(variable[:])
+            original_data_v2 = np.array(input_dataset.variables['vvelsurfobs'][:])
+
+            # Remove zero values
+            modified_data_v1 = np.where(original_data_v1 == 0,
+                                        np.nan, original_data_v1)
+            modified_data_v2 = np.where(original_data_v2 == 0,
+                                        np.nan, original_data_v2)
+
+            # Remove fillvalues
+            modified_data_v1 = np.where(np.abs(modified_data_v1) == fillvalue,
+                                        np.nan, modified_data_v1)
+            modified_data_v2 = np.where(np.abs(modified_data_v2) == fillvalue,
+                                        np.nan, modified_data_v2)
+
+            # Compute magnitude of vecotr field
+            modified_data = np.sqrt(modified_data_v1 ** 2 + modified_data_v2 ** 2)
+
+            # Check if velocity input is meaningful (nonzero, not NaN, percentile check)
+            if np.nansum(np.nansum(modified_data)) != 0 and not (
+                    np.isnan(np.nansum(np.nansum(modified_data)))):
+                if np.nanpercentile(np.abs(modified_data.flatten()),99) > 10.0:
+                    flag_velsurfobs = True
 
     # Prepare inversion directory
     preprocess_dir = os.path.join(rgi_id_dir, 'Preprocess')
@@ -69,18 +105,11 @@ def main(rgi_id_dir, params_inversion_path):
 
     DA_output_params = dict()
     DA_output_params["save_result_in_ncdf"] = "../../output.nc"
-    if flag_velsurfobs:
-        DA_output_params["vars_to_save"] = [
-            "usurf", "topg", "thk", "slidingco",
-            "velsurf_mag", "velsurfobs_mag", "divflux", "icemask",
-            "arrhenius", "thkobs", "dhdt"
-        ]
-    else:
-        DA_output_params["vars_to_save"] = [
-            "usurf", "topg", "thk", "slidingco",
-            "velsurf_mag", "divflux", "icemask",
-            "arrhenius", "thkobs", "dhdt",
-        ]
+    DA_output_params["vars_to_save"] = [
+        "usurf", "topg", "thk", "slidingco",
+        "velsurf_mag", "velsurfobs_mag", "divflux", "icemask",
+        "arrhenius", "thkobs", "dhdt"
+    ]
     DA_output_params["plot2d_live"] = False
     DA_output_params["plot2d"] = False
 

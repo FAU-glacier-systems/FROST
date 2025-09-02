@@ -102,13 +102,13 @@ class ObservationProvider:
         self.synthetic = synthetic
 
         # Masked surface elevation for glacier areas (year 2000)
-        usurf2020_masked = self.usurf[-1][self.usurf[-1] > self.topg]
+        usurf2000_masked = self.usurf[0][self.usurf[0] > self.topg]
 
         # Define bin edges based on a fixed elevation step size
         min_elev = np.ceil(
-            usurf2020_masked.min() / self.elevation_step) * self.elevation_step
+            usurf2000_masked.min() / self.elevation_step) * self.elevation_step
         max_elev = np.floor(
-            usurf2020_masked.max() / self.elevation_step) * self.elevation_step
+            usurf2000_masked.max() / self.elevation_step) * self.elevation_step
         self.bin_edges = np.arange(min_elev, max_elev + self.elevation_step,
                                    self.elevation_step)
 

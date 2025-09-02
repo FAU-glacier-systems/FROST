@@ -94,34 +94,6 @@ def main(rgi_id,
                     dst_var[:] = np.where(np.abs(original_data) > 10000, 0,
                                           original_data)
                     dst_var[:] = np.where(np.abs(original_data) < 0, 0, dst_var)
-                elif name == 'uvelsurfobs':
-                    # Set values to zero where they are NaN
-                    original_data_vx = np.array(variable[:])
-                    original_data_vy = np.array(src.variables['vvelsurfobs'][:])
-                    modified_data_vx = np.where(np.abs(original_data_vx) == 0,
-                                                np.nan, original_data_vx)
-                    modified_data_vy = np.where(np.abs(original_data_vy) == 0,
-                                                np.nan, original_data_vy)
-                    modified_data = np.sqrt(
-                        modified_data_vx ** 2 + modified_data_vy ** 2)
-                    if np.nansum(np.nansum(modified_data)) != 0 and not (
-                            np.isnan(np.nansum(np.nansum(modified_data)))):
-                        if np.nanpercentile(np.abs(original_data.flatten()),
-                                            99) > 10.0:
-                            # Create a mask for NaN values and set them to zero
-                            dst_var = dst.createVariable(name, variable.datatype,
-                                                         variable.dimensions)
-                            dst_var[:] = np.where(np.abs(original_data_vx) == 0,
-                                                  np.nan, original_data_vx)
-
-                            # Create a mask for NaN values and set them to zero
-                            dst_var = dst.createVariable('vvelsurfobs',
-                                                         variable.datatype,
-                                                         variable.dimensions)
-                            dst_var[:] = np.where(np.abs(original_data_vy) == 0,
-                                                  np.nan, original_data_vy)
-                elif name == 'vvelsurfobs':
-                    continue
 
                 else:
                     dst_var = dst.createVariable(name, variable.datatype,
