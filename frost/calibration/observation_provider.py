@@ -101,8 +101,8 @@ class ObservationProvider:
         self.obs_uncertainty = obs_uncertainty
         self.synthetic = synthetic
 
-        # Masked surface elevation for glacier areas (year 2000)
-        usurf2000_masked = self.usurf[0][self.usurf[0] > self.topg]
+        # Masked surface elevation for glacier areas (year 2020)
+        usurf2000_masked = self.usurf[-1][self.usurf[-1] > self.topg]
 
         # Define bin edges based on a fixed elevation step size
         min_elev = np.ceil(
@@ -115,6 +115,8 @@ class ObservationProvider:
         # Compute bin indices for the surface elevation of 2000
         self.bin_map = np.digitize(self.usurf[0], self.bin_edges)
         self.bin_map[self.icemask == 0] = 0  # Mask out non-glacier areas
+
+
 
         # Initialize bins to store grid locations for each elevation bin
         self.bins = []
@@ -129,6 +131,8 @@ class ObservationProvider:
 
         # Store the total number of bins
         self.num_bins = len(self.bins)
+
+
 
         # Initialize the variogram model for spatial correlation analysis
         self.variogram_model = Variogram_hugonnet(dim=2)
@@ -161,6 +165,8 @@ class ObservationProvider:
         noise_samples = np.random.multivariate_normal(np.zeros_like(usurf_line),
                                                       noise_matrix,
                                                       size=num_samples)
+
+
 
         dhdt = self.dhdt[next_index]
         velocity = self.velsurf_mag[next_index]

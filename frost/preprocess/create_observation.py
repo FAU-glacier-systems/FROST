@@ -91,6 +91,8 @@ def main(rgi_id_dir, year_interval, hugonnet_directory, target_resolution):
     dhdt_change = [np.zeros_like(usurf_2000)]
     dhdt_err_change = [np.zeros_like(usurf_2000)]
     usurf_err_change = []  # TODO
+    thk_change = [thk_2000]
+    thk = thk_2000
 
     bedrock = usurf_2000 - thk_2000
     year_range = np.arange(2000, 2021, data_interval)
@@ -110,7 +112,10 @@ def main(rgi_id_dir, year_interval, hugonnet_directory, target_resolution):
 
         # either bedrock or last usurf + current dhdt
         usurf = np.maximum(bedrock, usurf_change[-1] + dhdt * data_interval)
+        thk = np.maximum(0, thk + dhdt * data_interval)
+
         usurf_change.append(usurf)
+        thk_change.append(thk)
 
         # compute uncertainty overtime
         dhdt_err = dhdts_err[dhdt_index]
@@ -172,6 +177,8 @@ def main(rgi_id_dir, year_interval, hugonnet_directory, target_resolution):
                                                      ('time', 'y', 'x'))
         velsurf_mag_var = merged_dataset.createVariable('velsurf_mag', 'f4',
                                                         ('time', 'y', 'x'))
+        thk_var = merged_dataset.createVariable('thk', 'f4',
+                                                        ('time', 'y', 'x'))
 
         # Assign data to variables
         time_var[:] = year_range
@@ -184,6 +191,7 @@ def main(rgi_id_dir, year_interval, hugonnet_directory, target_resolution):
         dhdt_var[:] = dhdt_change
         dhdt_err_var[:] = dhdt_err_change
         velsurf_mag_var[:] = velo
+        thk_var[:] = thk_change
 
         # Write globale attribute in OGGMshop netCDF file
         dst_crs = inversion_dataset.epsg

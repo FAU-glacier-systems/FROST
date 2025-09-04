@@ -2,8 +2,8 @@ experiment_name: "glamos_run"
 rgi_id: "RGI2000-v7.0-G-11-01182"
 smb_model: "ELA"
 pipeline_steps:
-  download: false
-  inversion: false
+  download: true
+  inversion: true
   calibrate: true
 download:
   oggm_shop: true
@@ -30,5 +30,8 @@ EnKF:
     ela: 498
     abl_grad: 9.04
     acc_grad: 3.39
-
+#  smb_prior_std:
+#    ela: 1000
+#    abl_grad: 20
+#    acc_grad: 10
 

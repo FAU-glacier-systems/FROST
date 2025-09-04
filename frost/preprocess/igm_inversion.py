@@ -29,7 +29,7 @@ def main(rgi_id_dir, params_inversion_path):
     flag_velsurfobs = False
     with Dataset(input_file, 'r') as input_dataset:
 
-        #flag_velsurfobs = "uvelsurfobs" in input_dataset.variables and "vvelsurfobs" in input_dataset.variables
+        # flag_velsurfobs = "uvelsurfobs" in input_dataset.variables and "vvelsurfobs" in input_dataset.variables
         epsg = input_dataset.getncattr('epsg')
         pyproj_srs = input_dataset.getncattr('pyproj_srs')
 
@@ -63,7 +63,7 @@ def main(rgi_id_dir, params_inversion_path):
             # Check if velocity input is meaningful (nonzero, not NaN, percentile check)
             if np.nansum(np.nansum(modified_data)) != 0 and not (
                     np.isnan(np.nansum(np.nansum(modified_data)))):
-                if np.nanpercentile(np.abs(modified_data.flatten()),99) > 10.0:
+                if np.nanpercentile(np.abs(modified_data.flatten()), 99) > 10.0:
                     flag_velsurfobs = True
 
     # Prepare inversion directory
@@ -80,70 +80,54 @@ def main(rgi_id_dir, params_inversion_path):
 
     # Set inversion parameters
     # depend on availaibity of velocity observations
-    inv_params = dict()
-    inv_params["core"] = {
-        "url_data": ""
+    # Define base data assimilation parameters
+    DA_params = {
+        "output": {
+            "save_result_in_ncdf": "../../output.nc",
+            "vars_to_save": [
+                "usurf", "topg", "thk", "slidingco", "velsurf_mag",
+                "velsurfobs_mag", "divflux", "icemask", "arrhenius",
+                "thkobs", "dhdt"
+            ],
+            "plot2d_live": False,
+            "plot2d": False
+        },
+        "control_list": ["thk", "usurf"],
+        "cost_list": ["thk", "icemask", "usurf"],
+        "fitting": {"thkobs_std": 1,
+                    "usurfobs_std": 1, },
+        "optimization": {"retrain_iceflow_model": True, "nbitmax": 500},
+        "regularization": {
+            "thk": 1000,
+            "slidingco": 10,
+            "smooth_anisotropy_factor": 1.0,
+            "convexity_weight": 0.0,
+            "to_regularize": "thk"
+        }
     }
-    inv_params["defaults"] = [
-        {"override /inputs": ["load_ncdf"]},
-        {"override /processes": ["data_assimilation", "iceflow"]},
-        {"override /outputs": []}
-    ]
-
-    inv_params["inputs"] = {
-        "load_ncdf": {"input_file": "input.nc"}
+    # Main inversion parameters dictionary
+    inv_params = {
+        "core": {"url_data": ""},
+        "defaults": [
+            {"override /inputs": ["load_ncdf"]},
+            {"override /processes": ["data_assimilation", "iceflow"]},
+            {"override /outputs": []}
+        ],
+        "inputs": {"load_ncdf": {"input_file": "input.nc"}},
+        "processes": {
+            "iceflow": {
+                "physics": {"init_slidingco": 0.045},
+                "emulator": {"save_model": True, "retrain_freq": 1}
+            },
+            "data_assimilation": DA_params
+        },
+        "outputs": {}
     }
-
-    iceflow_params = dict()
-    iceflow_params["physics"] = {
-        "init_slidingco": 0.045
-    }
-    iceflow_params["emulator"] = {
-        "save_model": True,
-        "retrain_freq": 1
-    }
-
-    DA_output_params = dict()
-    DA_output_params["save_result_in_ncdf"] = "../../output.nc"
-    DA_output_params["vars_to_save"] = [
-        "usurf", "topg", "thk", "slidingco",
-        "velsurf_mag", "velsurfobs_mag", "divflux", "icemask",
-        "arrhenius", "thkobs", "dhdt"
-    ]
-    DA_output_params["plot2d_live"] = False
-    DA_output_params["plot2d"] = False
-
-    DA_params = {"output": DA_output_params}
-
-
+    # Add velocity observation parameters if available
     if flag_velsurfobs:
-        DA_params["control_list"] = ["thk", "usurf", "slidingco"]
-        DA_params["cost_list"] = ["velsurf", "thk", "icemask", "usurf"]
-        DA_params["fitting"] = {
-            "usurfobs_std": 2.0,
-            "velsurfobs_std": 0.25,
-            "thkobs_std": 10,
-        }
-    else:
-        DA_params["control_list"] = ["thk", "usurf"]
-        DA_params["cost_list"] = ["thk", "icemask", "usurf"]
-        DA_params["fitting"] = {
-            "thkobs_std": 10,
-        }
-    DA_params["optimization"] = {
-        "retrain_iceflow_model": True,
-        "nbitmax": 500,
-    }
-    DA_params["regularization"] = {
-        "thk": 1.0,
-        "smooth_anisotropy_factor": 1.0,
-        "convexity_weight": 1.0,
-    }
-
-    inv_params["processes"] = {"iceflow": iceflow_params,
-                               "data_assimilation": DA_params}
-
-    inv_params["outputs"] = {}
+        DA_params["control_list"].append("slidingco")
+        DA_params["cost_list"].append("velsurf")
+        DA_params["fitting"]["velsurfobs_std"] = 0.1
 
     # Write to YAML file
     with open(os.path.join('experiment', 'params_inversion.yaml'), 'w') as file:

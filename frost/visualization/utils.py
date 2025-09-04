@@ -36,10 +36,10 @@ def scatter_plot(ax, x, y, xlabel, ylabel, title, ticks, glacier_names=None,
     scatter_handles = []
     if glacier_names is None:
         if color is None:
-            scatter = ax.scatter(x, y, c=np.log(np.abs(y - x)))
+            scatter = ax.scatter(x, y, c=np.abs(y - x))
         else:
-            #scatter = ax.scatter(x, y, c=color, cmap="Spectral_r")
-            scatter = ax.scatter(x, y)
+            scatter = ax.scatter(x, y, c=color, cmap="Spectral_r")
+            #scatter = ax.scatter(x, y, c=color, cmap="viridis")
         plt.colorbar(scatter, ax=ax, label='Absolute Error (m)', shrink=0.6)
 
     else:

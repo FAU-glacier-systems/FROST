@@ -76,7 +76,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Run FROST pipeline with a config file")
     parser.add_argument("--config", type=str,
-                        default='experiments/test_default/config.yml',
+                        default='experiments/test_default/pipeline_config.yml',
                         help="Path to YAML config file")
     parser.add_argument("--rgi_id", type=str,
                         help="RGI ID to override config file")
