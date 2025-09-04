@@ -6,11 +6,11 @@ import numpy as np
 # Global paths
 # RGI_FILES_PATH = "../../data/raw/central_europe/Split_Files"
 RGI_FILES_PATH = "../../data/raw/glamos/GLAMOS_RGI.csv"
-INVERSION_PATH = "../glamos_run/inversion_results.csv"
+INVERSION_PATH = "../central_europe/inversion_results.csv"
 SLA_PATH = "../../data/raw/central_europe/Alps_EOS_SLA_2000-2019_mean.csv"
 GLAMOS_PATH = "../../data/raw/glamos/GLAMOS_analysis_results.csv"
-EXPERIMENTS_PATH = "../../data/results/glamos_run/glaciers"
-OUTPUT_CSV = "../glamos_run/aggregated_results.csv"
+EXPERIMENTS_PATH = "../../data/results/central_europe/glaciers"
+OUTPUT_CSV = "../central_europe/aggregated_results.csv"
 
 
 def load_and_collect_results():

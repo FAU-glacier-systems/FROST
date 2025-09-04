@@ -44,7 +44,7 @@ class EnsembleKalmanFilter:
 
     def __init__(self, rgi_id, rgi_id_dir, smb_model, ensemble_size, inflation,
                  seed, start_year, smb_prior_mean, smb_prior_std,
-                 smb_reference_mean, smb_reference_std, usurf_ensemble,
+                 smb_reference_mean, smb_reference_std, usurf_ensemble, obs_provider,
                  init_offset=0):
         """
         Initializes the Ensemble Kalman Filter by loading required data and setting up
@@ -86,6 +86,9 @@ class EnsembleKalmanFilter:
             self.bedrock = np.array(geology_dataset['topg'])
             init_divflux = np.array(geology_dataset['divflux'])
             init_velsurf_mag = np.array(geology_dataset['velsurf_mag'])
+
+        # average the surface elevation into bins
+        self.bedrock_binned = obs_provider.average_elevation_bin(self.bedrock)
 
         # Initialize placeholders for observable and hidden variables
         self.ensemble_usurf = np.empty((ensemble_size,) + self.icemask_init.shape)
@@ -284,9 +287,11 @@ class EnsembleKalmanFilter:
                 modeled_observables,
                 noise_samples)):
 
-            member_update = kalman_gain.dot(new_observation
-                                            + member_noise
-                                            - member_observable)
+            noisy_observation = new_observation + member_noise
+
+            noisy_observation = np.maximum(noisy_observation, self.bedrock_binned)
+
+            member_update = kalman_gain.dot(noisy_observation - member_observable)
 
             new_member_smb = {}
             for i, key in enumerate(member_smb.keys()):

@@ -68,7 +68,7 @@ def scatter_plot(ax, x, y, xlabel, ylabel, title, ticks, glacier_names=None,
 
 
 # Read both CSV files
-velocity_df = pd.read_csv('../glamos_run/inversion_results.csv')
+velocity_df = pd.read_csv('../central_europe/inversion_results.csv')
 #aggregated_df = pd.read_csv('aggregated_results.csv')
 
 # Merge the dataframes on RGI_ID
@@ -77,6 +77,7 @@ velocity_df = pd.read_csv('../glamos_run/inversion_results.csv')
 # Compute the velocity error for each glacier
 velocity_df['velocity_error'] = abs(
     velocity_df['Mean_velsurf_mag'] - velocity_df['Mean_velsurfobs_mag'])
+velocity_df = velocity_df.dropna(subset=['velocity_error'])
 
 # Find the glacier with the highest velocity error
 highest_error_row = velocity_df.loc[velocity_df['velocity_error'].idxmax()]
@@ -104,8 +105,8 @@ fig, axes = plt.subplots(2, 3, figsize=(12, 7))
 axes = axes.flatten()
 
 for idx, (mod_col, obs_col, stat_name) in enumerate(vel_stats):
-    velsurf = velocity_df[mod_col].to_numpy()
-    velsurf_obs = velocity_df[obs_col].to_numpy()
+    velsurf = velocity_df[mod_col].dropna().to_numpy()
+    velsurf_obs = velocity_df[obs_col].dropna().to_numpy()
 
     scatter_handles = scatter_plot(ax=axes[idx],
                                    x=velsurf_obs,
@@ -124,5 +125,5 @@ for ax, label in zip(axes, labels_subplot):
     ax.text(0, 1.02, label, transform=ax.transAxes,
             fontsize=12, va='bottom', ha='left', fontweight='bold')
 fig.tight_layout()
-plt.savefig("../glamos_run/plots/inversion_results.pdf",
+plt.savefig("../central_europe/plots/inversion_results.pdf",
             bbox_inches="tight")

@@ -134,7 +134,8 @@ def main(rgi_id, rgi_id_dir, smb_model, synthetic, ensemble_size, inflation,
                                       smb_prior_mean=smb_prior_mean,
                                       smb_prior_std=smb_prior_std,
                                       smb_reference_mean=smb_reference_mean,
-                                      smb_reference_std=smb_reference_std)
+                                      smb_reference_std=smb_reference_std,
+                                      obs_provider=obs_provider)
 
     # Initialise a monitor for visualising the process
     monitor = Monitor(EnKF_object=ensembleKF,

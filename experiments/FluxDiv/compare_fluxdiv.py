@@ -9,11 +9,11 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.patches import Ellipse
-from Scripts.Visualization.utils import scatter_plot
+from frost.visualization.utils import scatter_plot
 
 # Paths
-predicted_results = "../../Scripts/CentralEurope/aggregated_results.csv"
-glamos_name_rgi_path = "../../Data/GLAMOS/GLAMOS_RGI.csv"
+predicted_results = "../central_europe/aggregated_results.csv"
+glamos_name_rgi_path = "../../data/GLAMOS/GLAMOS_RGI.csv"
 fluxdiv_path = "smb_params_results_Anna.csv"
 
 predicted_df = pd.read_csv(predicted_results)
