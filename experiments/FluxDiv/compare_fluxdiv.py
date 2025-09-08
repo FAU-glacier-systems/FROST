@@ -13,7 +13,7 @@ from frost.visualization.utils import scatter_plot
 
 # Paths
 predicted_results = "../central_europe/aggregated_results.csv"
-glamos_name_rgi_path = "../../data/GLAMOS/GLAMOS_RGI.csv"
+glamos_name_rgi_path = "../../data/raw/glamos/GLAMOS_RGI.csv"
 fluxdiv_path = "smb_params_results_Anna.csv"
 
 predicted_df = pd.read_csv(predicted_results)
@@ -22,10 +22,9 @@ fluxdiv_df = pd.read_csv(fluxdiv_path, header=1)
 
 merge_fluxdiv_rgi = pd.merge(fluxdiv_df, glamos_name_rgi_df, on="glamos_name",
                              how="inner")
-merged_df = pd.merge(predicted_df, merge_fluxdiv_rgi, on="rgi_id", how="inner")
+merged_df = pd.merge(predicted_df, merge_fluxdiv_rgi, on="glamos_name")
 
-merged_df = merged_df.sort_values(by="area_km2",
-                                          ascending=True).reset_index(
+merged_df = merged_df.sort_values(by="area_km2", ascending=True).reset_index(
     drop=True)
 
 predicted_ela = merged_df['ela_x'].to_numpy()
@@ -111,5 +110,5 @@ for ax, label in zip(axes_with_label, labels_subplot):
     ax.text(0, 1.02, label, transform=ax.transAxes,
             fontsize=12, va='bottom', ha='left', fontweight='bold')
 fig.tight_layout()
-plt.savefig("../../Plots/FluxDivComparison.pdf", bbox_inches="tight")
+plt.savefig("../central_europe/Flux_Dif_comp.pdf", bbox_inches="tight")
 plt.clf()

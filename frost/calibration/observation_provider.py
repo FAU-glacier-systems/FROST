@@ -116,8 +116,6 @@ class ObservationProvider:
         self.bin_map = np.digitize(self.usurf[0], self.bin_edges)
         self.bin_map[self.icemask == 0] = 0  # Mask out non-glacier areas
 
-
-
         # Initialize bins to store grid locations for each elevation bin
         self.bins = []
         for bin_id in range(1, len(self.bin_edges)):  # Bins are indexed from 1
@@ -131,8 +129,6 @@ class ObservationProvider:
 
         # Store the total number of bins
         self.num_bins = len(self.bins)
-
-
 
         # Initialize the variogram model for spatial correlation analysis
         self.variogram_model = Variogram_hugonnet(dim=2)
@@ -165,8 +161,6 @@ class ObservationProvider:
         noise_samples = np.random.multivariate_normal(np.zeros_like(usurf_line),
                                                       noise_matrix,
                                                       size=num_samples)
-
-
 
         dhdt = self.dhdt[next_index]
         velocity = self.velsurf_mag[next_index]

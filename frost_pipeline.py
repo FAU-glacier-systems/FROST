@@ -1,4 +1,6 @@
 import os.path
+import shutil
+
 import yaml
 import argparse
 import frost.preprocess.download_data as download_data
@@ -48,6 +50,7 @@ def run_frost_pipeline(cfg):
         #####################################
         igm_inversion.main(rgi_id_dir=rgi_id_dir,
                            params_inversion_path=params_inversion_path)
+
 
     if cfg['pipeline_steps']['calibrate']:
         create_observation.main(rgi_id_dir=rgi_id_dir,

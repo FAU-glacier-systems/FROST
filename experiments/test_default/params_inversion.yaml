@@ -37,18 +37,25 @@ processes:
       plot2d: false
     control_list:
     - thk
+    - usurf
+    - slidingco
     cost_list:
-    - velsurf
     - thk
     - icemask
+    - usurf
+    - velsurf
+    fitting:
+      thkobs_std: 1
+      usurfobs_std: 1
+      velsurfobs_std: 0.1
     optimization:
       retrain_iceflow_model: true
-      nbitmax: 500
-    fitting:
-      velsurfobs_std: 0.25
-      thkobs_std: 10
+      nbitmin: 0
+      nbitmax: 0
     regularization:
-      thk: 1.0
+      thk: 10
+      slidingco: 10
       smooth_anisotropy_factor: 1.0
-      convexity_weight: 1.0
+      convexity_weight: 0.0
+      to_regularize: thk
 outputs: {}

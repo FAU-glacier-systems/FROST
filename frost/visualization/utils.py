@@ -24,10 +24,12 @@ def scatter_plot(ax, x, y, xlabel, ylabel, title, ticks, glacier_names=None,
     bc_didf = y_corr - x
     bcmae = np.mean(np.abs(bc_didf))  # Bias-corrected MAE
     correlation = np.corrcoef(x, y)[0, 1]
+    txt = (
+        f"Mean error: {mae:.2f}\n"
+        f"Pearson r: {correlation:.2f}"
 
-    ax.text(0.95, 0.05,
-            f'MAE: {mae:.0f} Bias: {bias:.0f}\nBias-corrected-\nMAE:'
-            f' {bcmae:.0f}\nPearson r: {correlation:.2f}',
+    )
+    ax.text(0.95, 0.05,txt,
             transform=ax.transAxes,
             bbox=dict(facecolor='white', alpha=0.8),
             verticalalignment='bottom',
@@ -36,16 +38,31 @@ def scatter_plot(ax, x, y, xlabel, ylabel, title, ticks, glacier_names=None,
     scatter_handles = []
     if glacier_names is None:
         if color is None:
-            scatter = ax.scatter(x, y, c=np.abs(y - x))
+
+
+            hb = ax.hexbin(x, y, gridsize=20,
+                           bins=None,  # linear scale
+                           cmap='viridis_r',
+                           linewidths=0, zorder=10,
+                           mincnt=1)  # leave hexagons with 0 counts blank
+
+            # make colorbar smaller
+            fig = ax.figure
+
+            cb = fig.colorbar(hb, ax=ax, shrink=0.8)  # shrink to 80%
+            cb.set_label("Number of glaciers")  # add label
+
+
+
+
         else:
-            scatter = ax.scatter(x, y, c=color, cmap="Spectral_r")
+            scatter = ax.scatter(x, y, c=color, cmap="Spectral_r", zorder=10)
             #scatter = ax.scatter(x, y, c=color, cmap="viridis")
-        plt.colorbar(scatter, ax=ax, label='Absolute Error (m)', shrink=0.6)
 
     else:
         for i, label in enumerate(glacier_names):
             scatter = ax.scatter(x[i], y[i], label=label,
-                                 color=colors[i % len(colors)])
+                                 color=colors[i % len(colors)], zorder=10)
             scatter_handles.append(scatter)
             if x_std is not None and y_std is not None:
                 ellipse = Ellipse(
@@ -53,7 +70,7 @@ def scatter_plot(ax, x, y, xlabel, ylabel, title, ticks, glacier_names=None,
                     width=2 * x_std[i],
                     height=2 * y_std[i],
                     edgecolor='none', facecolor=colors[i % len(colors)],
-                    alpha=0.2, zorder=-2
+                    alpha=0.2, zorder=2
                 )
                 ax.add_patch(ellipse)
 
@@ -66,4 +83,16 @@ def scatter_plot(ax, x, y, xlabel, ylabel, title, ticks, glacier_names=None,
     ax.set_yticks(ticks)
     ax.set_aspect('equal', adjustable='box')
 
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.spines['bottom'].set_visible(False)
+    ax.spines['left'].set_visible(False)
+    ax.grid(axis="y", color="lightgray", linestyle="-", zorder=-10)
+    ax.grid(axis="x", color="lightgray", linestyle="-", zorder=-10)
+    ax.xaxis.set_tick_params(bottom=False)
+    ax.yaxis.set_tick_params(left=False)
+
+
     return scatter_handles
+
+
