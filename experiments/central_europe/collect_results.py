@@ -128,6 +128,7 @@ def main():
             glamos_all = pd.read_csv(GLAMOS_PATH)
             wanted_glamos_cols = [
                 "rgi_id",
+                "glamos_name",
                 "Mean_ELA",
                 "Annual_Variability_ELA",
                 "Mean_Ablation_Gradient",

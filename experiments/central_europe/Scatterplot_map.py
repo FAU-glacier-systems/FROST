@@ -93,23 +93,95 @@ def plot_map_with_annotations(
         extent=extent,
         cmap='gray',
         transform=utm_crs,
-        vmax=4000
+        vmin=-100,
+        vmax=3100
     )
 
     # Plot country borders
-    plot_country_borders(ax, country_paths)
+    #plot_country_borders(ax, country_paths)
 
     # Plot glacier points (scaled by area, colored by the selected value_column)
-    sizes = gdf["area_km2"] * 10  # Scale size by area
-    colors = gdf[value_column]  # Dynamic value to colormap
+    sizes = gdf["area_km2"] * 20
+    if value_column=='ela_sla':
+        colors = gdf['ela']  # Dynamic value to colormap
+    else:
+        colors = gdf[value_column]  # Dynamic value to colormap
+
+    from matplotlib.markers import MarkerStyle
+    from matplotlib.patches import Wedge
+    # Function to create a half-circle marker path
+    from matplotlib.path import Path
+
+    def half_circle_marker(theta1=0, theta2=np.pi, n=32):
+        angles = np.linspace(theta1, theta2, n)
+        verts = np.column_stack([np.cos(angles), np.sin(angles)])
+        verts = np.vstack([[0, 0], verts, [0, 0]])
+        codes = [Path.MOVETO] + [Path.LINETO] * (len(verts) - 2) + [Path.CLOSEPOLY]
+        return Path(verts, codes)
+
+    upper_half_path = half_circle_marker(0, np.pi)  # flat edge at bottom, arc on top
+    lower_half_path = half_circle_marker(np.pi, 2 * np.pi)  # flat edge at top, arc on bottom
+
     if value_column == "ela" or value_column == "sla":
         scatter = ax.scatter(
             gdf.geometry.x, gdf.geometry.y,
-            c=colors, s=sizes, vmin=2600, vmax=3700,
+            c=colors, s=sizes, vmin=2700, vmax=3700,
             transform=utm_crs, cmap=color_map,
             zorder=10, alpha=1, edgecolor='k', linewidth=0.8,
         )
+
+    elif value_column == "ela_sla":
+        # both in the same plot: ELA on upper half, SLA on lower half
+
+        # same vmin/vmax, cmap, paths defined earlier
+        vmin, vmax = 2700, 3700
+
+        x = gdf.geometry.x.to_numpy()
+        y = gdf.geometry.y.to_numpy()
+        ela = gdf["ela"].to_numpy()
+        sla = gdf["sla"].to_numpy()
+        s = sizes.to_numpy() if hasattr(sizes, "to_numpy") else np.asarray(sizes)
+
+        # plot smaller first, larger last
+        #order = np.argsort(s)
+
+        scatter_ela_last = None
+        scatter_sla_last = None
+        for i in np.arange(len(x)):
+            # lower half first (SLA)
+            scatter_sla_last = ax.scatter(
+                [x[i]], [y[i]],
+                c=[sla[i]], s=[s[i]],
+                vmin=vmin, vmax=vmax, cmap=color_map, transform=utm_crs,
+                marker=lower_half_path, edgecolor='k', linewidth=0.2,
+                alpha=1,
+            )
+            # upper half on top (ELA)
+            scatter_ela_last = ax.scatter(
+                [x[i]], [y[i]],
+                c=[ela[i]], s=[s[i]],
+                vmin=vmin, vmax=vmax, cmap=color_map, transform=utm_crs,
+                marker=upper_half_path, edgecolor='k', linewidth=0.2,
+                alpha=1,
+            )
+
+        scatter = scatter_ela_last
+
     elif value_column == "sla_ela_diff":
+        scatter = ax.scatter(
+            gdf.geometry.x, gdf.geometry.y,
+            c=colors, s=sizes, vmin=-300, vmax=300,
+            transform=utm_crs, cmap=color_map,
+            zorder=10, alpha=1, edgecolor='k', linewidth=0.8,
+        )
+    elif value_column == "gradabl":
+        scatter = ax.scatter(
+            gdf.geometry.x, gdf.geometry.y,
+            c=colors, s=sizes, vmin=0, vmax=20,
+            transform=utm_crs, cmap=color_map,
+            zorder=10, alpha=1, edgecolor='k', linewidth=0.8,
+        )
+    elif value_column == "gradacc":
         scatter = ax.scatter(
             gdf.geometry.x, gdf.geometry.y,
             c=colors, s=sizes, vmin=-300, vmax=300,
@@ -124,7 +196,8 @@ def plot_map_with_annotations(
             transform=utm_crs, cmap=color_map,
             zorder=10, alpha=1, edgecolor='k', linewidth=0.8,
         )
-
+    if value_column == 'ela_sla':
+        value_column = 'ela'
     # Text Annotations (e.g., glacier names or IDs)
     texts = []
     for _, row in gdf.head(5).iterrows():
@@ -168,19 +241,24 @@ def plot_map_with_annotations(
     )
     ax.set_extent([min_x, max_x, min_y, max_y], crs=utm_crs)
 
+    from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
-    # Add colorbar
+    # Add colorbar centered at bottom
     cax = inset_axes(
         ax,
-        width="100%", height="50%",
-        loc='upper center',
-        bbox_to_anchor=(0, 1.05, 1, 0.1),
-        bbox_transform=ax.transAxes, borderpad=0
+        width="50%", height="5%",
+        loc='lower center',
+        bbox_to_anchor=(0, 0.1, 1, 1),  # centered under x-axis
+        bbox_transform=ax.transAxes,
+        borderpad=0
     )
     cbar = plt.colorbar(scatter, cax=cax, orientation="horizontal")
-    cbar.ax.xaxis.set_label_position('top')  # Move label above the colorbar
-    cbar.ax.xaxis.set_ticks_position('bottom')  # Keep ticks below
-    cbar.set_label(colorbar_label, labelpad=10, loc='center')  #
+    cbar.ax.xaxis.set_label_position('top')  # label on top
+    cbar.ax.xaxis.set_ticks_position('bottom')
+    cbar.set_label(colorbar_label, labelpad=10, loc='center', color='white')
+
+    # Make tick labels white
+    cbar.ax.tick_params(colors='white')
 
     import matplotlib.ticker as mticker
 
@@ -201,11 +279,56 @@ def plot_map_with_annotations(
     gl.ylocator = mticker.MultipleLocator(1)  # Every 1° in latitude
 
     # Add colorbar for elevation
-    cbar2 = plt.colorbar(img, ax=ax, shrink=0.7)
-    cbar2.set_label("Elevation (m)")
+    cax2 = inset_axes(
+        ax,
+        width="2%", height="40%",  # adjust size
+        loc='lower right',
+        bbox_to_anchor=(-0.06, 0.06, 1, 1),  # relative to axes
+        bbox_transform=ax.transAxes,
+        borderpad=1
+    )
+    cbar2 = plt.colorbar(img, cax=cax2)
+    cbar2.set_label("Elevation (m)", color="white", labelpad=-55)
+    cbar2.ax.tick_params(colors="white", labelsize=8)
+
+    # --- Small Europe overview inset with main-extent box ---
+    import cartopy.feature as cfeature
+    from cartopy.mpl.geoaxes import GeoAxes
+    from shapely.geometry import box
+
+    crs = ccrs.PlateCarree(central_longitude=10)
+
+    # Create a GeoAxes inset in the upper-left
+    ov = inset_axes(
+        ax, width="15%", height="25%", loc='upper left',
+        axes_class=GeoAxes,
+        axes_kwargs=dict(map_projection=ccrs.epsg(3035)),
+        borderpad=0.6
+    )
+
+    # Show Europe (tweak to taste)
+    ov.set_extent([-25, 25, 32, 69], crs=crs)
+    ov.add_feature(cfeature.OCEAN, facecolor='1', zorder=0)
+    ov.add_feature(cfeature.LAND, facecolor='0.5', zorder=1)
+    #ov.add_feature(cfeature.COASTLINE, linewidth=0.5, edgecolor='white', zorder=2)
+    #ov.add_feature(cfeature.BORDERS, linewidth=0.4, edgecolor='white', zorder=2)
+
+    # Remove ticks/grid on the inset
+    ov.set_xticks([]);
+    ov.set_yticks([])
+    #ov.outline_patch.set_edgecolor('white')
+    #ov.outline_patch.set_linewidth(1)
+
+    # Get the main axes extent in PlateCarree and draw it on the inset
+    xmin, xmax, ymin, ymax = ax.get_extent(crs=crs)
+    main_box = box(xmin, ymin, xmax, ymax)
+    ov.add_geometries(
+        [main_box], crs=crs,
+        facecolor='none', edgecolor='yellow', linewidth=1.5, zorder=3
+    )
 
     # Save the figure
-    plt.tight_layout()
+    #plt.tight_layout()
     plt.savefig(save_path, dpi=200)
     print(f"Map saved to {save_path}")
     plt.close()
@@ -232,10 +355,12 @@ def main():
     gdf = load_glacier_data(csv_path)
     sla_df = load_glacier_data(sla_path)
     # Filter rows where 'sla' > 4000
-    sla_df = sla_df[sla_df['sla'] < 4000]
+    #sla_df = sla_df[sla_df['sla'] < 4000]
 
     merged_df = pd.merge(gdf, sla_df, on="rgi_id", how="left",
                          suffixes=('', '_drop'))
+    
+    
     # Calculate bias correction as mean difference
     # bias_correction = np.mean(merged_df['ela'] - merged_df['sla'])
     # # Apply bias correction to SLA values
@@ -253,10 +378,20 @@ def main():
     print("Plotting map for 'ela'...")
     plot_map_with_annotations(
         dem_data, extent, gdf,
+        save_path="../central_europe/plots/ALPS_ela_sla_scatter.pdf",
+        country_paths=country_paths,
+        value_column="ela_sla",  # Column for ELA
+        color_map="viridis_r",  # Colormap
+        colorbar_label="Equilibrium Line Altitude (m)",
+        num_dec=0,
+    )
+
+    plot_map_with_annotations(
+        dem_data, extent, gdf,
         save_path="../central_europe/plots/ALPS_ela_Scatter.pdf",
         country_paths=country_paths,
         value_column="ela",  # Column for ELA
-        color_map="viridis",  # Colormap
+        color_map="viridis_r",  # Colormap
         colorbar_label="Equilibrium Line Altitude (m)",
         num_dec=0,
     )
@@ -288,7 +423,7 @@ def main():
         save_path="../central_europe/plots/ALPS_sla_Scatter.pdf",
         country_paths=country_paths,
         value_column="sla",  # Column for ELA
-        color_map="viridis",  # Colormap
+        color_map="viridis_r",  # Colormap
         colorbar_label="End of summer snowline altitude (m)",
         num_dec=0,
     )

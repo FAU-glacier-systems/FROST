@@ -89,7 +89,12 @@ class GlacierAnalysis:
                              right_on="rgi_id", how="inner")
         merged2_df = pd.merge(merged_df, self.results_df, left_on="rgi_id",
                               right_on="rgi_id", how="inner")
+
+
+        merged2_df = merged2_df.drop('glamos_name_y', axis=1)
+        merged2_df = merged2_df.rename(columns={'glamos_name_x': 'glamos_name'})
         filtered_df = merged2_df[merged2_df["area_km2"] >= 1]
+        
         filtered_df = filtered_df[filtered_df["Years_with_ELA"] >= 5]
         filtered_df.to_csv(self.output_file, index=False, sep=",")
         print(f"Merged CSV saved to: {self.output_file}")

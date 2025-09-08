@@ -2,99 +2,132 @@ import os
 import xarray as xr
 import csv
 import numpy as np
-import pandas as pd
 
-# Define directories
+# Input directory with glacier subfolders
 data_dir = "../../data/results/central_europe/glaciers"
 
-# Create CSV file for results
-csv_file_path = "../central_europe/inversion_results.csv"
-with open(csv_file_path, 'w', newline='') as csvfile:
-    writer = csv.writer(csvfile)
-    writer.writerow([
-        'rgi_id', 'Mean_velsurf_mag', 'Std_velsurf_mag', 'Min_velsurf_mag',
-        'Q1_velsurf_mag', 'Median_velsurf_mag', 'Q3_velsurf_mag', 'Max_velsurf_mag',
-        'Mean_velsurfobs_mag', 'Std_velsurfobs_mag', 'Min_velsurfobs_mag',
-        'Q1_velsurfobs_mag', 'Median_velsurfobs_mag', 'Q3_velsurfobs_mag',
-        'Max_velsurfobs_mag', 'MAE_velsurf_mag'
-    ])
+# Single combined CSV
+out_csv = "../central_europe/inversion_results.csv"
 
-# Iterate over all RGI-NetCDF files in the specified directory
+# Header (velocity + thickness-at-observations)
+HEADER = [
+    "rgi_id",
+    # Velocity (masked by icemask)
+    "Mean_velsurf_mag", "Std_velsurf_mag", "Min_velsurf_mag",
+    "Q1_velsurf_mag", "Median_velsurf_mag", "Q3_velsurf_mag", "Max_velsurf_mag",
+    "Mean_velsurfobs_mag", "Std_velsurfobs_mag", "Min_velsurfobs_mag",
+    "Q1_velsurfobs_mag", "Median_velsurfobs_mag", "Q3_velsurfobs_mag",
+    "Max_velsurfobs_mag", "MAE_velsurf_mag",
+    # Thickness (only at observed points)
+    "n_obs_thk", "coverage_pct",
+    "Mean_thk_model_at_obs", "Std_thk_model_at_obs",
+    "Mean_thk_obs", "Std_thk_obs",
+    "MAE_thk", "Bias_thk", "RMSE_thk",
+    "MedianAE_thk", "Q95AE_thk",
+    "Min_thk_obs", "Q1_thk_obs", "Median_thk_obs", "Q3_thk_obs", "Max_thk_obs",
+]
+
+# Create/overwrite CSV with header
+os.makedirs(os.path.dirname(out_csv), exist_ok=True)
+with open(out_csv, "w", newline="") as f:
+    writer = csv.writer(f)
+    writer.writerow(HEADER)
+
+def to_scalar(x):
+    """Return Python float or np.nan from xarray reduction."""
+    try:
+        return x.item()
+    except Exception:
+        return float(x) if np.isscalar(x) else np.nan
+
 for rgi_file in os.listdir(data_dir):
     rgi_path = os.path.join(data_dir, rgi_file)
+    if not os.path.isdir(rgi_path):
+        continue
 
-    if os.path.isdir(rgi_path):  # Ensure we only process directories
-        print(f"Processing RGI: {rgi_file}")
+    print(f"Processing RGI: {rgi_file}")
+    inversion_path = os.path.join(rgi_path, "Preprocess", "outputs")
+    nc_path = os.path.join(inversion_path, "output.nc")
+    if not os.path.isfile(nc_path):
+        print(f"  output.nc not found")
+        continue
 
-        # Construct the path to the Inversion folder
-        inversion_path = os.path.join(rgi_path, "Preprocess", "outputs",)
+    row = {k: np.nan for k in HEADER}
+    row["rgi_id"] = rgi_file
 
-        if os.path.exists(inversion_path):
-            # Load the geology-optimized.nc file
-            geo_file_path = os.path.join(inversion_path, "output.nc")
+    try:
+        ds = xr.open_dataset(nc_path)
 
-            if os.path.isfile(geo_file_path):
-                print(f"  Loading {geo_file_path}")
+        # -------- Velocity block (masked by icemask) --------
+        if all(v in ds.variables for v in ["velsurf_mag", "velsurfobs_mag", "icemask"]):
+            mask_ice = (ds["icemask"] == 1)
+            vmod = ds["velsurf_mag"].where(mask_ice)
+            vobs = ds["velsurfobs_mag"].where(mask_ice)
 
-                try:
-                    # Open the NetCDF file
-                    ds = xr.open_dataset(geo_file_path)
+            row["Mean_velsurf_mag"]    = to_scalar(vmod.mean(skipna=True))
+            row["Std_velsurf_mag"]     = to_scalar(vmod.std(skipna=True))
+            row["Min_velsurf_mag"]     = to_scalar(vmod.min(skipna=True))
+            row["Max_velsurf_mag"]     = to_scalar(vmod.max(skipna=True))
+            row["Q1_velsurf_mag"]      = to_scalar(vmod.quantile(0.25, skipna=True))
+            row["Median_velsurf_mag"]  = to_scalar(vmod.quantile(0.50, skipna=True))
+            row["Q3_velsurf_mag"]      = to_scalar(vmod.quantile(0.75, skipna=True))
 
-                    # Ensure required variables exist
-                    if all(var in ds.variables for var in
-                           ["velsurf_mag", "velsurfobs_mag", "icemask"]):
-                        # Apply the ice mask
-                        velsurf_mag = ds["velsurf_mag"].where(ds["icemask"] == 1)
-                        velsurfobs_mag = ds["velsurfobs_mag"].where(
-                            ds["icemask"] == 1)
+            row["Mean_velsurfobs_mag"]   = to_scalar(vobs.mean(skipna=True))
+            row["Std_velsurfobs_mag"]    = to_scalar(vobs.std(skipna=True))
+            row["Min_velsurfobs_mag"]    = to_scalar(vobs.min(skipna=True))
+            row["Max_velsurfobs_mag"]    = to_scalar(vobs.max(skipna=True))
+            row["Q1_velsurfobs_mag"]     = to_scalar(vobs.quantile(0.25, skipna=True))
+            row["Median_velsurfobs_mag"] = to_scalar(vobs.quantile(0.50, skipna=True))
+            row["Q3_velsurfobs_mag"]     = to_scalar(vobs.quantile(0.75, skipna=True))
 
-                        # Compute statistics for velsurf_mag
-                        mean_velsurf_mag = velsurf_mag.mean(skipna=True).item()
-                        std_velsurf_mag = velsurf_mag.std(skipna=True).item()
-                        min_velsurf_mag = velsurf_mag.min(skipna=True).item()
-                        max_velsurf_mag = velsurf_mag.max(skipna=True).item()
-                        q1_velsurf_mag = velsurf_mag.quantile(0.25).item()
-                        median_velsurf_mag = velsurf_mag.quantile(0.5).item()
-                        q3_velsurf_mag = velsurf_mag.quantile(0.75).item()
-
-                        # Compute statistics for velsurfobs_mag
-                        mean_velsurfobs_mag = velsurfobs_mag.mean(skipna=True).item()
-                        std_velsurfobs_mag = velsurfobs_mag.std(skipna=True).item()
-                        min_velsurfobs_mag = velsurfobs_mag.min(skipna=True).item()
-                        max_velsurfobs_mag = velsurfobs_mag.max(skipna=True).item()
-                        q1_velsurfobs_mag = velsurfobs_mag.quantile(0.25).item()
-                        median_velsurfobs_mag = velsurfobs_mag.quantile(0.5).item()
-                        q3_velsurfobs_mag = velsurfobs_mag.quantile(0.75).item()
-
-                        # Mean Absolute Error (pixel-wise) between modeled and observed velocity magnitudes
-                        
-                        mae_velsurf_mag = np.abs(velsurf_mag - velsurfobs_mag).mean(skipna=True).item()
-
-                        print(f"    Mean velsurf_mag: {mean_velsurf_mag}")
-                        print(f"    Mean velsurfobs_mag: {mean_velsurfobs_mag}")
-                        print(f"    MAE velsurf_mag: {mae_velsurf_mag}")
-
-                        # Write results to CSV
-                        with open(csv_file_path, 'a', newline='') as csvfile:
-                            writer = csv.writer(csvfile)
-                            writer.writerow([
-                                rgi_file, mean_velsurf_mag, std_velsurf_mag,
-                                min_velsurf_mag, q1_velsurf_mag, median_velsurf_mag,
-                                q3_velsurf_mag, max_velsurf_mag,
-                                mean_velsurfobs_mag, std_velsurfobs_mag,
-                                min_velsurfobs_mag, q1_velsurfobs_mag,
-                                median_velsurfobs_mag, q3_velsurfobs_mag,
-                                max_velsurfobs_mag, mae_velsurf_mag
-                            ])
-                    else:
-                        print(
-                            "    Required variables (velsurf_mag, velsurfobs_mag, or icemask) are missing in the dataset!")
-
-                    # Close the dataset
-                    ds.close()
-                except Exception as e:
-                    print(f"    Error processing {geo_file_path}: {e}")
-            else:
-                print(f"  output.nc not found in {inversion_path}")
+            row["MAE_velsurf_mag"] = to_scalar(np.abs(vmod - vobs).mean(skipna=True))
         else:
-            print(f"  Inversion folder not found for {rgi_file}")
+            print("  Missing velocity variables")
+
+        # -------- Thickness block (only where thkobs is present) --------
+        if all(v in ds.variables for v in ["thk", "thkobs", "icemask"]):
+            ice_mask = (ds["icemask"] == 1)
+            obs_mask = ds["thkobs"].notnull()
+            valid = ice_mask & obs_mask
+
+            thk_mod = ds["thk"].where(valid)
+            thk_obs = ds["thkobs"].where(valid)
+
+            n_obs = int(valid.sum().item())
+            total_ice = int(ice_mask.sum().item()) if "icemask" in ds.variables else 0
+            coverage_pct = (100.0 * n_obs / total_ice) if total_ice > 0 else np.nan
+
+            diff = thk_mod - thk_obs
+            absdiff = np.abs(diff)
+
+            row["n_obs_thk"]               = n_obs
+            row["coverage_pct"]            = coverage_pct
+            row["Mean_thk_model_at_obs"]   = to_scalar(thk_mod.mean(skipna=True))
+            row["Std_thk_model_at_obs"]    = to_scalar(thk_mod.std(skipna=True))
+            row["Mean_thk_obs"]            = to_scalar(thk_obs.mean(skipna=True))
+            row["Std_thk_obs"]             = to_scalar(thk_obs.std(skipna=True))
+            row["MAE_thk"]                 = to_scalar(absdiff.mean(skipna=True))
+            row["Bias_thk"]                = to_scalar(diff.mean(skipna=True))
+            row["RMSE_thk"]                = to_scalar(np.sqrt((diff**2).mean(skipna=True)))
+            row["MedianAE_thk"]            = to_scalar(absdiff.quantile(0.50, skipna=True))
+            row["Q95AE_thk"]               = to_scalar(absdiff.quantile(0.95, skipna=True))
+
+            row["Min_thk_obs"]             = to_scalar(thk_obs.min(skipna=True))
+            row["Q1_thk_obs"]              = to_scalar(thk_obs.quantile(0.25, skipna=True))
+            row["Median_thk_obs"]          = to_scalar(thk_obs.quantile(0.50, skipna=True))
+            row["Q3_thk_obs"]              = to_scalar(thk_obs.quantile(0.75, skipna=True))
+            row["Max_thk_obs"]             = to_scalar(thk_obs.max(skipna=True))
+        else:
+            print("  Missing thickness variables")
+
+        ds.close()
+
+    except Exception as e:
+        print(f"  Error processing {nc_path}: {e}")
+
+    # Append row
+    with open(out_csv, "a", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow([row[k] for k in HEADER])
+
+print(f"Done. Wrote {out_csv}")

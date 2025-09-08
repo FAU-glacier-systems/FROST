@@ -16,10 +16,6 @@ def ensure_dir(path: Path) -> None:
     path.mkdir(parents=True, exist_ok=True)
 
 
-def load_csv(path: Path) -> pd.DataFrame:
-    df = pd.read_csv(path)
-    return df
-
 
 def coerce_numeric(df: pd.DataFrame, cols: list[str]) -> pd.DataFrame:
     df = df.copy()
@@ -35,7 +31,7 @@ def build_glacier_labels(names: pd.Series, rgi_ids: pd.Series) -> list[str]:
     return labels
 
 
-def plot_glamos_vs_predictions(merged_df_glamos: pd.DataFrame, out_path: Path) -> None:
+def plot_glamos_vs_predictions(merged_df_glamos: pd.DataFrame, out_path: Path, merged_df_sla) -> None:
     # Extract arrays
     predicted_ela = merged_df_glamos['ela'].to_numpy(dtype=float)
     predicted_grad_abl = merged_df_glamos['gradabl'].to_numpy(dtype=float)
@@ -72,15 +68,15 @@ def plot_glamos_vs_predictions(merged_df_glamos: pd.DataFrame, out_path: Path) -
         ylabel="Predicted ELA (m)",
         title="Equilibrium Line Altitude",
         glacier_names=glacier_names,
-        ticks=np.arange(2500, 4001, 500),
+        ticks=np.arange(2750, 4000, 250),
     )
 
     # Keep the top-right empty for spacing
-    axes[5].axis('off')
+    axes[3].axis('off')
 
     # Ablation gradient
     scatter_handles_abl = scatter_plot(
-        ax=axes[3],
+        ax=axes[1],
         x=reference_grad_abl,
         y=predicted_grad_abl,
         x_std=reference_grad_abl_std,
@@ -89,12 +85,12 @@ def plot_glamos_vs_predictions(merged_df_glamos: pd.DataFrame, out_path: Path) -
         ylabel="Predicted Ablation Gradient (m/yr/km)",
         title="Ablation Gradient",
         glacier_names=glacier_names,
-        ticks=np.arange(0, 31, 5),
+        ticks=np.arange(0, 25, 5),
     )
 
     # Accumulation gradient
     scatter_handles_acc = scatter_plot(
-        ax=axes[4],
+        ax=axes[2],
         x=reference_grad_acc,
         y=predicted_grad_acc,
         x_std=reference_grad_acc_std,
@@ -103,47 +99,98 @@ def plot_glamos_vs_predictions(merged_df_glamos: pd.DataFrame, out_path: Path) -
         ylabel="Predicted Accumulation Gradient (m/yr/km)",
         title="Accumulation Gradient",
         glacier_names=glacier_names,
-        ticks=np.arange(-1, 10, 3),
+        ticks=np.arange(-2, 7, 2),
     )
 
-    scatter_plot(
-        ax=axes[1],
-        y=merged_df_glamos['sla'].to_numpy(dtype=float),
-        x=merged_df_glamos['Mean_ELA'].to_numpy(dtype=float),
-        ylabel="End of summer snow line altitude (m)",
-        xlabel="GLAMOS ELA (m)",
-        title="Equilibrium Line Altitude",
+    scatter_handle_vel = scatter_plot(
+        ax=axes[4],
+        x=merged_df_glamos['Mean_velsurfobs_mag'].to_numpy(dtype=float),
+        y=merged_df_glamos['Mean_velsurf_mag'].to_numpy(dtype=float),
+        x_std=merged_df_glamos['Std_velsurfobs_mag'].to_numpy(dtype=float)/2,
+        y_std=merged_df_glamos['Std_velsurf_mag'].to_numpy(dtype=float)/2,
+        xlabel="Millan velocity (m/yr)",
+        ylabel="Modeled velocity (m/yr)",
+        title="Mean velocity",
         glacier_names=glacier_names,
-        ticks=np.arange(2500, 4001, 500),
+        ticks=np.arange(0, 54, 12),
     )
-
-    # Predicted ELA vs SLA
-    scatter_plot(
-        ax=axes[2],
-        x=merged_df_glamos['sla'].to_numpy(dtype=float),
-        y=merged_df_glamos['ela'].to_numpy(dtype=float),
-        xlabel="End of summer snow line altitude (m)",
-        ylabel="Predicted ELA (m)",
-        title="Equilibrium Line Altitude",
+    scatter_handle_thk = scatter_plot(
+        ax=axes[5],
+        x=merged_df_glamos['Mean_thk_obs'].to_numpy(dtype=float),
+        y=merged_df_glamos['Mean_thk_model_at_obs'].to_numpy(dtype=float),
+        x_std=merged_df_glamos['Std_thk_obs'].to_numpy(dtype=float) / 2,
+        y_std=merged_df_glamos['Std_thk_model_at_obs'].to_numpy(dtype=float) /2,
+        xlabel="GlaThiDa thickness(m)",
+        ylabel="Modeled thickness (m)",
+        title="Thickness",
         glacier_names=glacier_names,
-        ticks=np.arange(2500, 4001, 500),
+        ticks=np.arange(0, 281, 65),
     )
 
+    # scatter_plot(
+    #     ax=axes[1],
+    #     y=merged_df_glamos['sla'].to_numpy(dtype=float),
+    #     x=merged_df_glamos['Mean_ELA'].to_numpy(dtype=float),
+    #     ylabel="End of summer snow line altitude (m)",
+    #     xlabel="GLAMOS ELA (m)",
+    #     title="Equilibrium Line Altitude",
+    #     glacier_names=glacier_names,
+    #     ticks=np.arange(2500, 4001, 500),
+    # )
+
+    # # # Predicted ELA vs SLA
+    # scatter_plot(
+    #     ax=axes[3],
+    #     x=merged_df_glamos['sla'].to_numpy(dtype=float),
+    #     y=merged_df_glamos['ela'].to_numpy(dtype=float),
+    #     xlabel="End of summer snow line altitude (m)",
+    #     ylabel="Predicted ELA (m)",
+    #     title="Snow Line Altitude",
+    #     glacier_names=glacier_names,
+    #     ticks=np.arange(2500, 4000, 250),
+    # )
+    #
+    # merged_df_sla = compute_sla_ela_difference(merged_df_sla)
+    # sla_vals = merged_df_sla['sla'].to_numpy(dtype=float)
+    # ela_vals = merged_df_sla['ela'].to_numpy(dtype=float)
+    #
+    #
+    # # Left subplot: SLA vs Predicted ELA
+    # scatter_plot(
+    #     ax=axes[4],
+    #     x=sla_vals,
+    #     y=ela_vals,
+    #     xlabel="End of summer snow line altitude (m)",
+    #     ylabel="Predicted ELA (m)",
+    #     title="Snow Line Altitude",
+    #     ticks=np.arange(2500, 4000, 250),
+    #     #color=area,
+    # )
     # Single legend outside the plotting grid
     handles = scatter_handles_ela
-    fig.legend(handles, glacier_names, loc="upper left",
-               bbox_to_anchor=(0.7, 0.5), fontsize=10)
-
+    leg = fig.legend(
+        handles, glacier_names,
+        loc="upper left", bbox_to_anchor=(0.02, 0.48),
+        fontsize=10,
+    )
+    fig.text(
+        0.02, 0.3, "Glaciers (RGI-ID)",  # x, y in figure coordinates
+        rotation=90, va="center", ha="center", fontsize=11
+    )
+    # Optionally adjust alignment
+    leg.get_title().set_verticalalignment("bottom")
+    leg.get_title().set_horizontalalignment("center")
+    leg.get_frame().set_edgecolor("none")
     # Subplot labels
     import string
-    axes_with_label = [axes[0], axes[1], axes[2], axes[3], axes[4]]
+    axes_with_label = [axes[0], axes[1], axes[2], axes[4], axes[5]]
     labels_subplot = [f"{letter})" for letter in string.ascii_lowercase[:len(axes_with_label)]]
     for ax, label in zip(axes_with_label, labels_subplot):
         ax.text(0, 1.02, label, transform=ax.transAxes,
                 fontsize=12, va='bottom', ha='left', fontweight='bold')
 
     fig.tight_layout()
-    fig.savefig(out_path, bbox_inches="tight")
+    fig.savefig(out_path)
     plt.close(fig)
 
 
@@ -165,91 +212,6 @@ def _find_first_present(df: pd.DataFrame, candidates: list[str]) -> str | None:
         if c in df.columns:
             return c
     return None
-
-
-def plot_sla_vs_ela(merged_df_sla: pd.DataFrame, out_path: Path) -> None:
-    """
-    Left: SLA vs Predicted ELA (existing).
-    Right: Correlation between |ELA - SLA| and velocity MAE (if available in dataframe).
-    """
-    # Compute absolute SLA-ELA difference
-    merged_df_sla = compute_sla_ela_difference(merged_df_sla)
-    sla_vals = merged_df_sla['sla'].to_numpy(dtype=float)
-    ela_vals = merged_df_sla['ela'].to_numpy(dtype=float)
-    area = merged_df_sla['area_km2'].to_numpy(dtype=float)
-    ae_ela = np.abs(sla_vals - ela_vals)
-
-    # Try to find a velocity MAE column in the already-merged CSV
-    mae_candidates = [
-        "MAE_velsurf_mag"
-    ]
-    mae_col = _find_first_present(merged_df_sla, mae_candidates)
-
-    # Create figure with two subplots if MAE is available, otherwise keep single
-    # if mae_col is not None:
-    #     fig, axes = plt.subplots(1, 2, figsize=(10, 5))
-    #     ax_left, ax_right = axes
-    # else:
-    fig, ax_left = plt.subplots(1, 1, figsize=(5, 5))
-    ax_right = None
-
-    # Left subplot: SLA vs Predicted ELA
-    scatter_plot(
-        ax=ax_left,
-        x=sla_vals,
-        y=ela_vals,
-        xlabel="End of summer snow line altitude (m)",
-        ylabel="Predicted ELA (m)",
-        title="End of summer snow line altitude vs. Predicted ELA",
-        ticks=np.arange(2200, 4000, 500),
-        #color=area,
-    )
-
-    # Right subplot: |ELA - SLA| vs Velocity MAE
-    if ax_right is not None:
-        xdiff = merged_df_sla['difference'].to_numpy(dtype=float)
-        ymae = pd.to_numeric(merged_df_sla[mae_col], errors="coerce").to_numpy(dtype=float)
-
-        # Drop NaNs pairwise
-        mask = np.isfinite(xdiff) & np.isfinite(ymae)
-        x = xdiff[mask]
-        y = ymae[mask]
-
-        ax_right.scatter(x, y, s=15, alpha=0.8, edgecolor="k", linewidths=0.2)
-        ax_right.set_xlabel("|ELA - SLA| (m)")
-        ax_right.set_ylabel("Velocity MAE (m/yr)")
-        ax_right.set_title("Velocity MAE vs |ELA - SLA|")
-        ax_right.grid(True, linestyle="--", alpha=0.5)
-
-        if len(x) >= 2:
-            # Pearson r
-            r = np.corrcoef(x, y)[0, 1]
-            # Simple linear fit
-            coeffs = np.polyfit(x, y, 1)
-            xx = np.linspace(0, np.nanmax(x) * 1.05 if np.nanmax(x) > 0 else 1.0, 100)
-            yy = np.polyval(coeffs, xx)
-            ax_right.plot(xx, yy, color="tab:red", lw=1.5, label=f"Fit: y={coeffs[0]:.3f}x+{coeffs[1]:.1f}")
-            ax_right.legend(loc="upper left", fontsize=9)
-            ax_right.text(
-                0.98, 0.02, f"Pearson r = {r:.2f}",
-                transform=ax_right.transAxes,
-                ha="right", va="bottom",
-                bbox=dict(facecolor="white", alpha=0.8)
-            )
-
-        # Nicely padded axes limits
-        if len(x) > 0:
-            ax_right.set_xlim(0, max(1.0, np.nanmax(x) * 1.05))
-        if len(y) > 0:
-            ax_right.set_ylim(0, max(1.0, np.nanmax(y) * 1.05))
-
-        # Tight layout for both subplots
-        fig.tight_layout()
-    else:
-        fig.tight_layout()
-
-    fig.savefig(out_path, bbox_inches="tight")
-    plt.close(fig)
 
 
 def plot_glamos_sla_selection(merged_df_glamos_sla: pd.DataFrame, glacier_names: list[str], out_path: Path) -> None:
@@ -336,7 +298,7 @@ def main():
     ensure_dir(out_dir)
 
     # Load the already-merged aggregated results
-    df = load_csv(predicted_path)
+    df = pd.read_csv(predicted_path)
 
     # Coerce numeric on all columns we use in plotting/analysis
     numeric_cols = [
@@ -378,9 +340,8 @@ def main():
 
     # Plots
     if not merged_df_glamos.empty:
-        plot_glamos_vs_predictions(merged_df_glamos, out_dir / "GLAMOS_regional_run.pdf")
-    if not merged_df_sla.empty:
-        plot_sla_vs_ela(merged_df_sla, out_dir / "SLA_comparison.pdf")
+        plot_glamos_vs_predictions(merged_df_glamos, out_dir / "GLAMOS_regional_run.pdf", merged_df_sla)
+
     if not merged_df_glamos_sla.empty:
         _ = plot_glamos_sla_selection(
             merged_df_glamos_sla,

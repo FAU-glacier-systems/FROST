@@ -66,69 +66,22 @@ def main(rgi_id_dir, params_inversion_path):
                 if np.nanpercentile(np.abs(modified_data.flatten()), 99) > 10.0:
                     flag_velsurfobs = True
 
+    # Load base parameters from params_inversion.yaml
+    with open(params_inversion_path, 'r') as file:
+        inv_params = yaml.safe_load(file)
+
+    # Add velocity observation parameters if available
+    if not flag_velsurfobs:
+        inv_params['processes']['data_assimilation']['cost_list'] = ['thk', 'icemask', 'usurf']
+
     # Prepare inversion directory
     preprocess_dir = os.path.join(rgi_id_dir, 'Preprocess')
     # shutil.rmtree(inversion_dir, ignore_errors=True)
     exp_dir = os.path.join(preprocess_dir, 'experiment')
     os.makedirs(exp_dir, exist_ok=True)
-
-    shutil.copy(params_inversion_path, exp_dir)
-
     # Change to inversion directory and save params
     original_dir = os.getcwd()
     os.chdir(preprocess_dir)
-
-    # Set inversion parameters
-    # depend on availaibity of velocity observations
-    # Define base data assimilation parameters
-    DA_params = {
-        "output": {
-            "save_result_in_ncdf": "../../output.nc",
-            "vars_to_save": [
-                "usurf", "topg", "thk", "slidingco", "velsurf_mag",
-                "velsurfobs_mag", "divflux", "icemask", "arrhenius",
-                "thkobs", "dhdt"
-            ],
-            "plot2d_live": False,
-            "plot2d": False
-        },
-        "control_list": ["thk", "usurf"],
-        "cost_list": ["thk", "icemask", "usurf"],
-        "fitting": {"thkobs_std": 1,
-                    "usurfobs_std": 1, },
-        "optimization": {"retrain_iceflow_model": True, "nbitmax": 500},
-        "regularization": {
-            "thk": 1000,
-            "slidingco": 10,
-            "smooth_anisotropy_factor": 1.0,
-            "convexity_weight": 0.0,
-            "to_regularize": "thk"
-        }
-    }
-    # Main inversion parameters dictionary
-    inv_params = {
-        "core": {"url_data": ""},
-        "defaults": [
-            {"override /inputs": ["load_ncdf"]},
-            {"override /processes": ["data_assimilation", "iceflow"]},
-            {"override /outputs": []}
-        ],
-        "inputs": {"load_ncdf": {"input_file": "input.nc"}},
-        "processes": {
-            "iceflow": {
-                "physics": {"init_slidingco": 0.045},
-                "emulator": {"save_model": True, "retrain_freq": 1}
-            },
-            "data_assimilation": DA_params
-        },
-        "outputs": {}
-    }
-    # Add velocity observation parameters if available
-    if flag_velsurfobs:
-        DA_params["control_list"].append("slidingco")
-        DA_params["cost_list"].append("velsurf")
-        DA_params["fitting"]["velsurfobs_std"] = 0.1
-
     # Write to YAML file
     with open(os.path.join('experiment', 'params_inversion.yaml'), 'w') as file:
         file.write("# @package _global_\n")

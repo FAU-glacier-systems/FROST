@@ -1,80 +1,60 @@
 # @package _global_
-
+core:
+  url_data: ''
 defaults:
-  - override /inputs:
-      - load_ncdf
-  - override /processes:
-      - data_assimilation
-      - iceflow
-
+- override /inputs:
+  - load_ncdf
+- override /processes:
+  - data_assimilation
+  - iceflow
+- override /outputs: []
 inputs:
   load_ncdf:
     input_file: input.nc
 processes:
   iceflow:
-    numerics:
-      Nz: 2
-      vert_basis: "SIA"
     physics:
       init_slidingco: 0.045
-      init_arrhenius: 36
     emulator:
-      pretrained: false
-      retrain_freq: 100
-      warm_up_it: 0
-      nbit_init: 1000
-      lr_init: 0.001
-      lr: 0.001
-      lr_decay: 1.0
-      nbit: 500
-      network:
-        nb_layers: 6
-        nb_out_filter: 16
-        conv_ker_size: 3
+      save_model: true
+      retrain_freq: 1
   data_assimilation:
     output:
       save_result_in_ncdf: ../../output.nc
       vars_to_save:
-        - usurf
-        - topg
-        - thk
-        - slidingco
-        - velsurf_mag
-        - velsurfobs_mag
-        - divflux
-        - icemask
-        - arrhenius
-        - thkobs
-        - dhdt
+      - usurf
+      - topg
+      - thk
+      - slidingco
+      - velsurf_mag
+      - velsurfobs_mag
+      - divflux
+      - icemask
+      - arrhenius
+      - thkobs
+      - dhdt
       plot2d_live: false
       plot2d: false
     control_list:
-      - thk
-      - slidingco
-      - usurf
+    - thk
+    - usurf
+    - slidingco
     cost_list:
-      - velsurf
-      - icemask
-      - thk
-      - usurf
-    optimization:
-          nbitmax: 1000
-          step_size: 1.0
-          retrain_iceflow_model: true
-          fix_opti_normalization_issue: true
-          obstacle_constraint: ['reproject']
-          step_size_decay: 1.0
-    #     sole_mask: True
-          pertubate: True
+    - thk
+    - icemask
+    - usurf
+    - velsurf
     fitting:
-       usurfobs_std: 0.3
-       velsurfobs_std: 0.1
-       thkobs_std: 1
+      thkobs_std: 1
+      usurfobs_std: 1
+      velsurfobs_std: 0.1
+    optimization:
+      retrain_iceflow_model: true
+      nbitmax: 50
     regularization:
-      thk: 1.e+3
+      thk: 10
+      slidingco: 10
       smooth_anisotropy_factor: 1.0
       convexity_weight: 0.0
       to_regularize: thk
-    scaling:
-      thk: 1
-
+outputs: {}
