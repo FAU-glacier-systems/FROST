@@ -130,6 +130,7 @@ def plot_map_with_annotations(
             zorder=10, alpha=1, edgecolor='k', linewidth=0.8,
         )
 
+
     elif value_column == "ela_sla":
         # both in the same plot: ELA on upper half, SLA on lower half
 
@@ -283,13 +284,35 @@ def plot_map_with_annotations(
         ax,
         width="2%", height="40%",  # adjust size
         loc='lower right',
-        bbox_to_anchor=(-0.06, 0.06, 1, 1),  # relative to axes
+        bbox_to_anchor=(-0.06, 0.01, 1, 1),  # relative to axes
         bbox_transform=ax.transAxes,
         borderpad=1
     )
-    cbar2 = plt.colorbar(img, cax=cax2)
-    cbar2.set_label("Elevation (m)", color="white", labelpad=-55)
+    cbar2 = plt.colorbar(img, cax=cax2)  # vertical by default
+
+    # keep tick labels
     cbar2.ax.tick_params(colors="white", labelsize=8)
+
+    # instead of set_label, use set_title for horizontal text on top
+    cbar2.ax.set_title("Elevation (m)",
+                       color="white",
+                       fontsize=10,
+                       pad=10)  # move it up a bit
+
+    sizes = [40, 200, 400]  # marker sizes
+    labels = [f"{int(s / 20)}" for s in sizes]
+
+    handles = [plt.scatter([], [], s=s, color="none", alpha=1, edgecolors='white') for s in sizes]
+
+    leg = ax.legend(handles, labels,
+                    title="Area (km$^2$)",
+                    loc="lower right",
+                    bbox_to_anchor=(0.89, 0.05),  # move slightly left
+                    frameon=False)
+
+    # make text white
+    plt.setp(leg.get_title(), color="white")  # title
+    plt.setp(leg.get_texts(), color="white")  # labels
 
     # --- Small Europe overview inset with main-extent box ---
     import cartopy.feature as cfeature

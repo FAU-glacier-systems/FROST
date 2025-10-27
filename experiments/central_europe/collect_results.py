@@ -1,17 +1,22 @@
 import os
 import json
+from cmath import isnan
+
 import pandas as pd
 import numpy as np
-
+import xarray as xr
+from os.path import join, dirname, exists
 
 # Global paths
 #RGI_FILES_PATH = "../../data/raw/central_europe/Split_Files"
 RGI_FILES_PATH = "../../data/raw/central_europe/Split_Files"
-INVERSION_PATH = "../central_europe/inversion_results.csv"
-SLA_PATH ="../../data/raw/central_europe/Alps_EOS_SLA_2000-2019_mean.csv"
+SLA_PATH ="../../data/raw/central_europe/Alps_Glacier_EoS_SLA_2000-2019_stats.csv"
 GLAMOS_PATH ="../../data/raw/glamos/GLAMOS_analysis_results.csv"
-EXPERIMENTS_PATH = "../../data/results/central_europe/glaciers"
-OUTPUT_CSV = "../central_europe/aggregated_results.csv"
+
+
+INVERSION_PATH = "../central_europe_1000/inversion_results.csv"
+EXPERIMENTS_PATH = "../../data/results/central_europe_1000/glaciers"
+OUTPUT_CSV = "../central_europe_1000/aggregated_results.csv"
 
 
 def load_and_collect_results(parts):
@@ -35,7 +40,7 @@ def load_and_collect_results(parts):
             continue
 
         # Collect results for each row
-        for _, row in rgi_data.iterrows():
+        for i, row in rgi_data.iterrows():
             rgi_id = row["rgi_id"]
             result_path = os.path.join(
                 EXPERIMENTS_PATH, rgi_id, "calibration_results.json"
@@ -58,7 +63,72 @@ def load_and_collect_results(parts):
                     
                     # Convert degrees to radians for calculations
                     aspect_rad = np.radians(aspect_deg)
-                    
+
+                    ### collect ensemble data
+                    ensemble_path = join(dirname(result_path), 'Ensemble')
+                    if exists(ensemble_path):
+                        vel_data_ensemble = []
+                        smb_data_ensemble = []
+                        dhdt_data_ensemble = []
+                        for member in os.listdir(ensemble_path)[::10]:
+                            output_path = join(ensemble_path, member, 'outputs', 'output.nc')
+                            if exists(output_path):
+                                try:
+                                    with xr.open_dataset(output_path) as ds:
+                                        if 'velsurf_mag' in ds:
+                                            vel = ds['velsurf_mag']
+                                            smb = ds['smb']
+                                            usurf = ds['usurf']
+
+                                            # Get values at specific indices
+                                            vel_data_member = []
+                                            smb_data_member = []
+                                            for idx in [0, 1, 2]:
+                                                if idx < len(vel):
+                                                    vel_year = vel[idx].values[ds['thk'][idx] > 1]
+                                                    vel_data_member.append(np.nanmean(vel_year))
+
+                                                    smb_year = smb[idx].values[ds['thk'][idx] > 1]
+                                                    smb_data_member.append(np.nanmean(smb_year))
+
+
+                                            dhdt = (usurf[2].values - usurf[0].values)/20
+
+                                            dhdt_data_ensemble.append(np.mean(dhdt[ds['thk'][0] > 1]))
+
+                                            vel_data_ensemble.append(vel_data_member)
+                                            smb_data_ensemble.append(smb_data_member)
+
+
+                                except Exception as e:
+                                    print(f"Error reading netCDF file {output_path}: {e}")
+
+                        vel_data_ensemble = np.array(vel_data_ensemble)
+                        vel_data_ensemble = np.nanmean(vel_data_ensemble, axis=0)
+
+                        smb_data_ensemble_std = np.nanstd(smb_data_ensemble, axis=0)
+                        smb_data_ensemble_mean = np.nanmean(smb_data_ensemble, axis=0)
+                        dhdt_data_ensemble_mean = np.nanmean(dhdt_data_ensemble, axis=0)
+                        dhdt_data_ensemble_std = np.nanstd(dhdt_data_ensemble, axis=0)
+
+
+                    observations_path = join(dirname(result_path), 'observations.nc')
+
+                    with xr.open_dataset(observations_path) as ds:
+                        usurf_obs = ds['usurf']
+                        thk = ds['thk'][0]
+
+                        dhdt = (usurf_obs[1].values - usurf_obs[0].values)/20
+                        dhdt_mean = np.mean(dhdt[thk > 1])
+
+
+                        thk_mask = ds['thk'][0]>1
+                        dhdt_err = ds['dhdt_err'][1].to_numpy()
+                        dhdt_err = dhdt_err[thk_mask.to_numpy()]
+                        dhdt_std = dhdt_err.mean()
+
+                    if isnan(np.mean(smb_data_ensemble_mean)):
+                        print(rgi_id)
                     # Add the sine and cosine values
                     row_data.update({
                         "EastWest": np.sin(aspect_rad),
@@ -69,8 +139,24 @@ def load_and_collect_results(parts):
                         "ela_std": final_std[0] if len(final_std) > 0 else None,
                         "gradabl_std": final_std[1] if len(final_std) > 1 else None,
                         "gradacc_std": final_std[2] if len(final_std) > 2 else None,
+                        "vel_ensemble_year0": vel_data_ensemble[0],
+                        "vel_ensemble_year10": vel_data_ensemble[1],
+                        "vel_ensemble_year20": vel_data_ensemble[2],
+                        "smb_ensemble_year0": smb_data_ensemble_mean[0],
+                        "smb_ensemble_year10": smb_data_ensemble_mean[1],
+                        "smb_ensemble_year20": smb_data_ensemble_mean[2],
+                        "smb_ensemble_mean": np.mean(smb_data_ensemble_mean),
+                        "smb_ensemble_std": np.mean(smb_data_ensemble_std),
+                        "dhdt_mean": dhdt_mean,
+                        "dhdt_std": dhdt_std,
+                        "dhdt_ensemble_mean": dhdt_data_ensemble_mean,
+                        "dhdt_ensemble_std": dhdt_data_ensemble_std,
                     })
                     all_results.append(row_data)
+
+
+
+
 
             except json.JSONDecodeError:
                 print(
@@ -117,11 +203,11 @@ def main():
         # 2) SLA: only 'rgi_id' and 'sla'
         if os.path.exists(SLA_PATH):
             sla_df_all = pd.read_csv(SLA_PATH)
-            sla_cols = [c for c in sla_df_all.columns if c in ("rgi_id", "sla")]
-            sla_df = sla_df_all.loc[:, sla_cols].copy() if sla_cols else pd.DataFrame(columns=["rgi_id", "sla"])
+            sla_cols = [c for c in sla_df_all.columns if c in ("rgi_id", "sla_mean", "sla_n")]
+            sla_df = sla_df_all.loc[:, sla_cols].copy() if sla_cols else pd.DataFrame(columns=["rgi_id", "sla_mean", "sla_n"])
         else:
             print(f"Warning: SLA_PATH '{SLA_PATH}' not found. Skipping SLA merge.")
-            sla_df = pd.DataFrame(columns=["rgi_id", "sla"])
+            sla_df = pd.DataFrame(columns=["rgi_id", "sla_mean", "sla_n"])
 
         # 3) GLAMOS: ELA, accumulation gradient, ablation gradient + their variability
         if os.path.exists(GLAMOS_PATH):
@@ -135,6 +221,8 @@ def main():
                 "Annual_Variability_Ablation_Gradient",
                 "Mean_Accumulation_Gradient",
                 "Annual_Variability_Accumulation_Gradient",
+                "annual_mass_balance",
+                "annual_mass_balance_std",
             ]
             glamos_cols = [c for c in wanted_glamos_cols if c in glamos_all.columns]
             glamos_df = glamos_all.loc[:, glamos_cols].copy() if glamos_cols else pd.DataFrame(columns=["rgi_id"])
