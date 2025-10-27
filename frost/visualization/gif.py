@@ -8,7 +8,7 @@ from PIL import Image
 import numpy as np
 
 # get file names in correct order
-dir = '../../Plots/3D/'
+dir = 'Plots/'
 files = os.listdir(dir)
 files.sort()
 
@@ -16,13 +16,18 @@ files.sort()
 frames = []
 for image in files:
     if image.startswith('glacier') and image.endswith('.png'):
-        frames.append(Image.open(dir + image))
+        img = Image.open(os.path.join(dir, image)).convert("RGBA")
+        # create solid white background
+        background = Image.new("RGBA", img.size, (255, 255, 255, 255))
+        background.paste(img, mask=img)
+        frames.append(background.convert("P"))  # convert to palette for GIF
+
 
 # frames = frames + [frames[-1]]*5 + list(reversed(frames)) + [frames[0]]*5
 # frame_one = Image.open(dir+'iterations_seed_111_2.png')
 frame_one = Image.open(dir + 'glacier_surface2001.png')
 
-frame_one.save("../../Plots/IterationKanderfirn_map.gif", format="GIF",
+frame_one.save("Plots/Aletsch_2100.gif", format="GIF",
                append_images=frames,
                save_all=True,
-               duration=500, loop=0)
+               duration=100, loop=0)

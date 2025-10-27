@@ -30,7 +30,11 @@ class GlacierAnalysis:
         elas = [glacier_df[glacier_df['end date of observation'].dt.year == year]['equilibrium line altitude'].dropna().iloc[0]
                 if not glacier_df[glacier_df['end date of observation'].dt.year == year].empty else np.nan
                 for year in self.time]
-        return elas
+        smb = [glacier_df[glacier_df['end date of observation'].dt.year == year]['annual mass balance'].dropna().iloc[0]
+                if not glacier_df[glacier_df['end date of observation'].dt.year == year].empty else np.nan
+                for year in self.time]
+
+        return elas, smb
 
     def extract_gradients(self, glacier_df_bin, elas):
         abl_gradients, acc_gradients = [], []
@@ -41,8 +45,8 @@ class GlacierAnalysis:
             abl_gradients.append(self.compute_gradient(mb, elevation, elas[i], 30,
                                                        negative=True))
             acc_gradients.append(self.compute_gradient(mb, elevation, elas[i], 10, negative=False))
-        return [abl / 0.91 if abl is not np.nan else np.nan for abl in abl_gradients], \
-               [acc / 0.91 if acc is not np.nan else np.nan for acc in \
+        return [abl  if abl is not np.nan else np.nan for abl in abl_gradients], \
+               [acc  if acc is not np.nan else np.nan for acc in \
                 acc_gradients]
 
     def compute_gradient(self, mb, elevation, ela, threshold, negative=True):
@@ -59,7 +63,7 @@ class GlacierAnalysis:
         records = []
         for glacier_name in self.df_glamos['glacier name'].dropna().unique():
             glacier_df = self.df_glamos[self.df_glamos['glacier name'] == glacier_name]
-            elas = self.get_ela_and_specific_mb(glacier_df)
+            elas, smb = self.get_ela_and_specific_mb(glacier_df)
             glacier_df_bin = self.df_glamos_bin[self.df_glamos_bin['glacier name'] == glacier_name]
             abl_gradients, acc_gradients = self.extract_gradients(glacier_df_bin, elas)
 
@@ -69,6 +73,8 @@ class GlacierAnalysis:
                 "Annual_Variability_ELA": np.nanstd(elas),
                 "ELAS": elas,
                 "Years_with_ELA": np.sum(~np.isnan(elas)),
+                "annual_mass_balance": np.nanmean(smb),
+                "annual_mass_balance_std": np.nanstd(smb),
                 "Mean_Ablation_Gradient": np.nanmean(abl_gradients),
                 "Annual_Variability_Ablation_Gradient": np.nanstd(abl_gradients),
                 "ablation_gradients": abl_gradients,

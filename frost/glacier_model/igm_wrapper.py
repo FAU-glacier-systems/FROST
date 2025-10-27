@@ -136,8 +136,8 @@ def forward(exp, output1D, output2D_3D, member_id, rgi_dir, smb_model, usurf, sm
             }
         igm_params['processes']['smb_simple']['array'] = [
             ['time', 'gradabl', 'gradacc', 'ela', 'accmax'],
-            [0, abl_grad, acc_grad, ela, 100],
-            [year_interval, abl_grad, acc_grad, ela, 100]
+            [2000, abl_grad, acc_grad, ela, 100],
+            [2000 + year_interval, abl_grad, acc_grad, ela, 100]
         ]
 
 
@@ -290,7 +290,7 @@ def forward(exp, output1D, output2D_3D, member_id, rgi_dir, smb_model, usurf, sm
             new_usurf = np.array(new_ds['usurf'][-1])  # Final surface elevation
             new_smb = np.mean(np.array(new_ds['smb']), axis=0)  # Final SMB values
             init_usurf = np.array(new_ds['usurf'][0])
-            new_velsurf_mag = np.array(new_ds['velsurf_mag'][0])
+            new_velsurf_mag = np.array(new_ds['velsurf_mag'][1])
             new_divflux = np.array(new_ds['divflux'][1])
 
         return member_id, new_usurf, new_smb, init_usurf, new_velsurf_mag, new_divflux

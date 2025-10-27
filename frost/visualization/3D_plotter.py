@@ -5,11 +5,10 @@ import pyproj
 from netCDF4 import Dataset
 import argparse
 
-property = 'velsurfobs_mag'
-color_scale = 'magma'
+property = 'thk'
+color_scale = 'Blues'
 min_property = 0
-max_property = 25
-title = "Surface Velocity (m/yr)"
+max_property = 600
 
 
 
@@ -17,20 +16,21 @@ def main(file_path):
     with Dataset(file_path, 'r') as ds:
         glacier_surface = ds.variables['usurf'][:]
         # dhdt = (ds.variables['usurf'][-1] - glacier_surface)/20
-        dhdt = ds.variables['dhdt'][:]
-        bedrock = ds.variables['topg'][:]
-        color_map = ds.variables[property][:]
+        #dhdt = ds.variables['dhdt'][:]
+        dhdt = np.zeros_like(glacier_surface)[0]
+        bedrock = ds.variables['topg'][:][0]
+        #color_map = ds.variables[property][:]
         #color_map = (glacier_surface - 3100)*0.01
 
 
         x = ds.variables['x'][:]
         y = ds.variables['y'][:]
 
-    visualise_3d(dhdt, glacier_surface, bedrock, x, y, color_map)
+    visualise_3d(dhdt, glacier_surface, bedrock, x, y)
     return
 
 
-def visualise_3d(dhdt, glacier_surface, bedrock, x, y, color_map):
+def visualise_3d(dhdt, glacier_surface, bedrock, x, y):
     # choose property that is displayed on the glacier surface
 
     thickness = glacier_surface - bedrock
@@ -50,32 +50,31 @@ def visualise_3d(dhdt, glacier_surface, bedrock, x, y, color_map):
     bedrock_border[:, 0] = min_bedrock
     bedrock_border[:, -1] = min_bedrock
 
-    # create time frames for slider
-    glacier_surface[thickness < 10] = None
 
-    glacier_bottom = copy.copy(bedrock)
-    glacier_bottom[thickness < 1] = None
-    glacier_bottom += 10
 
-    for i, year in enumerate(range(2000, 2021, 1)):
+
+    for i, year in enumerate(range(2000, 2101, 1)):
         # create 3D surface plots with property as surface color
 
-        glacier_surface += dhdt * 2
-        thickness = glacier_surface - bedrock
+        # glacier_surface += dhdt * 2
+        # thickness = glacier_surface - bedrock
+
+        glacier_surface_year = glacier_surface[i]
+        thickness_year = thickness[i]
 
         # create time frames for slider
-        glacier_surface[thickness < 1] = None
+        glacier_surface_year[thickness_year < 1] = None
         surface_fig = go.Surface(
-            z=glacier_surface,
+            z=glacier_surface_year,
             x=lat_range,
             y=lon_range,
             colorscale=color_scale,
             cmin=min_property,
             cmax=max_property,
-            surfacecolor=color_map,
+            surfacecolor=thickness_year,
             showlegend=False,
             name="glacier surface",
-            colorbar=dict(title=title,
+            colorbar=dict(title= f"{year} Ice Thickness (m)",
                           titleside="top", thickness=25, orientation="h", y=0.75,
                           len=0.75,
                           titlefont=dict(size=40), tickfont=dict(size=40),
@@ -112,7 +111,7 @@ def visualise_3d(dhdt, glacier_surface, bedrock, x, y, color_map):
         resolution = int(lat_range[1] - lat_range[0])
         ratio_y = bedrock.shape[0] / bedrock.shape[1]
         ratio_z = (max_bedrock - min_bedrock) / (bedrock.shape[0] * resolution)
-        ratio_z *= 1  # emphasize z-axis to make mountians look twice as steep
+        ratio_z *= 2  # emphasize z-axis to make mountians look twice as steep
 
         # # transform angle[0-180] into values between [0, 1] for camera postion
         # radians = math.radians(camera_angle - 180)
@@ -153,7 +152,7 @@ def visualise_3d(dhdt, glacier_surface, bedrock, x, y, color_map):
                 margin=dict(l=0, r=0, t=0, b=0),
                 paper_bgcolor='rgba(0,0,0,0)',  # Make outer background transparent
                 plot_bgcolor='rgba(0,0,0,0)',
-                width=1520,
+                width=1080,
                 height=1080,
                 font=dict(family="monospace", size=10),
                 legend={"orientation": "h", "yanchor": "bottom", "xanchor": "left"},
@@ -192,7 +191,7 @@ def visualise_3d(dhdt, glacier_surface, bedrock, x, y, color_map):
                     ),
                 ),
                 scene_aspectratio=dict(x=1, y=ratio_y, z=ratio_z),
-                scene_camera_eye=dict(x=0, y=-1, z=1),
+                scene_camera_eye=dict(x=0, y=-1.5, z=1.5),
                 scene_camera_center=dict(x=0, y=0, z=0),
 
             ),
@@ -210,7 +209,7 @@ def visualise_3d(dhdt, glacier_surface, bedrock, x, y, color_map):
         # ])
         #
         # app.run_server(debug=True)
-        fig.write_image(f"../../Plots/3D/glacier_surface{year}.png")
+        fig.write_image(f"Plots/glacier_surface{year}.png")
 
 
 if __name__ == '__main__':

@@ -25,40 +25,19 @@ def scatter_plot(ax, x, y, xlabel, ylabel, title, ticks, glacier_names=None,
     bcmae = np.mean(np.abs(bc_didf))  # Bias-corrected MAE
     correlation = np.corrcoef(x, y)[0, 1]
     txt = (
-        f"Mean error: {mae:.2f}\n"
-        f"Pearson r: {correlation:.2f}"
+        f"Correlation: {correlation:.2f}\n"
+        f"Mean error: {mae:.2f}"
 
     )
     ax.text(0.95, 0.05,txt,
             transform=ax.transAxes,
             bbox=dict(facecolor='white', alpha=0.8),
-            verticalalignment='bottom',
+            verticalalignment='bottom', zorder=100,
             horizontalalignment='right')
 
     scatter_handles = []
     if glacier_names is None:
-        if color is None:
-
-
-            hb = ax.hexbin(x, y, gridsize=20,
-                           bins=None,  # linear scale
-                           cmap='viridis_r',
-                           linewidths=0, zorder=10,
-                           mincnt=1)  # leave hexagons with 0 counts blank
-
-            # make colorbar smaller
-            fig = ax.figure
-
-            cb = fig.colorbar(hb, ax=ax, shrink=0.8)  # shrink to 80%
-            cb.set_label("Number of glaciers")  # add label
-
-
-
-
-        else:
-            scatter = ax.scatter(x, y, c=color, cmap="Spectral_r", zorder=10)
-            #scatter = ax.scatter(x, y, c=color, cmap="viridis")
-
+        scatter = ax.scatter(x, y)
     else:
         for i, label in enumerate(glacier_names):
             scatter = ax.scatter(x[i], y[i], label=label,
@@ -70,7 +49,7 @@ def scatter_plot(ax, x, y, xlabel, ylabel, title, ticks, glacier_names=None,
                     width=2 * x_std[i],
                     height=2 * y_std[i],
                     edgecolor='none', facecolor=colors[i % len(colors)],
-                    alpha=0.2, zorder=2
+                    alpha=0.1, zorder=2
                 )
                 ax.add_patch(ellipse)
 

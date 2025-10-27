@@ -428,7 +428,7 @@ class Monitor:
                             step=self.resolution)
 
         cropped_bedrock = ensembleKF.bedrock[crop_padding:-crop_padding,
-                          crop_padding:-crop_padding]
+        crop_padding:-crop_padding]
 
         for row, col in product(range(nrows), range(ncols)):
             ax[row, col].imshow(cropped_bedrock, cmap='gray',

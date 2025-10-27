@@ -3,7 +3,7 @@
 # Published under the GNU GPL (Version 3), check the LICENSE file
 
 #SBATCH --nodes=1
-#SBATCH --time=00:59:59
+#SBATCH --time=02:59:00
 #SBATCH --job-name=frost
 ##SBATCH --gres=gpu:a100:1
 #SBATCH --output=data/results/log/frost_%j.out
