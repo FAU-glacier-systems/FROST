@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Load the data from CSV
-data = pd.read_csv("aggregated_results.csv")
+data = pd.read_csv("tables/aggregated_results.csv")
 
 # Glacier names to filter
 glacier_names = ["Kanderfirn", "Rhone", "Grosser Aletsch"]

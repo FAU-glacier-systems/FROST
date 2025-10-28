@@ -53,8 +53,8 @@ def main(rgi_id, rgi_id_dir, smb_model, synthetic, ensemble_size, inflation,
           f'Elevation step: {elev_band_height}',
           f'Observation uncertainty: {synth_obs_std}',
           f'Synthetic: {synthetic}',
-          f'Initial offset: {init_offset}'
-          f'Results directory: {rgi_id_dir}'
+          f'Initial offset: {init_offset}',
+          f'Results directory: {rgi_id_dir}',
           f'Forward parallel: {forward_parallel}')
 
     # Copy igm_user functions
@@ -65,17 +65,17 @@ def main(rgi_id, rgi_id_dir, smb_model, synthetic, ensemble_size, inflation,
             igm_lib_path = os.path.dirname(igm.__file__)
 
             # local igm library folder
-            dst_dir = os.path.join(igm_lib_path,'processes')
+            dst_dir = os.path.join(igm_lib_path, 'processes')
 
             # check if user functions are already in local IGM library
             # then remove them
-            if os.path.exists(os.path.join(dst_dir,afname)):
+            if os.path.exists(os.path.join(dst_dir, afname)):
                 # Remove pre-existing folder
-                shutil.rmtree(os.path.join(dst_dir,afname))
+                shutil.rmtree(os.path.join(dst_dir, afname))
 
             # Copy user-defined scripts 
             # Source directory of user defined function
-            src_dir = os.path.join('frost','igm_user','code','processes',afname)
+            src_dir = os.path.join('frost', 'igm_user', 'code', 'processes', afname)
 
             # Check the operating system and use the respective command
             if os.name == 'nt':  # Windows
@@ -86,18 +86,18 @@ def main(rgi_id, rgi_id_dir, smb_model, synthetic, ensemble_size, inflation,
             # Copy Directory
             os.system(cmd)
 
-            dst_dir = os.path.join(igm_lib_path,'conf','processes')
+            dst_dir = os.path.join(igm_lib_path, 'conf', 'processes')
 
             # check if user config files (function sepcific yaml) are already in local IGM library
             # then remove them
-            if os.path.exists(os.path.join(igm_lib_path,'conf','processes')+'/'+afname+'.yaml'):
+            if os.path.exists(os.path.join(igm_lib_path, 'conf', 'processes') + '/' + afname + '.yaml'):
                 # Remove pre-existing file
-                os.remove(os.path.join(igm_lib_path,'conf','processes')+'/'+afname+'.yaml')
+                os.remove(os.path.join(igm_lib_path, 'conf', 'processes') + '/' + afname + '.yaml')
 
             # Copy user-defined configuration files (yaml)
             # Source directory of user defined function
-            src_dir = os.path.join('frost','igm_user','conf','processes')+'/'+afname+'.yaml'
-                
+            src_dir = os.path.join('frost', 'igm_user', 'conf', 'processes') + '/' + afname + '.yaml'
+
             # Check the operating system and use the respective command
             if os.name == 'nt':  # Windows
                 cmd = f'copy "{src_dir}" "{dst_dir}"'
@@ -106,8 +106,6 @@ def main(rgi_id, rgi_id_dir, smb_model, synthetic, ensemble_size, inflation,
 
             # Copy Directory
             os.system(cmd)
-            
-
 
     # Initialise the Observation provider
     print("Initializing Observation Provider")
@@ -203,21 +201,21 @@ def main(rgi_id, rgi_id_dir, smb_model, synthetic, ensemble_size, inflation,
         for afname in script_list:
 
             # local igm library folder
-            dst_dir = os.path.join(igm_lib_path,'processes')
+            dst_dir = os.path.join(igm_lib_path, 'processes')
 
             # check if user functions are already in local IGM library
             # then remove them
-            if os.path.exists(os.path.join(dst_dir,afname)):
+            if os.path.exists(os.path.join(dst_dir, afname)):
                 # Remove pre-existing folder
-                shutil.rmtree(os.path.join(dst_dir,afname))
+                shutil.rmtree(os.path.join(dst_dir, afname))
 
-            dst_dir = os.path.join(igm_lib_path,'conf','processes')
+            dst_dir = os.path.join(igm_lib_path, 'conf', 'processes')
 
             # check if user config files (function sepcific yaml) are already in local IGM library
             # then remove them
-            if os.path.exists(os.path.join(igm_lib_path,'conf','processes')+'/'+afname+'.yaml'):
+            if os.path.exists(os.path.join(igm_lib_path, 'conf', 'processes') + '/' + afname + '.yaml'):
                 # Remove pre-existing file
-                os.remove(os.path.join(igm_lib_path,'conf','processes')+'/'+afname+'.yaml')
+                os.remove(os.path.join(igm_lib_path, 'conf', 'processes') + '/' + afname + '.yaml')
 
     print('Done')
 

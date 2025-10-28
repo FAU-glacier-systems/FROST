@@ -32,7 +32,7 @@ def build_glacier_labels(names: pd.Series, rgi_ids: pd.Series) -> list[str]:
     return labels
 
 
-def plot_glamos_vs_predictions(merged_df_glamos: pd.DataFrame, out_path: Path, merged_df_sla) -> None:
+def plot_glamos_vs_predictions(merged_df_glamos: pd.DataFrame, out_path: Path) -> None:
     # Extract arrays
     Modeled_ela = merged_df_glamos['ela'].to_numpy(dtype=float)
     Modeled_grad_abl = merged_df_glamos['gradabl'].to_numpy(dtype=float)
@@ -85,7 +85,7 @@ def plot_glamos_vs_predictions(merged_df_glamos: pd.DataFrame, out_path: Path, m
         ylabel="Modeled gradient (m$\,$yr$^{-1}\,$km$^{-1}$)",
         title="Ablation",
         glacier_names=glacier_names,
-        ticks=np.arange(0, 25, 5),
+        ticks=np.arange(0, 30, 6),
     )
 
     # Accumulation gradient
@@ -163,7 +163,7 @@ def plot_glamos_vs_predictions(merged_df_glamos: pd.DataFrame, out_path: Path, m
         ylabel="Modeled dhdt (m yr$^{-1}$)",
         title="Mean elevation change",
         glacier_names=glacier_names,
-        ticks=np.arange(-2, .1, .5),
+        ticks=np.arange(-3, 1.1, 1),
     )
 
     handles = scatter_handles_ela
@@ -387,7 +387,7 @@ def main():
     parser = argparse.ArgumentParser(
         description="Evaluate Modeled ELA and gradients using already-merged aggregated results.")
     parser.add_argument("--Modeled_results", type=str,
-                        default="../../experiments/central_europe_1000/aggregated_results"
+                        default="../../experiments/central_europe_1000/tables/aggregated_results"
                                 ".csv")
     parser.add_argument("--output_dir", type=str,
                         default="../central_europe_1000/plots")

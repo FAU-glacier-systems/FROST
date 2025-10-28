@@ -68,7 +68,7 @@ def scatter_plot(ax, x, y, xlabel, ylabel, title, ticks, glacier_names=None,
 
 
 # Read both CSV files
-velocity_df = pd.read_csv('../central_europe_1000/inversion_results.csv')
+velocity_df = pd.read_csv('../central_europe_1000/tables/inversion_results.csv')
 #aggregated_df = pd.read_csv('aggregated_results.csv')
 
 # Merge the dataframes on RGI_ID

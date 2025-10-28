@@ -14,7 +14,7 @@ SLA_PATH ="../../data/raw/central_europe/Alps_Glacier_EoS_SLA_2000-2019_stats.cs
 GLAMOS_PATH ="../../data/raw/glamos/GLAMOS_analysis_results.csv"
 
 
-INVERSION_PATH = "../central_europe_1000/inversion_results.csv"
+INVERSION_PATH = "../central_europe_1000/tables/inversion_results.csv"
 EXPERIMENTS_PATH = "../../data/results/central_europe_1000/glaciers"
 OUTPUT_CSV = "../central_europe_1000/aggregated_results.csv"
 
