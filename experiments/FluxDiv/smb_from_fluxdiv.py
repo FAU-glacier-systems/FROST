@@ -3,8 +3,7 @@ from netCDF4 import Dataset
 import matplotlib.pyplot as plt
 import numpy as np
 import copy
-import gstools as gs
-import Scripts.ObservationProvider as obs_provider
+import frost.calibration.observation_provider as obs_provider
 
 def main():
     # Path to the NetCDF file containing glacier observation data

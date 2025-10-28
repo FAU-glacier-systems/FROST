@@ -106,7 +106,7 @@ def plot_colored_correlation_points(data, factors, targets):
 
 
 # Load data
-csv_path = "../central_europe_1000/aggregated_results.csv"  # Update this with your CSV file path
+csv_path = "../central_europe_1000/tables/aggregated_results.csv"  # Update this with your CSV file path
 data = pd.read_csv(csv_path)
 
 # Define factors (independent variables) and targets (dependent variables)
