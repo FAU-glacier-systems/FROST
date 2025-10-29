@@ -41,6 +41,7 @@ class GlacierAnalysis:
         for i, year in enumerate(self.time):
             elevation_bin_df = glacier_df_bin[glacier_df_bin['end date of observation'].dt.year == year]
             mb = np.array(elevation_bin_df['annual mass balance'])
+
             elevation = np.array(elevation_bin_df['upper elevation of bin']) - 50
             abl_gradients.append(self.compute_gradient(mb, elevation, elas[i], 30,
                                                        negative=True))
@@ -64,7 +65,11 @@ class GlacierAnalysis:
         for glacier_name in self.df_glamos['glacier name'].dropna().unique():
             glacier_df = self.df_glamos[self.df_glamos['glacier name'] == glacier_name]
             elas, smb = self.get_ela_and_specific_mb(glacier_df)
-            glacier_df_bin = self.df_glamos_bin[self.df_glamos_bin['glacier name'] == glacier_name]
+            glacier_df_bin = self.df_glamos_bin[
+                (self.df_glamos_bin['glacier name'] == glacier_name)
+                & (self.df_glamos_bin['annual mass balance'] > -20000)
+                ]
+
             abl_gradients, acc_gradients = self.extract_gradients(glacier_df_bin, elas)
 
             record = {

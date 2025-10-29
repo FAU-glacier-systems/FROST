@@ -101,58 +101,6 @@ def plot_glamos_vs_predictions(merged_df_glamos: pd.DataFrame, out_path: Path) -
         glacier_names=glacier_names,
         ticks=np.arange(-2, 7, 2),
     )
-
-    scatter_handle_vel = scatter_plot(
-        ax=axes[7],
-        x=merged_df_glamos['Mean_velsurfobs_mag'].to_numpy(dtype=float),
-        y=merged_df_glamos['Mean_velsurf_mag'].to_numpy(dtype=float),
-        x_std=merged_df_glamos['Std_velsurfobs_mag'].to_numpy(dtype=float) / 2,
-        y_std=merged_df_glamos['Std_velsurf_mag'].to_numpy(dtype=float) / 2,
-        xlabel="Millan velocity (m$\,$yr$^{-1}$)",
-        ylabel="Modeled velocity of inversion (m$\,$yr$^{-1}$)",
-        title="Velocity 2000",
-        glacier_names=glacier_names,
-        ticks=np.arange(0, 54, 12),
-    )
-
-    scatter_handle_vel = scatter_plot(
-        ax=axes[5],
-        x=merged_df_glamos['dhdt_mean'].to_numpy(dtype=float),
-        y=merged_df_glamos['annual_mass_balance'].to_numpy(dtype=float)/1000,
-        x_std=merged_df_glamos['dhdt_std']/4,
-        y_std=merged_df_glamos['annual_mass_balance_std']/1000,
-        xlabel="Hugonnet dhdt (m$\,$yr$^{-1}$)",
-        ylabel="GLAMOS mass balance (m w.e. $\,$yr$^{-1}$)",
-        title="Hugonnet vs GLAMOS",
-        glacier_names=glacier_names,
-        ticks=np.arange(-2, .1, .5),
-    )
-    scatter_handle_vel = scatter_plot(
-        ax=axes[8],
-        x=merged_df_glamos['Mean_velsurfobs_mag'].to_numpy(dtype=float),
-        y=merged_df_glamos['vel_ensemble_year20'].to_numpy(dtype=float),
-        x_std=merged_df_glamos['Std_velsurfobs_mag'].to_numpy(dtype=float) / 2,
-        y_std=merged_df_glamos['Std_velsurf_mag'].to_numpy(dtype=float) / 2,
-        xlabel="Millan velocity (m$\,$yr$^{-1}$)",
-        ylabel="Modeled velocity after 20 years(m$\,$yr$^{-1}$)",
-        title="Velocity 2020",
-        glacier_names=glacier_names,
-        ticks=np.arange(0, 54, 12),
-    )
-
-    scatter_handle_thk = scatter_plot(
-        ax=axes[6],
-        x=merged_df_glamos['Mean_thk_obs'].to_numpy(dtype=float),
-        y=merged_df_glamos['Mean_thk_model_at_obs'].to_numpy(dtype=float),
-        x_std=merged_df_glamos['Std_thk_obs'].to_numpy(dtype=float) / 2,
-        y_std=merged_df_glamos['Std_thk_model_at_obs'].to_numpy(dtype=float) / 2,
-        xlabel="GlaThiDa thickness(m)",
-        ylabel="Modeled thickness (m)",
-        title="Thickness",
-        glacier_names=glacier_names,
-        ticks=np.arange(0, 281, 65),
-    )
-
     scatter_handles_acc = scatter_plot(
         ax=axes[3],
         x=merged_df_glamos['dhdt_mean'],
@@ -163,8 +111,64 @@ def plot_glamos_vs_predictions(merged_df_glamos: pd.DataFrame, out_path: Path) -
         ylabel="Modeled dhdt (m yr$^{-1}$)",
         title="Mean elevation change",
         glacier_names=glacier_names,
-        ticks=np.arange(-3, 1.1, 1),
+        ticks=np.arange(-2, 0.1, 0.5),
     )
+
+
+    scatter_handle_vel = scatter_plot(
+        ax=axes[5],
+        x=merged_df_glamos['dhdt_mean'].to_numpy(dtype=float),
+        y=merged_df_glamos['annual_mass_balance'].to_numpy(dtype=float) / 1000,
+        x_std=merged_df_glamos['dhdt_std'] / 4,
+        y_std=merged_df_glamos['annual_mass_balance_std'] / 1000,
+        xlabel="Hugonnet dhdt (m$\,$yr$^{-1}$)",
+        ylabel="GLAMOS mass balance (m w.e. $\,$yr$^{-1}$)",
+        title="Hugonnet vs GLAMOS",
+        glacier_names=glacier_names,
+        ticks=np.arange(-2, .1, .5),
+    )
+
+    if merged_df_glamos.__contains__('Mean_velsurfobs_mag'):
+        scatter_handle_vel = scatter_plot(
+            ax=axes[7],
+            x=merged_df_glamos['Mean_velsurfobs_mag'].to_numpy(dtype=float),
+            y=merged_df_glamos['Mean_velsurf_mag'].to_numpy(dtype=float),
+            x_std=merged_df_glamos['Std_velsurfobs_mag'].to_numpy(dtype=float) / 2,
+            y_std=merged_df_glamos['Std_velsurf_mag'].to_numpy(dtype=float) / 2,
+            xlabel="Millan velocity (m$\,$yr$^{-1}$)",
+            ylabel="Modeled velocity of inversion (m$\,$yr$^{-1}$)",
+            title="Velocity 2000",
+            glacier_names=glacier_names,
+            ticks=np.arange(0, 54, 12),
+        )
+
+
+        scatter_handle_vel = scatter_plot(
+            ax=axes[8],
+            x=merged_df_glamos['Mean_velsurfobs_mag'].to_numpy(dtype=float),
+            y=merged_df_glamos['vel_ensemble_year20'].to_numpy(dtype=float),
+            x_std=merged_df_glamos['Std_velsurfobs_mag'].to_numpy(dtype=float) / 2,
+            y_std=merged_df_glamos['Std_velsurf_mag'].to_numpy(dtype=float) / 2,
+            xlabel="Millan velocity (m$\,$yr$^{-1}$)",
+            ylabel="Modeled velocity after 20 years(m$\,$yr$^{-1}$)",
+            title="Velocity 2020",
+            glacier_names=glacier_names,
+            ticks=np.arange(0, 54, 12),
+        )
+
+        scatter_handle_thk = scatter_plot(
+            ax=axes[6],
+            x=merged_df_glamos['Mean_thk_obs'].to_numpy(dtype=float),
+            y=merged_df_glamos['Mean_thk_model_at_obs'].to_numpy(dtype=float),
+            x_std=merged_df_glamos['Std_thk_obs'].to_numpy(dtype=float) / 2,
+            y_std=merged_df_glamos['Std_thk_model_at_obs'].to_numpy(dtype=float) / 2,
+            xlabel="GlaThiDa thickness(m)",
+            ylabel="Modeled thickness (m)",
+            title="Thickness",
+            glacier_names=glacier_names,
+            ticks=np.arange(0, 281, 65),
+        )
+
 
     handles = scatter_handles_ela
     leg = fig.legend(
@@ -387,10 +391,10 @@ def main():
     parser = argparse.ArgumentParser(
         description="Evaluate Modeled ELA and gradients using already-merged aggregated results.")
     parser.add_argument("--Modeled_results", type=str,
-                        default="../../experiments/central_europe_1000/tables/aggregated_results"
+                        default="../../experiments/glamos_relaxation/tables/aggregated_results"
                                 ".csv")
     parser.add_argument("--output_dir", type=str,
-                        default="../central_europe_1000/plots")
+                        default="../glamos_relaxation/plots")
     parser.add_argument("--top_n", type=int, default=10, help="How many top SLA-ELA differences to print")
     args = parser.parse_args()
 
@@ -442,7 +446,7 @@ def main():
         merged_df_glamos_sla.get('rgi_id', pd.Series([""] * len(merged_df_glamos_sla))),
     )
 
-    plot_glamos_vs_predictions(merged_df_glamos, out_dir / "GLAMOS_regional_run.pdf", merged_df_sla)
+    plot_glamos_vs_predictions(merged_df_glamos, out_dir / "GLAMOS_regional_run.pdf")
 
     plot_sla_vs_predictions(merged_df_sla, out_dir / "SLA_regional_run.pdf")
 
