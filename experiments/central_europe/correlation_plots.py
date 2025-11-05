@@ -1,6 +1,5 @@
 import pandas as pd
 import matplotlib.pyplot as plt
-from scipy.stats import pearsonr
 import numpy as np
 from scipy.stats import spearmanr
 
@@ -10,122 +9,82 @@ labels = {
     "zmax_m": "Max.\nelevation (m)",
     "EastWest": "East–West\norientation",
     "SouthNorth": "South–North\norientation",
-    "zmean_m": "Mean\nelevation (m)",
-    "cenlon": "Central\nlongitude (°E)",
-    "cenlat": "Central\nlatitude (°N)",
-    "slope_deg": "Mean\nslope (°)",
+    "zmean_m": "Mean\nelevation \n(m)",
+    "cenlon": "Central\nlongitude \n(°E)",
+    "cenlat": "Central\nlatitude\n (°N)",
+    "slope_deg": "Mean\nslope\n (°)",
 
     "ela": "Equilibrium-line\naltitude (m)",
-    "gradabl": "Ablation\ngradient\n(m a⁻¹ km⁻¹)",
-    "gradacc": "Accumulation\ngradient\n(m a⁻¹ km⁻¹)",
+    "gradabl": "Ablation\ngradient\n(m yr⁻¹ km⁻¹)",
+    "gradacc": "Accumulation\ngradient\n(m yr⁻¹ km⁻¹)",
     "ela_std": "ELA\nstd (m)",
-    "gradabl_std": "Ablation\ngradient\nstd (m a⁻¹ km⁻¹)",
-    "gradacc_std": "Accumulation\ngradient\nstd (m a⁻¹ km⁻¹)"
+    "gradabl_std": "Ablation\ngradient\nstd (m yr⁻¹ km⁻¹)",
+    "gradacc_std": "Accumulation\ngradient\nstd (m yr⁻¹ km⁻¹)"
 }
 
 def plot_colored_correlation_points(data, factors, targets):
-    """
-    Generate subplots correlating multiple factors with specific target variables,
-    color points in the scatter plots based on the correlation coefficient, and
-    adjust layout to show labels only on outer axes.
-
-    :param data: DataFrame containing the data.
-    :param factors: List of column names to correlate with targets (independent variables).
-    :param targets: List of target column names (dependent variables).
-    """
     num_factors = len(factors)
     num_targets = len(targets)
 
-    fig, axes = plt.subplots(num_targets, num_factors,
-                             figsize=(1.5*num_factors, 1.3 * num_targets),
+    fig, axes = plt.subplots(num_factors, num_targets,
+                             figsize=(1.5 * num_targets, 1* num_factors),
                              squeeze=False)
 
-    cmap = "RdBu_r"  # Colormap for points
-    norm = plt.Normalize(-1, 1)  # Normalize correlation values between -1 and 1
-    size = data['area_km2']
-    for i, target in enumerate(targets):
-        for j, factor in enumerate(factors):
-            ax = axes[i][j]
-
-            # Extract columns
+    for i, factor in enumerate(factors):        # colums
+        for j, target in enumerate(targets):    # rows
+            ax = axes[i, j]
             x = data[factor]
             y = data[target]
 
-            # Calculate the Pearson correlation coefficient
-            corr_coef, _ = spearmanr(x, y)
+            # Compute correlation
+            corr, _ = spearmanr(x, y, nan_policy='omit')
 
-            # Scatter plot, with uniform point color based on `corr_coef`
-            ax.scatter(x, y, #c=[corr_coef] * len(x), cmap=cmap,
-                            norm=norm,
-                            alpha=0.8, edgecolor='k', s=size)
+            # Scaled area for better visibility
+            s = data["area_km2"]
 
-            # Annotate correlation coefficient
-            ax.annotate(f"r = {corr_coef:.2f}",
-                        xy=(0.05, 0.90), xycoords="axes fraction",
-                        fontsize=10, ha="left", va="top",
+            ax.scatter(y, x, s=s, alpha=0.7, edgecolor='k')
+
+            # Annotate correlation
+            ax.annotate(f"r = {corr:.2f}",
+                        xy=(0.05, 0.9), xycoords="axes fraction",
+                        fontsize=9, ha="left", va="top",
                         bbox=dict(boxstyle="round", facecolor="white", alpha=0.8))
 
             if factor == "area_km2":
-                ax.set_xscale("log")
+                ax.set_yscale("log")
 
-            # Axis labels: Only set if on the outer rows/columns
-            if i == num_targets - 1:  # Bottom row
-                ax.set_xlabel(labels[factor])
+
+
+            # Only first column gets y labels
+            if j == 0:
+                ax.set_ylabel(labels[factor])
             else:
-                ax.set_xticklabels([])  # Remove inner plots' x-axis labels
-            if j == 0:  # First column
-                ax.set_ylabel(labels[target])
+                ax.set_yticklabels([])
+
+            # Only bottom row gets x labels
+            if i == num_factors - 1:
+                ax.set_xlabel(labels[target])
             else:
-                ax.set_yticklabels([])  # Remove inner plots' y-axis labels
+                ax.set_xticklabels([])
 
-            # Titles for the first row based on the x-label (factor)
+            ax.grid(True, linestyle='--', alpha=0.1)
 
-            # Clean up grid and style
-            ax.grid(visible=True, linestyle='--', alpha=0.5)
-
-    # # Add a single colorbar in the figure, not overlaying plots
-    # # cbar = fig.colorbar(
-    # #     plt.cm.ScalarMappable(cmap=cmap, norm=norm),
-    # #     ax=axes,
-    # #     orientation='horizontal', location='top',
-    # # )
-    # cbar.ax.set_position([0.1, 0.92, 0.8, 0.02])  # adjust values as needed
-    #
-    # cbar.set_label("Correlation Coefficient (r)")
-    # cbar.ax.xaxis.set_label_position('top')  # Move label above the colorbar
-    # cbar.ax.xaxis.set_ticks_position('bottom')  # Keep ticks below
-    # fig.subplots_adjust(
-    #     wspace=0.5,  # width (horizontal) space between subplots
-    #     hspace=0.5  # height (vertical) space between subplots
-    # )
-    # Tight layout for better spacing and adjustments
-    # Adjust to include colorbar and titles
-    #plt.tight_layout(rect=[0, 0, 1, 0.88])
     plt.tight_layout()
-    plt.savefig("plots/correlation.pdf")
+    plt.subplots_adjust(wspace=0.15, hspace=0.15)  # smaller values = less space
+
+    plt.savefig("../central_europe_submit/plots/correlation.pdf")
+    plt.close(fig)
 
 
-# Load data
-csv_path = "../central_europe_1000/tables/aggregated_results.csv"  # Update this with your CSV file path
+# Load and clean data
+csv_path = "../central_europe_submit/tables/aggregated_results.csv"
 data = pd.read_csv(csv_path)
 
-# Define factors (independent variables) and targets (dependent variables)
 factors = ["area_km2", "lmax_m", "zmax_m", "EastWest", "SouthNorth",
            "zmean_m", "cenlon", "cenlat", "slope_deg"]
 targets = ["ela", "gradabl", "gradacc", "ela_std", "gradabl_std", "gradacc_std"]
 
+data[factors + targets] = data[factors + targets].apply(pd.to_numeric, errors="coerce")
+filtered_data = data.dropna(subset=factors + targets)
 
-
-# Convert required columns to numeric, ignoring errors
-columns_to_include = factors  # + targets
-data[columns_to_include] = data[columns_to_include].apply(pd.to_numeric, errors="coerce")
-
-# Filter data to avoid NaN issues
-filtered_data = data.dropna(subset=factors)
-# Duplicate target columns with a new name
-for col in targets:
-    new_col = f"{col}_"
-    filtered_data[new_col] = filtered_data[col]
-
-# Generate correlation plots with adjusted layout
 plot_colored_correlation_points(filtered_data, factors, targets)

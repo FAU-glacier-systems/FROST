@@ -8,15 +8,14 @@ import xarray as xr
 from os.path import join, dirname, exists
 
 # Global paths
-#RGI_FILES_PATH = "../../data/raw/central_europe/Split_Files"
+# RGI_FILES_PATH = "../../data/raw/central_europe/Split_Files"
 RGI_FILES_PATH = "../../data/raw/central_europe/Split_Files"
-SLA_PATH ="../../data/raw/central_europe/Alps_Glacier_EoS_SLA_2000-2019_stats.csv"
-GLAMOS_PATH ="../../data/raw/glamos/GLAMOS_analysis_results.csv"
+SLA_PATH = "../../data/raw/central_europe/Alps_Glacier_EoS_SLA_2000-2019_stats.csv"
+GLAMOS_PATH = "../../data/raw/glamos/GLAMOS_analysis_results.csv"
 
-
-INVERSION_PATH = "../central_europe_1000/tables/inversion_results.csv"
-EXPERIMENTS_PATH = "../../data/results/central_europe_1000/glaciers"
-OUTPUT_CSV = "../central_europe_1000/aggregated_results.csv"
+INVERSION_PATH = "../central_europe_submit/tables/inversion_results.csv"
+EXPERIMENTS_PATH = "../../data/results/central_europe_submit/glaciers"
+OUTPUT_CSV = "../central_europe_submit/tables/aggregated_results.csv"
 
 
 def load_and_collect_results(parts):
@@ -60,7 +59,7 @@ def load_and_collect_results(parts):
                     # Combine all RGI data columns + computed fields
                     row_data = row.to_dict()
                     aspect_deg = row_data.pop("aspect_deg")
-                    
+
                     # Convert degrees to radians for calculations
                     aspect_rad = np.radians(aspect_deg)
 
@@ -70,7 +69,7 @@ def load_and_collect_results(parts):
                         vel_data_ensemble = []
                         smb_data_ensemble = []
                         dhdt_data_ensemble = []
-                        for member in os.listdir(ensemble_path)[::10]:
+                        for member in os.listdir(ensemble_path)[::2]:
                             output_path = join(ensemble_path, member, 'outputs', 'output.nc')
                             if exists(output_path):
                                 try:
@@ -91,8 +90,7 @@ def load_and_collect_results(parts):
                                                     smb_year = smb[idx].values[ds['thk'][idx] > 1]
                                                     smb_data_member.append(np.nanmean(smb_year))
 
-
-                                            dhdt = (usurf[2].values - usurf[0].values)/20
+                                            dhdt = (usurf[2].values - usurf[0].values) / 20
 
                                             dhdt_data_ensemble.append(np.mean(dhdt[ds['thk'][0] > 1]))
 
@@ -111,18 +109,16 @@ def load_and_collect_results(parts):
                         dhdt_data_ensemble_mean = np.nanmean(dhdt_data_ensemble, axis=0)
                         dhdt_data_ensemble_std = np.nanstd(dhdt_data_ensemble, axis=0)
 
-
                     observations_path = join(dirname(result_path), 'observations.nc')
 
                     with xr.open_dataset(observations_path) as ds:
                         usurf_obs = ds['usurf']
                         thk = ds['thk'][0]
 
-                        dhdt = (usurf_obs[1].values - usurf_obs[0].values)/20
+                        dhdt = (usurf_obs[1].values - usurf_obs[0].values) / 20
                         dhdt_mean = np.mean(dhdt[thk > 1])
 
-
-                        thk_mask = ds['thk'][0]>1
+                        thk_mask = ds['thk'][0] > 1
                         dhdt_err = ds['dhdt_err'][1].to_numpy()
                         dhdt_err = dhdt_err[thk_mask.to_numpy()]
                         dhdt_std = dhdt_err.mean()
@@ -188,7 +184,7 @@ def main():
     """
     Main function to run the script.
     """
-    parts = np.arange(1, 42)  # Update as needed
+    parts = np.arange(1, 43)  # Update as needed
     combined_results = load_and_collect_results(parts)
 
     if not combined_results.empty:
@@ -204,7 +200,8 @@ def main():
         if os.path.exists(SLA_PATH):
             sla_df_all = pd.read_csv(SLA_PATH)
             sla_cols = [c for c in sla_df_all.columns if c in ("rgi_id", "sla_mean", "sla_n")]
-            sla_df = sla_df_all.loc[:, sla_cols].copy() if sla_cols else pd.DataFrame(columns=["rgi_id", "sla_mean", "sla_n"])
+            sla_df = sla_df_all.loc[:, sla_cols].copy() if sla_cols else pd.DataFrame(
+                columns=["rgi_id", "sla_mean", "sla_n"])
         else:
             print(f"Warning: SLA_PATH '{SLA_PATH}' not found. Skipping SLA merge.")
             sla_df = pd.DataFrame(columns=["rgi_id", "sla_mean", "sla_n"])
