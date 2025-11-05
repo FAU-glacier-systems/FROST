@@ -1,4 +1,4 @@
-name: frost_env
+name: frost_env_igm3
 dependencies:
   - python=3.10
   - pip
@@ -7,3 +7,4 @@ dependencies:
       - gstools
       - dash
       - utm
+      - rioxarray
