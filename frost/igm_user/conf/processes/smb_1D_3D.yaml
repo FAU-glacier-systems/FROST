@@ -1,0 +1,9 @@
+smb_1D_3D:
+  update_freq: 1
+  ice_density: 910.0
+  wat_density: 1000.0
+  melt_enhancer: 1
+  temp_all_solid: 0.0
+  temp_all_liquid: 2.0
+  temp_melt: -1.0
+  melt_f: 6.5
