@@ -125,7 +125,7 @@ def plot_map_with_annotations(
     if value_column == "ela" or value_column == "sla":
         scatter = ax.scatter(
             gdf.geometry.x, gdf.geometry.y,
-            c=colors, s=sizes, vmin=2700, vmax=3700,
+            c=colors, s=sizes, vmin=2850, vmax=3550,
             transform=utm_crs, cmap=color_map,
             zorder=10, alpha=1, edgecolor='k', linewidth=0.8,
         )
@@ -178,14 +178,14 @@ def plot_map_with_annotations(
     elif value_column == "gradabl":
         scatter = ax.scatter(
             gdf.geometry.x, gdf.geometry.y,
-            c=colors, s=sizes, vmin=0, vmax=20,
+            c=colors, s=sizes, vmin=0, vmax=16,
             transform=utm_crs, cmap=color_map,
             zorder=10, alpha=1, edgecolor='k', linewidth=0.8,
         )
     elif value_column == "gradacc":
         scatter = ax.scatter(
             gdf.geometry.x, gdf.geometry.y,
-            c=colors, s=sizes, vmin=-300, vmax=300,
+            c=colors, s=sizes, vmin=0, vmax=6,
             transform=utm_crs, cmap=color_map,
             zorder=10, alpha=1, edgecolor='k', linewidth=0.8,
         )
@@ -363,7 +363,7 @@ def plot_map_with_annotations(
 def main():
     # File paths
     dem_path = "../../data/raw/visualization_context/alpsDEM.tif"
-    csv_path = "tables/aggregated_results.csv"
+    csv_path = "../central_europe_submit/tables/aggregated_results.csv"
     sla_path = "../../data/raw/central_europe/Alps_EOS_SLA_2000-2019_mean.csv"
     country_paths = [
         "../../data/raw/visualization_context/gadm41_CHE_shp/gadm41_CHE_0.shp",
@@ -401,7 +401,7 @@ def main():
     print("Plotting map for 'ela'...")
     plot_map_with_annotations(
         dem_data, extent, gdf,
-        save_path="../central_europe/plots/ALPS_ela_sla_scatter.pdf",
+        save_path="../central_europe_submit/plots/ALPS_ela_sla_scatter.pdf",
         country_paths=country_paths,
         value_column="ela_sla",  # Column for ELA
         color_map="viridis_r",  # Colormap
@@ -411,7 +411,7 @@ def main():
 
     plot_map_with_annotations(
         dem_data, extent, gdf,
-        save_path="../central_europe/plots/ALPS_ela_Scatter.pdf",
+        save_path="../central_europe_submit/plots/ALPS_ela_Scatter.pdf",
         country_paths=country_paths,
         value_column="ela",  # Column for ELA
         color_map="viridis_r",  # Colormap
@@ -423,27 +423,27 @@ def main():
     print("Plotting map for 'gradabl'...")
     plot_map_with_annotations(
         dem_data, extent, gdf,
-        save_path="../central_europe/plots/ALPS_gradabl_Scatter.pdf",
+        save_path="../central_europe_submit/plots/ALPS_gradabl_Scatter.pdf",
         country_paths=country_paths,
         value_column="gradabl",  # Column for Gradient Ablation
         color_map="Reds",       # Colormap
-        colorbar_label="Gradient Ablation (m/a/km)"
+        colorbar_label="Gradient Ablation (m$\,$yr$^{-1}\,$km$^{-1}$)"
     )
 
     # Map for "gradacc" (blues)
     print("Plotting map for 'gradacc'...")
     plot_map_with_annotations(
         dem_data, extent, gdf,
-        save_path="../central_europe/plots/ALPS_gradacc_Scatter.pdf",
+        save_path="../central_europe_submit/plots/ALPS_gradacc_Scatter.pdf",
         country_paths=country_paths,
         value_column="gradacc",  # Column for Gradient Accumulation
         color_map="Blues",       # Colormap
-        colorbar_label="Gradient Accumulation (m/a/km)"
+        colorbar_label="Gradient Accumulation (m$\,$yr$^{-1}\,$km$^{-1}$)"
     )
 
     plot_map_with_annotations(
         dem_data, extent, gdf,
-        save_path="../central_europe/plots/ALPS_sla_Scatter.pdf",
+        save_path="../central_europe_submit/plots/ALPS_sla_Scatter.pdf",
         country_paths=country_paths,
         value_column="sla",  # Column for ELA
         color_map="viridis_r",  # Colormap
@@ -453,7 +453,7 @@ def main():
 
     plot_map_with_annotations(
         dem_data, extent, gdf,
-        save_path="../central_europe/plots/ALPS_difslaela_Scatter.pdf",
+        save_path="../central_europe_submit/plots/ALPS_difslaela_Scatter.pdf",
         country_paths=country_paths,
         value_column="sla_ela_diff",  # Column for ELA
         color_map="RdBu",  # Colormap

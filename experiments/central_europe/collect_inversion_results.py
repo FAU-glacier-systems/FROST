@@ -4,10 +4,10 @@ import csv
 import numpy as np
 
 # Input directory with glacier subfolders
-data_dir = "../../data/results/central_europe_1000/glaciers"
+data_dir = "../../data/results/central_europe_submit/glaciers"
 
 # Single combined CSV
-out_csv = "../central_europe_1000/inversion_results.csv"
+out_csv = "../central_europe_submit/tables/inversion_results.csv"
 
 # Header (velocity + thickness-at-observations)
 HEADER = [
