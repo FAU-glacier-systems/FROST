@@ -1,4 +1,5 @@
-#   ![Status Example](assets/logo.png) FROST
+# <img src="assets/logo.png" alt="FROST logo" width="40" style="vertical-align: middle;"/> FROST
+
 
 **F**ramework for assimilating **R**emote-sensing **O**bservations for **S**urface
 mass balance **T**uning
