@@ -1,8 +1,4 @@
-# <img src="assets/logo.png" alt="FROST logo" width="40" style="vertical-align: middle;"/> FROST
-
-
-**F**ramework for assimilating **R**emote-sensing **O**bservations for **S**urface
-mass balance **T**uning
+# <img src="assets/frost_log.png" alt="FROST logo" width="64" style="vertical-align: middle;"/> **F**ramework for assimilating **R**emote-sensing **O**bservations for **S**urfacemass balance **T**uning
 
 FROST is a data assimilation framework tailored for glacier modeling.
 It couples the [IGM](https://github.com/instructed-glacier-model/igm) 3D glacier
