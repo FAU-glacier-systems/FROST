@@ -1,4 +1,4 @@
-# ❄️ FROST
+#   ![Status Example](assets/logo.png) FROST
 
 **F**ramework for assimilating **R**emote-sensing **O**bservations for **S**urface
 mass balance **T**uning
