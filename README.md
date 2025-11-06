@@ -23,7 +23,6 @@ results.
    ```bash
    git clone git@github.com:FAU-glacier-systems/FROST.git
    cd FROST
-   git checkout hydra
    ```
 
 2. Create a virtual environment with conda
