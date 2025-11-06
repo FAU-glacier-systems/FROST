@@ -1,6 +1,8 @@
-<img src="assets/frost_log.png" alt="FROST logo" width="100" align="left" style="margin-right:15px;"/>
-
-## **F**ramework for assimilating **R**emote-sensing **O**bservations for **S**urfacemass balance **T**uning
+<h2>
+  <img src="assets/frost_log.png" alt="FROST logo" width="100" align="left">
+  <b>F</b>ramework for assimilating <b>R</b>emote-sensing <b>O</b>bservations for <b>S</b>urface<br>
+  mass balance <b>T</b>uning
+</h2>
 
 
 FROST is a data assimilation framework tailored for glacier modeling.
