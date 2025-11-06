@@ -1,16 +1,10 @@
-<table style="border: none; border-collapse: collapse; width: 100%;">
-  <tr style="border: none;">
-    <td style="border: none; padding: 0 16px 0 0; vertical-align: middle; width: 100px;">
-      <img src="assets/frost_log.png" alt="FROST logo" width="100"/>
-    </td>
-    <td style="border: none; padding: 0; vertical-align: middle;">
-      <h1 style="margin: 0;">
-        <strong>F</strong>ramework for assimilating <strong>R</strong>emote-sensing <strong>O</strong>bservations for <strong>S</strong>urface  
-        mass balance <strong>T</strong>uning
-      </h1>
-    </td>
-  </tr>
-</table>
+<p align="left">
+  <img src="assets/frost_log.png" alt="FROST logo" width="110" style="float:left; margin-right:18px;"/>
+  <span style="font-size:1.8em;">
+    <strong>F</strong>ramework for assimilating <strong>R</strong>emote-sensing <strong>O</strong>bservations for <strong>S</strong>urface mass balance <strong>T</strong>uning
+  </span>
+</p>
+
 
 
 
