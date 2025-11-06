@@ -1,6 +1,6 @@
 <h2>
   <img src="assets/frost_log.png" alt="FROST logo" width="100" align="left">
-  <b>F</b>ramework for assimilating <b>R</b>emote-sensing <b>O</b>bservations for <b>S</b>urface<br>
+  <b>F</b>ramework for assimilating <b>R</b>emote-sensing <b>O</b>bservations for <b>S</b>urface
   mass balance <b>T</b>uning<br>
 </h2>
 
