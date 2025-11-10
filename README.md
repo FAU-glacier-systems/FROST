@@ -22,20 +22,22 @@ calibrated results.
    git clone git@github.com:FAU-glacier-systems/FROST.git
    ```
 
-2. Install the IGM model next to FROST (Hydra-compatible)
-
-   ```bash
-   git clone https://github.com/jouvetg/igm 
-   pip install -e igm/
-   ```
-   
-3. Create a virtual environment with conda
+2. Create a virtual environment with conda
 
    ```bash
    cd FROST
    conda env create -f environment.yml
    conda activate frost_env
    ```
+   
+3. Install the IGM model next to FROST 
+
+   ```bash
+   git clone https://github.com/jouvetg/igm 
+   pip install -e igm/
+   ```
+   
+
 
 
 
