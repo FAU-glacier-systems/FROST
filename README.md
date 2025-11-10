@@ -6,13 +6,11 @@
 
 
 FROST is a data assimilation framework tailored for glacier modeling.
-It couples the [IGM](https://github.com/instructed-glacier-model/igm) 3D glacier
-model
-with an Ensemble Kalman Filter (EnKF) to calibrate glacier-specific surface mass
-balance (SMB) parameters using remote sensing observations. The method is
+It couples the 3D glacier model [IGM](https://github.com/instructed-glacier-model/igm)
+with an Ensemble Kalman Filter to calibrate glacier-specific surface mass
+balance parameters using remote sensing observations. The method is
 derivative-free, and scalable. It also provides uncertainty estimates alongside 
-calibrated
-results.
+calibrated results.
 
 ---
 
@@ -37,9 +35,7 @@ results.
    ```bash
    cd ..
    git clone https://github.com/jouvetg/igm 
-   cd igm
-   git checkout feature/hydra
-   pip install -e .
+   pip install -e igm/
    ```
 
 ---
