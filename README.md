@@ -33,6 +33,7 @@ calibrated results.
 3. Install the IGM model next to FROST 
 
    ```bash
+   cd ..
    git clone https://github.com/jouvetg/igm 
    pip install -e igm/
    ```
