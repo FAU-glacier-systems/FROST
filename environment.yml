@@ -6,3 +6,7 @@ dependencies:
   - numpy
   - xarray
   - dash
+  - rioxarray
+  - utm
+  - pyvista
+  - gstools
