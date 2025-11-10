@@ -53,7 +53,7 @@ calibrated results.
    python frost_pipeline.py --config experiments/<experiment-name>/config.yml 
    ```
     A overview of the pipeline is shown below:
-    ![FROST Pipeline](assets/pipeline.svg)
+    ![FROST Pipeline](assets/Pipeline.png)
 
 4. View the results:
 
