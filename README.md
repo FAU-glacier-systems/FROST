@@ -36,13 +36,13 @@ calibrated results.
 
 1. Duplicate the `experiments/test_default` folder and rename it to your custom
    experiment name, e.g., `experiments/my_run`.
-   Adapt the `config.yml` to your target glacier and desired setup e.g rgi_id
-2. Download elevation change product and adapt the path in `config.yml`:
+   Adapt the `config.yml` to your target glacier and desired setup e.g. rgi_id and experiment_name
+2. Download elevation change product and adapt the path in `config.yml` e.g. 'data/raw/hugonnet/11_rgi60_2000-01-01_2020-01-01'
    https://www.sedoo.fr/theia-publication-products/?uuid=c428c5b9-df8f-4f86-9b75-e04c778e29b9
 3. Run the pipeline
 
    ```bash
-   python frost_pipeline.py --config experiments/<experiment-name>/config.yml 
+   python frost_pipeline.py --config experiments/<experiment-name>/pipeline_config.yml 
    ```
     A overview of the pipeline is shown below:
     ![FROST Pipeline](assets/Pipeline.png)
