@@ -7,6 +7,9 @@ dependencies:
   - xarray
   - dash
   - rioxarray
-  - utm
-  - pyvista
-  - gstools
+  - pip:
+    - utm
+    - pyvista
+    - gstools
+    - git+https://github.com/instructed-glacier-model/igm@v3.0.1
+
