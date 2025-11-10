@@ -7,6 +7,7 @@ defaults:
 - override /processes:
   - data_assimilation
   - iceflow
+  - thk
 - override /outputs: []
 inputs:
   load_ncdf:
@@ -47,11 +48,11 @@ processes:
     fitting:
       thkobs_std: 1
       usurfobs_std: 1
-      velsurfobs_std: 0.1
+      velsurfobs_std: 1
     optimization:
       retrain_iceflow_model: true
-      nbitmin: 0
-      nbitmax: 0
+      nbitmax: 1000
+      nb_relaxation_steps: 1000
     regularization:
       thk: 10
       slidingco: 10
