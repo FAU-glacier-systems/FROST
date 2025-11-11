@@ -6,7 +6,6 @@
 import argparse
 import os.path
 import shutil
-import igm
 
 from frost.calibration.ensemble_kalman_filter import EnsembleKalmanFilter
 from frost.calibration.observation_provider import ObservationProvider
@@ -174,14 +173,19 @@ def main(rgi_id, rgi_id_dir, smb_model, synthetic, ensemble_size, inflation,
             ensemble_observables=ensemble_observables,
             noise_samples=noise_samples)
 
+        if i==iterations:
+            write_json=True
+        else:
+            write_json=False
         monitor.plot_maps_prognostic(ensembleKF,
                                      obs_dhdt_raster,
                                      obs_velsurf_mag_raster,
                                      init_surf_bin,
                                      new_observation,
+                                     noise_samples,
                                      ensemble_observables,
                                      uncertainty=noise_matrix,
-                                     iteration=i, year=year)
+                                     iteration=i, year=year, write_json=write_json)
 
         # monitor.visualise_3d(obs_provider.ensemble_usurf[0],
         #                      ensembleKF.ensemble_usurf[0], ensembleKF.bedrock, 2000,

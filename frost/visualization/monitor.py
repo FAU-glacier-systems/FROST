@@ -10,6 +10,7 @@ import plotly.graph_objects as go
 import copy
 import pyproj
 from itertools import product, accumulate
+import json
 
 
 class Monitor:
@@ -409,10 +410,11 @@ class Monitor:
 
         mean_val = np.nanmean(data_map[mask])
         ax.set_title(f"{title}\nMean: {mean_val:.2f} m a$^{{-1}}$")
+        return mean_val
 
     def plot_maps_prognostic(self, ensembleKF, obs_dhdt_raster,
-                             obs_velsurf_mag_raster, init_surf_bin, new_observation,
-                             modeled_surface, uncertainty, iteration, year):
+                             obs_velsurf_mag_raster, init_surf_bin, new_observation, noise_samples,
+                             modeled_surface, uncertainty, iteration, year, write_json=True):
 
         ###################### MAPS #################################################
         nrows = 2
@@ -420,123 +422,147 @@ class Monitor:
         fig, ax = plt.subplots(nrows, ncols, figsize=(15, 10))
 
         # Define x and y ticks for both plots
-
         crop_padding = 25
         x_ticks = np.arange(crop_padding, self.bin_map.shape[1] - crop_padding * 2,
                             step=self.resolution)
         y_ticks = np.arange(crop_padding, self.bin_map.shape[0] - crop_padding * 2,
                             step=self.resolution)
 
-        cropped_bedrock = ensembleKF.bedrock[crop_padding:-crop_padding,
-        crop_padding:-crop_padding]
-
+        # crop and display bedrock
+        cropped_bedrock = ensembleKF.bedrock[crop_padding:-crop_padding, crop_padding:-crop_padding]
         for row, col in product(range(nrows), range(ncols)):
             ax[row, col].imshow(cropped_bedrock, cmap='gray',
                                 vmin=1450, vmax=3600, origin='lower')
 
+        # mean modelled surface elevation
         surface = np.mean(ensembleKF.ensemble_usurf, axis=0)
+        if write_json:
+            member_usurf = ensembleKF.ensemble_usurf
+            member_thk = member_usurf - ensembleKF.bedrock
+            member_mask = member_thk > 0
+            member_elevation_change = (member_usurf - ensembleKF.ensemble_init_surf_raster) / 20
+            member_dhdt_mean = []
+            member_dhdt_binned_mean = []
+            observation_samples = []
+
+            for elevation_change, mask, binned_surface, noise_sample in zip(member_elevation_change, member_mask,
+                                                                            modeled_surface, noise_samples):
+                member_dhdt_mean.append(np.nanmean(elevation_change[mask]))
+
+                # binned dhdt
+                binned_difference = (binned_surface - init_surf_bin) / 20
+                mapped_difference = self.vector_to_map(binned_difference)
+                member_dhdt_binned_mean.append(np.nanmean(mapped_difference[mask]))
+                noisy_observation = self.vector_to_map(new_observation + noise_sample - init_surf_bin) / 20
+                observation_samples.append(np.nanmean(noisy_observation[mask]))
+
+
+
+        # thickness from mean surface and mask.
+        # mask should be the same as the maximum extend of glacier in the model
         thk = surface - ensembleKF.bedrock
         new_mask = thk > 0
+
         # Observed elevation change
-        self.plot_glacier_property_map(ax=ax[0, 0],
-                                       data_map=obs_dhdt_raster,
-                                       x_ticks=x_ticks,
-                                       y_ticks=y_ticks,
-                                       crop_padding=crop_padding,
-                                       title='Observed\nElevation Change',
-                                       colorlabel='Elevation Change (m a$^{-1}$)',
-                                       mask=new_mask)
+        observed_elevation_change = self.plot_glacier_property_map(ax=ax[0, 0],
+                                                                   data_map=obs_dhdt_raster,
+                                                                   x_ticks=x_ticks,
+                                                                   y_ticks=y_ticks,
+                                                                   crop_padding=crop_padding,
+                                                                   title='Observed\nElevation Change',
+                                                                   colorlabel='Elevation Change (m a$^{-1}$)',
+                                                                   mask=new_mask)
 
         # Observed Elevation Changes binned
-        binned_difference = (new_observation - init_surf_bin) / 19
+        binned_difference = (new_observation - init_surf_bin) / 20
         new_observation_mapped = self.vector_to_map(binned_difference)
 
-        self.plot_glacier_property_map(ax=ax[0, 1],
-                                       data_map=new_observation_mapped,
-                                       x_ticks=x_ticks,
-                                       y_ticks=y_ticks,
-                                       crop_padding=crop_padding,
-                                       title='Observed\nElevation Change binned',
-                                       colorlabel='Elevation Change (m a$^{-1}$)',
-                                       mask=new_mask)
+        observed_elevation_change_binned = self.plot_glacier_property_map(ax=ax[0, 1],
+                                                                          data_map=new_observation_mapped,
+                                                                          x_ticks=x_ticks,
+                                                                          y_ticks=y_ticks,
+                                                                          crop_padding=crop_padding,
+                                                                          title='Observed\nElevation Change binned',
+                                                                          colorlabel='Elevation Change (m a$^{-1}$)',
+                                                                          mask=new_mask)
 
         # Observed velocities
         obs_velsurf_mag_raster[
             self.icemask_init == 0] = np.nan  # Mask ice-free areas
-        self.plot_glacier_property_map(ax=ax[0, 2],
-                                       data_map=obs_velsurf_mag_raster,
-                                       x_ticks=x_ticks,
-                                       y_ticks=y_ticks,
-                                       crop_padding=crop_padding,
-                                       title='Observed\nSurface Velocity',
-                                       colorlabel='Surface Velocity (m a$^{-1}$)',
-                                       vmin=0,
-                                       vmax=np.nanmax(obs_velsurf_mag_raster),
-                                       cmap='magma')
+        observed_velocity = self.plot_glacier_property_map(ax=ax[0, 2],
+                                                           data_map=obs_velsurf_mag_raster,
+                                                           x_ticks=x_ticks,
+                                                           y_ticks=y_ticks,
+                                                           crop_padding=crop_padding,
+                                                           title='Observed\nSurface Velocity',
+                                                           colorlabel='Surface Velocity (m a$^{-1}$)',
+                                                           vmin=0,
+                                                           vmax=np.nanmax(obs_velsurf_mag_raster),
+                                                           cmap='magma')
 
         # Estimated elevation change (modelled)
         ensemble_usurf = np.mean(ensembleKF.ensemble_usurf, axis=0)
         init_usurf = np.mean(ensembleKF.ensemble_init_surf_raster, axis=0)
-        modeled_dhdt = (ensemble_usurf - init_usurf) / 19
-        self.plot_glacier_property_map(ax=ax[1, 0],
-                                       data_map=modeled_dhdt,
-                                       x_ticks=x_ticks,
-                                       y_ticks=y_ticks,
-                                       crop_padding=crop_padding,
-                                       title='Modelled\nElevation Change',
-                                       colorlabel='Elevation Change (m a$^{-1}$)',
-                                       mask=new_mask)
+        modeled_dhdt = (ensemble_usurf - init_usurf) / 20
+        modelled_elevation_change = self.plot_glacier_property_map(ax=ax[1, 0],
+                                                                   data_map=modeled_dhdt,
+                                                                   x_ticks=x_ticks,
+                                                                   y_ticks=y_ticks,
+                                                                   crop_padding=crop_padding,
+                                                                   title='Modelled\nElevation Change',
+                                                                   colorlabel='Elevation Change (m a$^{-1}$)',
+                                                                   mask=new_mask)
 
         # Modelled elevation Change (binned)
         ensemble_surface_mean = np.mean(modeled_surface, axis=0)
-        ensemble_dhdt_mean = (ensemble_surface_mean - init_surf_bin) / 19
+        ensemble_dhdt_mean = (ensemble_surface_mean - init_surf_bin) / 20
         ensemble_dhdt_mean_mapped = self.vector_to_map(ensemble_dhdt_mean)
-        self.plot_glacier_property_map(ax=ax[1, 1],
-                                       data_map=ensemble_dhdt_mean_mapped,
-                                       x_ticks=x_ticks,
-                                       y_ticks=y_ticks,
-                                       crop_padding=crop_padding,
-                                       title='Modelled\nElevation Change binned',
-                                       colorlabel='Elevation Change (m a$^{-1}$)',
-                                       mask=new_mask)
+        modelled_elevation_change_binned = self.plot_glacier_property_map(ax=ax[1, 1],
+                                                                          data_map=ensemble_dhdt_mean_mapped,
+                                                                          x_ticks=x_ticks,
+                                                                          y_ticks=y_ticks,
+                                                                          crop_padding=crop_padding,
+                                                                          title='Modelled\nElevation Change binned',
+                                                                          colorlabel='Elevation Change (m a$^{-1}$)',
+                                                                          mask=new_mask)
 
         # modelled velocity
         modelled_velocity = np.mean(ensembleKF.ensemble_velsurf_mag_raster, axis=0)
         modelled_velocity[self.icemask_init == 0] = np.nan  # Mask ice-free areas
-        self.plot_glacier_property_map(ax=ax[1, 2],
-                                       data_map=modelled_velocity,
-                                       x_ticks=x_ticks,
-                                       y_ticks=y_ticks,
-                                       crop_padding=crop_padding,
-                                       title='Modelled\nSurface Velocity',
-                                       colorlabel='Surface Velocity (m a$^{-1}$)',
-                                       vmin=0,
-                                       vmax=np.nanmax(obs_velsurf_mag_raster),
-                                       cmap='magma')
+        modelled_velocity_mean = self.plot_glacier_property_map(ax=ax[1, 2],
+                                                                data_map=modelled_velocity,
+                                                                x_ticks=x_ticks,
+                                                                y_ticks=y_ticks,
+                                                                crop_padding=crop_padding,
+                                                                title='Modelled\nSurface Velocity',
+                                                                colorlabel='Surface Velocity (m a$^{-1}$)',
+                                                                vmin=0,
+                                                                vmax=np.nanmax(obs_velsurf_mag_raster),
+                                                                cmap='magma')
 
         # Surface Mass Balance (SMB) Map
         mean_smb_raster = np.mean(ensembleKF.ensemble_smb_raster, axis=0)
         mean_smb_raster[self.icemask_init == 0] = np.nan  # Mask ice-free areas
 
-        self.plot_glacier_property_map(ax=ax[1, 3],
-                                       data_map=mean_smb_raster,
-                                       x_ticks=x_ticks,
-                                       y_ticks=y_ticks,
-                                       crop_padding=crop_padding,
-                                       title='Modelled\nSurface Mass Balance',
-                                       colorlabel='Surface Mass Balance (m a$^{'
-                                                  '-1}$)', mask=new_mask)
+        modelled_smb = self.plot_glacier_property_map(ax=ax[1, 3],
+                                                      data_map=mean_smb_raster,
+                                                      x_ticks=x_ticks,
+                                                      y_ticks=y_ticks,
+                                                      crop_padding=crop_padding,
+                                                      title='Modelled\nSurface Mass Balance',
+                                                      colorlabel='Surface Mass Balance (m a$^{'
+                                                                 '-1}$)', mask=new_mask)
 
         # Flux Divergence Map
         mean_smb_raster = np.mean(ensembleKF.ensemble_divflux_raster, axis=0)
         mean_smb_raster[self.icemask_init == 0] = np.nan  # Mask ice-free areas
-        self.plot_glacier_property_map(ax=ax[0, 3],
-                                       data_map=mean_smb_raster,
-                                       x_ticks=x_ticks,
-                                       y_ticks=y_ticks,
-                                       crop_padding=crop_padding,
-                                       title='Modelled\nFlux Divergence',
-                                       colorlabel='Flux Divergence (m a$^{-1}$)')
+        modelled_flux_div = self.plot_glacier_property_map(ax=ax[0, 3],
+                                                           data_map=mean_smb_raster,
+                                                           x_ticks=x_ticks,
+                                                           y_ticks=y_ticks,
+                                                           crop_padding=crop_padding,
+                                                           title='Modelled\nFlux Divergence',
+                                                           colorlabel='Flux Divergence (m a$^{-1}$)')
 
         import string
         axes = ax.flatten()  # Flatten for easy iteration
@@ -560,6 +586,40 @@ class Monitor:
         plt.close(fig)
 
         plt.clf()
+
+        if write_json:
+            def json_safe(obj):
+                if isinstance(obj, np.ndarray):
+                    return obj.tolist()
+                if isinstance(obj, (np.floating, np.integer)):
+                    return obj.item()
+                if isinstance(obj, list):
+                    return [json_safe(x) for x in obj]
+                if isinstance(obj, dict):
+                    return {k: json_safe(v) for k, v in obj.items()}
+                return obj
+
+
+            data = {
+                "observed_elevation_change": observed_elevation_change,
+                "observed_elevation_change_binned": observed_elevation_change_binned,
+                "modelled_elevation_change": modelled_elevation_change,
+                "modelled_elevation_change_binned": modelled_elevation_change_binned,
+                "modelled_flux_divergence": modelled_flux_div,
+                "modelled_surface_mass_balance": modelled_smb,
+                "modelled_surface_velocity": modelled_velocity_mean,
+                "observed_surface_velocity": observed_velocity,
+                "ensemble_elevation_change": member_dhdt_mean,
+                "ensemble_elevation_change_binned": member_dhdt_binned_mean,
+                "observation_samples_binned": observation_samples,
+                "ensemble_smb": ensembleKF.ensemble_smb
+            }
+
+            # make everything safe before dumping
+            data = json_safe(data)
+
+            with open(os.path.join(self.monitor_dir, f"metrics_{iteration:03d}_{year}.json"), "w") as f:
+                json.dump(data, f, indent=4)
 
     def visualise_3d(self, property_map, glacier_surface, bedrock, year, x, y):
         # choose property that is displayed on the glacier surface
