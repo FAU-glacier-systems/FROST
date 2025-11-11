@@ -1,5 +1,5 @@
 <h1>
-  <img src="assets/frost_log.png" alt="FROST logo" width="100" align="left">
+  <img src="assets/frost_log.png" alt="FROST logo" width="80" align="left">
   <b>F</b>ramework for assimilating <b>R</b>emote-sensing <b>O</b>bservations for <b>S</b>urface
   mass balance <b>T</b>uning<br>
 </h1>
