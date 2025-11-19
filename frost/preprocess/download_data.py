@@ -7,6 +7,7 @@
 import argparse
 import os
 import numpy as np
+import netCDF4
 from netCDF4 import Dataset
 from scipy.ndimage import zoom
 import shutil
@@ -85,6 +86,20 @@ def main(rgi_id,
                     dst_var[:] = np.where(np.abs(original_data) > 10000, 0,
                                           original_data)
                     dst_var[:] = np.where(np.abs(original_data) < 0, 0, dst_var)
+
+                    try:
+                        fillvalue = variable.get_fill_value()
+                    except:
+                        fillvalue = netCDF4.default_fillvals['f8']
+
+                    mask = src.variables["icemask"][:]
+
+                    if np.nansum(np.nansum(original_data * mask)) == 0 :
+                        dst_var[:] = np.where(np.abs(original_data * mask) == fillvalue, 10, dst_var)
+                        dst_var[:] = np.where(np.abs(original_data+mask) == 1, 10, dst_var)
+                    if np.isinf(np.nansum(np.nansum(original_data * mask))) :
+                        dst_var[:] = mask*10
+
                 elif name == 'thkinit':
                     # Set values to zero where they are NaN
                     original_data = variable[:]
@@ -94,6 +109,20 @@ def main(rgi_id,
                     dst_var[:] = np.where(np.abs(original_data) > 10000, 0,
                                           original_data)
                     dst_var[:] = np.where(np.abs(original_data) < 0, 0, dst_var)
+                    dst_var[:] = np.where(np.isinf(original_data), np.nan, dst_var)
+
+                    try:
+                        fillvalue = variable.get_fill_value()
+                    except:
+                        fillvalue = netCDF4.default_fillvals['f8']
+
+                    mask = src.variables["icemask"][:]
+                    if np.nansum(np.nansum(original_data * mask)) == 0 :
+                        dst_var[:] = np.where(np.abs(original_data * mask) == fillvalue, 10, dst_var)
+                        dst_var[:] = np.where(np.abs(original_data+mask) == 1, 10, dst_var)
+                    if np.isinf(np.nansum(np.nansum(original_data * mask))) :
+                        dst_var[:] = mask*10
+                        #print('JOHANNES JOHANNES JOHANNES JOHANNES : corrected thickness init')
 
                 else:
                     dst_var = dst.createVariable(name, variable.datatype,

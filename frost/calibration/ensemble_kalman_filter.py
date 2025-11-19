@@ -198,7 +198,9 @@ class EnsembleKalmanFilter:
         Returns:
             None
         """
-        year_interval = year - self.current_year
+        #year_interval = year - self.current_year
+        year_start = self.current_year
+        year_end   = year
         workers = os.cpu_count()  # Default worker count
         print(f"Default max workers: {workers}")
         new_usurf_ensemble = np.empty_like(self.ensemble_usurf)
@@ -218,7 +220,7 @@ class EnsembleKalmanFilter:
                 futures = [
                     executor.submit(IGM_wrapper.forward, exp, output1D, output2D_3D,
                                     member_id, self.rgi_id_dir,
-                                    self.smb_model, usurf, smb, year_interval)
+                                    self.smb_model, usurf, smb, year_start, year_end)
                     for member_id, (usurf, smb) in
                     enumerate(zip(self.ensemble_usurf, self.ensemble_smb))
                 ]
@@ -243,7 +245,7 @@ class EnsembleKalmanFilter:
                     self.smb_model,
                     usurf,
                     smb,
-                    year_interval)
+                    year_start, year_end)
                 new_usurf_ensemble[member_id] = new_usurf
                 new_smb_raster_ensemble[member_id] = new_smb_raster
                 new_init_surf_ensemble[member_id] = init_usurf
