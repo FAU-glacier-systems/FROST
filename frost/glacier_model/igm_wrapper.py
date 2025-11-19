@@ -23,7 +23,7 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"  # 0 = all, 1 = info, 2 = warning, 3 = 
 
 
 def forward(exp, output1D, output2D_3D, member_id, rgi_dir, smb_model, usurf, smb,
-            year_interval):
+            year_start, year_end):
     '''
     Runs a single forward model simulation for an ensemble member.
 
@@ -41,7 +41,8 @@ def forward(exp, output1D, output2D_3D, member_id, rgi_dir, smb_model, usurf, sm
                                   * 'ela' (float)      - Equilibrium line altitude
                                   * 'gradabl' (float)  - Ablation gradient (per km)
                                   * 'gradacc' (float)  - Accumulation gradient (per km)
-        year_interval (int)   - Simulation duration in years
+        start_year (int)      - Year that simulation starts
+        end_year (int)        - Year that simulaiton ends
 
     Returns:
         member_id (int)         - Ensemble member ID
@@ -81,8 +82,9 @@ def forward(exp, output1D, output2D_3D, member_id, rgi_dir, smb_model, usurf, sm
                 }
             },
             "time": {
-                "start": 2000.,
-                "end": 2000. + year_interval,
+                "start": year_start,
+                "end": year_end,
+                "save": 1.,
             },
         }
     }
@@ -136,8 +138,8 @@ def forward(exp, output1D, output2D_3D, member_id, rgi_dir, smb_model, usurf, sm
             }
         igm_params['processes']['smb_simple']['array'] = [
             ['time', 'gradabl', 'gradacc', 'ela', 'accmax'],
-            [2000, abl_grad, acc_grad, ela, 100],
-            [2000 + year_interval, abl_grad, acc_grad, ela, 100]
+            [year_start, abl_grad, acc_grad, ela, 100],
+            [year_end, abl_grad, acc_grad, ela, 100]
         ]
 
 
@@ -162,7 +164,14 @@ def forward(exp, output1D, output2D_3D, member_id, rgi_dir, smb_model, usurf, sm
                 "vars_to_save": [],
             }
             }
+        if output1D :
+            igm_params['outputs']['write_ts'] = {
+                                                 "output_file": []
+                                                }
+            igm_params['outputs']['write_ts']['output_file'] = '../../output_ts.nc'
+
         igm_params['outputs']['write_ncdf']['output_file'] = '../../output.nc'
+
         if str(smb_model) == 'TI':
             igm_params['outputs']['write_ncdf']['vars_to_save'] = ['topg',
                                                                    'usurf',
@@ -170,9 +179,12 @@ def forward(exp, output1D, output2D_3D, member_id, rgi_dir, smb_model, usurf, sm
                                                                    'smb',
                                                                    'velbar_mag',
                                                                    'velsurf_mag',
+                                                                   'slidingco',
                                                                    'divflux',
-                                                                   'meantemp',
-                                                                   'meanprec'
+                                                                   'mean_temp',
+                                                                   'sum_prec',
+                                                                   'icemask',
+                                                                   'icemask_init'
                                                                    ]
         else:
             igm_params['outputs']['write_ncdf']['vars_to_save'] = ['topg',
@@ -181,7 +193,10 @@ def forward(exp, output1D, output2D_3D, member_id, rgi_dir, smb_model, usurf, sm
                                                                    'smb',
                                                                    'velbar_mag',
                                                                    'velsurf_mag',
-                                                                   'divflux'
+                                                                   'divflux',
+                                                                   'slidingco',
+                                                                   'icemask',
+                                                                   'icemask_init'
                                                                    ]
 
     # # Define TI specific input parameters (for separate JSON)
@@ -235,12 +250,20 @@ def forward(exp, output1D, output2D_3D, member_id, rgi_dir, smb_model, usurf, sm
     # Load input NetCDF file and update elevation values
     input_file = os.path.join(member_dir, 'data', 'input.nc')
     with Dataset(input_file, 'r+') as input_dataset:
-        bedrock = input_dataset.variables['topg'][:]  # Read bedrock elevation
-        thickness = usurf - bedrock  # Compute ice thickness
+        if not "icemask_init" in input_dataset.variables :
+            bedrock = input_dataset.variables['topg'][:]  # Read bedrock elevation
+            thickness = usurf - bedrock  # Compute ice thickness
 
-        # Update surface elevation and thickness
-        input_dataset.variables['usurf'][:] = usurf
-        input_dataset.variables['thk'][:] = thickness
+            # Update surface elevation and thickness
+            input_dataset.variables['usurf'][:] = usurf
+            input_dataset.variables['thk'][:] = thickness
+
+            # Create init icemask
+            var_in = input_dataset.variables['icemask']
+
+            var_out = input_dataset.createVariable("icemask_init", var_in.datatype, ("y", "x",))
+            var_out.setncatts({k: var_in.getncattr(k) for k in var_in.ncattrs()})
+            var_out[:] = input_dataset.variables['icemask'][:]
     #
     # if str(SMB_model) == 'TI':
     #     # Copy and assemble TI model routines
@@ -290,7 +313,7 @@ def forward(exp, output1D, output2D_3D, member_id, rgi_dir, smb_model, usurf, sm
             new_usurf = np.array(new_ds['usurf'][-1])  # Final surface elevation
             new_smb = np.mean(np.array(new_ds['smb']), axis=0)  # Final SMB values
             init_usurf = np.array(new_ds['usurf'][0])
-            new_velsurf_mag = np.array(new_ds['velsurf_mag'][1])
+            new_velsurf_mag = np.array(new_ds['velsurf_mag'][0])
             new_divflux = np.array(new_ds['divflux'][1])
 
         return member_id, new_usurf, new_smb, init_usurf, new_velsurf_mag, new_divflux
@@ -314,6 +337,7 @@ if __name__ == '__main__':
                         help='Provide file path to FROST ensemble results (currently TI approach).')
 
     # Add arguments for parameters
+    #
     parser.add_argument('--member_id', type=str,
                         default='mean',
                         help='Provide ensemble ID number or specify <mean> as ensemble parameter average.')

@@ -29,7 +29,7 @@ def main(rgi_id_dir, params_inversion_path):
     flag_velsurfobs = False
     with Dataset(input_file, 'r') as input_dataset:
 
-        # flag_velsurfobs = "uvelsurfobs" in input_dataset.variables and "vvelsurfobs" in input_dataset.variables
+        #flag_velsurfobs = "uvelsurfobs" in input_dataset.variables and "vvelsurfobs" in input_dataset.variables
         epsg = input_dataset.getncattr('epsg')
         pyproj_srs = input_dataset.getncattr('pyproj_srs')
 
