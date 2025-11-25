@@ -69,8 +69,8 @@ def forward(exp, output1D, output2D_3D, member_id, rgi_dir, smb_model, usurf, sm
             "url_data": "",
         },
         "inputs": {
-            "load_ncdf": {
-                "input_file": "input.nc"
+            "local": {
+                "filename": "input.nc"
             }
         },
         "processes": {
@@ -98,7 +98,7 @@ def forward(exp, output1D, output2D_3D, member_id, rgi_dir, smb_model, usurf, sm
         ## relative path option
         #igm_params['defaults'] = [{"/user/conf/processes@processes.clim_1D-3D": "clim_1D-3D"}]
 
-        igm_params['defaults'] = [{"override /inputs": ["load_ncdf"]}]
+        igm_params['defaults'] = [{"override /inputs": ["local"]}]
         igm_params['defaults'] += [{'override /processes': ["clim_1D_3D", "smb_1D_3D", "iceflow", "time", "thk"]}]
 
         igm_params['processes']["clim_1D_3D"] = {
@@ -130,7 +130,7 @@ def forward(exp, output1D, output2D_3D, member_id, rgi_dir, smb_model, usurf, sm
 
     elif str(smb_model) == 'ELA':
         
-        igm_params['defaults'] = [{"override /inputs": ["load_ncdf"]}]
+        igm_params['defaults'] = [{"override /inputs": ["local"]}]
         igm_params['defaults'] += [{'override /processes': ["smb_simple", "iceflow", "time", "thk"]}]
 
         igm_params['processes']["smb_simple"] = {
@@ -342,6 +342,18 @@ if __name__ == '__main__':
                         default='mean',
                         help='Provide ensemble ID number or specify <mean> as ensemble parameter average.')
 
+    parser.add_argument('--start_year', type=int,
+                        default='2000',
+                        help='Start year of forward simulation. Default: 2000')
+
+    parser.add_argument('--end_year', type=int,
+                        default='2100',
+                        help='End year of forward simulation. Default: 2100')
+
+    parser.add_argument('--flag_3D_output', type=bool,
+                        default=False,
+                        help='Decide wether 3D output is written.')
+
     # Parse arguments
     args = parser.parse_args()
     print(args)
@@ -349,16 +361,23 @@ if __name__ == '__main__':
     # Projection run setting
     exp = 'Projection'
     output1D = True
-    output2D_3D = False
 
-    # Define projection length
-    year_interval = 100
+    if args.start_year == 2000 :
+        output2D_3D = True
+    else :
+        output2D_3D = False
+
+    if args.flag_3D_output == True:
+        output2D_3D = True
+
+    ## Define projection length
+    #year_interval = int(args.end_year-args.start_year)
 
     # Define SMB model
     smb_model = 'TI'
 
     # Simulation Path
-    rgi_id_dir = os.path.join('.', 'Data', 'Glaciers', args.rgi_id)
+    rgi_id_dir = os.path.join('..', 'data', 'results', 'alps_TI_projections', 'glaciers', args.rgi_id)
 
     # Define member_id
     member_id = args.member_id
@@ -368,19 +387,30 @@ if __name__ == '__main__':
     os.makedirs(member_dir, exist_ok=True)
 
     # Load initial surface elevation
-    inversion_dir = os.path.join('.', rgi_id_dir, 'Inversion')
-    geology_file = os.path.join(inversion_dir, '.nc')
+    print(os.getcwd())
+    inversion_dir = os.path.join(rgi_id_dir, 'Preprocess','outputs')
+    geology_file = os.path.join(inversion_dir, 'output.nc')
     with Dataset(geology_file, 'r') as geology_dataset:
         usurf_init = np.array(geology_dataset['usurf'])
 
     # Copy input files
     # Copy geology file as the initial input.nc
-    shutil.copy2(geology_file, os.path.join(member_dir, 'input.nc'))
+    os.makedirs(os.path.join(member_dir, 'data'), exist_ok=True)
+    if args.start_year == 2000 :
+        shutil.copy2(geology_file, os.path.join(member_dir, 'data', 'input.nc'))
+    if args.start_year == 2020 :
+        if str(member_id) == "mean":
+            shutil.copy2(os.path.join(member_dir, 'outputs', 'output_W5E5_'+str(member_id)+'.nc'), os.path.join(member_dir, 'data', 'input.nc'))
+        else:
+            shutil.copy2(os.path.join(member_dir, 'outputs', 'output_W5E5_best.nc'), os.path.join(member_dir, 'data', 'input.nc'))
 
     # Copy iceflow-model directory
     member_iceflow_dir = os.path.join(member_dir, 'iceflow-model')
     shutil.rmtree(member_iceflow_dir, ignore_errors=True)
     shutil.copytree(os.path.join(inversion_dir, 'iceflow-model'), member_iceflow_dir)
+
+    # Create experiment folder
+    os.makedirs(os.path.join(member_dir, 'experiment'), exist_ok=True)
 
     # Load glacier-specific parameters
     # calibration version
@@ -400,33 +430,44 @@ if __name__ == '__main__':
         # Create SMB dictionary
         new_smb = []
         new_smb = {
-            'temp_bias': final_mean[0],
-            'melt_f': final_mean[1],
-            'prcp_fac': final_mean[2]
+            'temp_bias': final_mean[2],
+            'melt_f': final_mean[0],
+            'prcp_fac': final_mean[1]
         }
     else:
         print(final_ensemble)
         new_smb = []
         new_smb = {
-            'temp_bias': final_ensemble[int(member_id)][0],
-            'melt_f': final_ensemble[int(member_id)][1],
-            'prcp_fac': final_ensemble[int(member_id)][2]
+            'temp_bias': final_ensemble[int(member_id)][2],
+            'melt_f': final_ensemble[int(member_id)][0],
+            'prcp_fac': final_ensemble[int(member_id)][1]
         }
 
-    # Load initial surface elevation
-    inversion_dir = os.path.join('.', rgi_id_dir, 'Inversion')
-    geology_file = os.path.join(inversion_dir, 'geology-optimized.nc')
-    with Dataset(geology_file, 'r') as geology_dataset:
-        usurf_init = np.array(geology_dataset['usurf'])
+    # Saving JSON file
+    SMB = {
+        "member_id": member_id,
+        "temp_bias": new_smb["temp_bias"],
+        "melt_f": new_smb["melt_f"],
+        "prcp_fac": new_smb["prcp_fac"]
+    }
 
-    # Define projection length
-    year_interval = 100
+    # Write to file
+    outputJSON=os.path.join(rgi_id_dir,"selectedSMBmember.json")
+    with open(outputJSON, "w") as f:
+        json.dump(SMB, f, indent=4)
+
+    # Load initial surface elevation
+    #inversion_dir = os.path.join('.', rgi_id_dir, 'Inversion')
+    #geology_file = os.path.join(inversion_dir, 'geology-optimized.nc')
+    #with Dataset(geology_file, 'r') as geology_dataset:
+    #    usurf_init = np.array(geology_dataset['usurf'])
 
     print('IGM_wrapper.forward')
     print('member_id', member_id)
     print('rgi_id_dir', rgi_id_dir)
     print('usurf', np.shape(usurf_init))
     print('smb', new_smb)
-    print('year_interval', year_interval)
+    #print('year_interval', year_interval)
+    print('start/end year :', args.start_year, args.end_year)
     member_id = forward(exp, output1D, output2D_3D, member_id, rgi_id_dir, smb_model,
-                        usurf_init, new_smb, year_interval)
+                        usurf_init, new_smb, args.start_year, args.end_year)

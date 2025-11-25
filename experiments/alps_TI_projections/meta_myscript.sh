@@ -18,7 +18,7 @@ set -e
 
 module add python
 #conda activate frost_env_igm3
-conda activate frost_env_IGM3
+conda activate igm3
 
 export http_proxy=http://proxy:80
 export https_proxy=http://proxy:80
@@ -27,7 +27,7 @@ export https_proxy=http://proxy:80
 # setting
 exec_script='frost_pipeline.py'
 list_fname='todo_codeskel.txt'
-PATH_exp_config='./experiments/eALPS/'
+PATH_exp_config='alps_TI_projections/eALPS'
 FNAME_exp_config='config_TI'
 
 
@@ -50,7 +50,8 @@ do
   ##/home/hpc/gwgi/gwgi17/cronjobs/bin/creation_chain_WOODY.sh ${RGI_region} $p
   #chmod u+x ${exec_script}_$p.sh
   #bash ./${exec_script}_$p.sh
-  python ${exec_script} --config "${FNAME_out}"
+  cd ..
+  python ${exec_script} --config "experiments/${FNAME_out}"
   cd -
 
   ## Clean-up directory

@@ -3,15 +3,15 @@ core:
   url_data: ''
 defaults:
 - override /inputs:
-  - load_ncdf
+  - local
 - override /processes:
   - data_assimilation
   - iceflow
   - thk
 - override /outputs: []
 inputs:
-  load_ncdf:
-    input_file: input.nc
+  local:
+    filename: input.nc
 processes:
   iceflow:
     physics:
@@ -40,22 +40,18 @@ processes:
     - usurf
     - slidingco
     cost_list:
-    - thk
     - icemask
     - usurf
     - velsurf
     fitting:
-      thkobs_std: 1
-      usurfobs_std: 1
-      velsurfobs_std: 1
+      usurfobs_std: 2.0
+      velsurfobs_std: 0.25
     optimization:
       retrain_iceflow_model: true
-      nbitmax: 1000
-      nb_relaxation_steps: 1000
+      nbitmax: 100
+      nb_relaxation_steps: 100
     regularization:
-      thk: 10
-      slidingco: 10
+      slidingco: 1.0e0
       smooth_anisotropy_factor: 1.0
-      convexity_weight: 0.0
-      to_regularize: thk
+      convexity_weight: 1.0
 outputs: {}

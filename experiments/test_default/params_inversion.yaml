@@ -3,15 +3,15 @@ core:
   url_data: ''
 defaults:
 - override /inputs:
-  - load_ncdf
+  - local
 - override /processes:
   - data_assimilation
   - iceflow
   - thk
 - override /outputs: []
 inputs:
-  load_ncdf:
-    input_file: input.nc
+  local:
+    filename: input.nc
 processes:
   iceflow:
     physics:
@@ -51,8 +51,8 @@ processes:
       velsurfobs_std: 1
     optimization:
       retrain_iceflow_model: true
-      nbitmax: 1000
-      nb_relaxation_steps: 1000
+      nbitmax: 100
+      nb_relaxation_steps: 100
     regularization:
       thk: 10
       slidingco: 10
