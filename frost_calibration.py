@@ -10,7 +10,7 @@ import shutil
 from frost.calibration.ensemble_kalman_filter import EnsembleKalmanFilter
 from frost.calibration.observation_provider import ObservationProvider
 from frost.visualization.monitor import Monitor
-
+import igm
 
 def main(rgi_id, rgi_id_dir, smb_model, synthetic, ensemble_size, inflation,
          smb_prior_mean, smb_prior_std,
@@ -173,10 +173,10 @@ def main(rgi_id, rgi_id_dir, smb_model, synthetic, ensemble_size, inflation,
             ensemble_observables=ensemble_observables,
             noise_samples=noise_samples)
 
-        if i==iterations:
-            write_json=True
+        if i == iterations:
+            write_json = True
         else:
-            write_json=False
+            write_json = False
         monitor.plot_maps_prognostic(ensembleKF,
                                      obs_dhdt_raster,
                                      obs_velsurf_mag_raster,

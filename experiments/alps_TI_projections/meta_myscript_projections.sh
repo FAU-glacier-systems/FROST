@@ -16,7 +16,7 @@ RGI_region=11
 set -e
 
 module add python
-conda activate frost_env_igm3
+conda activate igm3
 
 export http_proxy=http://proxy:80
 export https_proxy=http://proxy:80
@@ -25,11 +25,11 @@ export https_proxy=http://proxy:80
 # setting
 exec_script='frost_pipeline.py'
 list_fname='todo_codeskel.txt'
-PATH_exp_config='./experiments/eALPS/'
-PATH_results='./data/results/eALPS/glaciers/'
+PATH_exp_config='alps_TI_projections/eALPS'
+PATH_results='../data/results/alps_TI_projections/glaciers'
 FNAME_exp_config='config_TI'
 
-# Folgender Befehl arbeitet alle Inputs aus sequence.txt ab und laest immer 6
+# Folgender Befehl arbeitet alle Inputs aus sequence.txt ab und liest immer 6
 # gleichzeitig laufen.
 # Sie koennen als Befehl im Prinzip alles machen. Der Platxhalter {} steht fuer 
 # die Zahl oder den String der aus dem input Listenfile kommt.
@@ -79,8 +79,8 @@ do
     mod_fpath=${OUT_cal_dir}
     mod_fname="output.nc"
 
-
-    member_id=$(python ./batchscripts/select_SMB_member.py --cal_fpath $cal_fpath --cal_fname $cal_fname --obs_fpath $obs_fpath --obs_fname $obs_fname --mod_fpath $mod_fpath --mod_fname $mod_fname --option $SMBoption) 
+    pwd
+    member_id=$(python ./alps_TI_projections/select_SMB_member.py --cal_fpath $cal_fpath --cal_fname $cal_fname --obs_fpath $obs_fpath --obs_fname $obs_fname --mod_fpath $mod_fpath --mod_fname $mod_fname --option $SMBoption)
 
     # TIME_PERIOD: 2000 - 2020
     echo "Simulating reference period for ... : "$rgi_id ${member_id}
@@ -101,9 +101,9 @@ do
     fi
 
     flag_3D_output=true
-
+    echo "Start projections"
     # start projection for ensemble mean (as defined in result.json)
-    python ./frost/glacier_model/igm_wrapper.py --rgi_id $rgi_id --JSON_path $JSON_cal_path --member_id=${member_id} --start_year ${start_year} --end_year ${end_year} --flag_3D_output ${flag_3D_output}
+    python ../frost/glacier_model/igm_wrapper.py --rgi_id $rgi_id --JSON_path $JSON_cal_path --member_id=${member_id} --start_year ${start_year} --end_year ${end_year} --flag_3D_output ${flag_3D_output}
 
 
     # Copy results for reference period
@@ -126,15 +126,14 @@ do
     cp ${in_fpath}/${in_fname} ${in_fpath}/${out_fname}
 
     # Loop over climate scenarios (ee=experiment) and climate models (mm=member)
-    for ee in {0..3} #{0..3} #{0..0}
+  for ee in {0..3} #{0..3} #{0..0}
     do
-
       in_fpath="/home/vault/gwgi/gwgifu1h/data/input/11/1/glacier_ids/"${rgi_id: -5}"/climate/CORDEX_unbiased"
       in_fname="CORDEX_merged.nc"
 
-      echo "python ./batchscripts/extract_CMIP_representative.py --in_fpath $in_fpath --in_fname $in_fname --experiment ${ee}"
-
-      result=$(python ./batchscripts/extract_CMIP_representative.py --in_fpath $in_fpath --in_fname $in_fname --experiment ${ee})
+      echo "python alps_TI_projections/extract_CMIP_representative.py --in_fpath $in_fpath --in_fname $in_fname --experiment ${ee}"
+      pwd
+      result=$(python alps_TI_projections/extract_CMIP_representative.py --in_fpath $in_fpath --in_fname $in_fname --experiment ${ee})
 
       # read output from python script
       read -r m3D experiment3D member3D <<< "$result"
@@ -154,7 +153,7 @@ do
 
         out_fpath="${cal_path}"
         out_fname="climate_historical.nc"
-        result=$(python ./batchscripts/extract_CMIP_climate_historical.py --in_fpath $in_fpath --in_fname $in_fname --out_fpath $out_fpath --out_fname $out_fname --experiment_idx $ee --member_idx $mm)
+        result=$(python alps_TI_projections/extract_CMIP_climate_historical.py --in_fpath $in_fpath --in_fname $in_fname --out_fpath $out_fpath --out_fname $out_fname --experiment_idx $ee --member_idx $mm)
 
         # read output from python script
         read -r flag_IGM experiment member <<< "$result"
@@ -177,7 +176,7 @@ do
 
           echo "flag_3D_output : " $flag_3D_output $m3D $mm
           # start projection for ensemble mean (as defined in result.json)
-          python ./frost/glacier_model/igm_wrapper.py --rgi_id $rgi_id --JSON_path $JSON_cal_path --member_id=${member_id} --start_year ${start_year} --end_year ${end_year} --flag_3D_output ${flag_3D_output}
+          python ../frost/glacier_model/igm_wrapper.py --rgi_id $rgi_id --JSON_path $JSON_cal_path --member_id=${member_id} --start_year ${start_year} --end_year ${end_year} --flag_3D_output ${flag_3D_output}
 
           bpr_fpath=$in_fpath
           bpr_fname=$in_fname
@@ -187,7 +186,7 @@ do
 
           out_fpath="${PATH_results}/${rgi_id}/Projection/"
           out_fname="CORDEX_${SMBoption}_output_ts.nc"
-          python ./batchscripts/compile_output_ts.py --counter $countit --blueprint_fpath $bpr_fpath --blueprint_fname $bpr_fname --in_fpath $in_fpath --in_fname $in_fname --out_fpath $out_fpath --out_fname $out_fname --experiment_idx $ee --member_idx $mm
+          python alps_TI_projections/compile_output_ts.py --counter $countit --blueprint_fpath $bpr_fpath --blueprint_fname $bpr_fname --in_fpath $in_fpath --in_fname $in_fname --out_fpath $out_fpath --out_fname $out_fname --experiment_idx $ee --member_idx $mm
 
           if [ $mm == ${m3D} ] ; then
             # save 3D output
