@@ -216,16 +216,29 @@ class EnsembleKalmanFilter:
 
         if forward_parallel:
 
-            with ThreadPoolExecutor() as executor:
+            from concurrent.futures import ProcessPoolExecutor, as_completed
+
+
+            with ProcessPoolExecutor() as executor:
                 futures = [
-                    executor.submit(IGM_wrapper.forward, exp, output1D, output2D_3D,
-                                    member_id, self.rgi_id_dir,
-                                    self.smb_model, usurf, smb, year_start, year_end)
-                    for member_id, (usurf, smb) in
-                    enumerate(zip(self.ensemble_usurf, self.ensemble_smb))
+                    executor.submit(
+                        IGM_wrapper.forward,
+                        exp,
+                        output1D,
+                        output2D_3D,
+                        member_id,
+                        self.smb_model,
+                        usurf,
+                        smb,
+                        year_start,
+                        year_end,
+                        os.path.join(self.rgi_id_dir, "Ensemble", f"Member_{member_id}"),
+                        "../../climate_historical.nc",
+                    )
+                    for member_id, (usurf, smb) in enumerate(zip(self.ensemble_usurf, self.ensemble_smb))
                 ]
 
-                for future in concurrent.futures.as_completed(futures):
+                for future in as_completed(futures):
                     member_id, new_usurf, new_smb_raster, init_usurf, new_velsurf_mag, new_divflux = future.result()
                     new_usurf_ensemble[member_id] = new_usurf
                     new_smb_raster_ensemble[member_id] = new_smb_raster
@@ -245,7 +258,7 @@ class EnsembleKalmanFilter:
                     self.smb_model,
                     usurf,
                     smb,
-                    year_start, year_end)
+                    year_start, year_end,)
                 new_usurf_ensemble[member_id] = new_usurf
                 new_smb_raster_ensemble[member_id] = new_smb_raster
                 new_init_surf_ensemble[member_id] = init_usurf

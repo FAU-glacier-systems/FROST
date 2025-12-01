@@ -82,6 +82,7 @@ def main(rgi_id_dir, params_inversion_path):
     # Change to inversion directory and save params
     original_dir = os.getcwd()
     os.chdir(preprocess_dir)
+    print(preprocess_dir)
     # Write to YAML file
     with open(os.path.join('experiment', 'params_inversion.yaml'), 'w') as file:
         file.write("# @package _global_\n")

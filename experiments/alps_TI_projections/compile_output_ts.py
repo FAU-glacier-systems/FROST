@@ -36,8 +36,9 @@ def compile_output_ts(counter,blueprint_fpath,blueprint_fname,in_fpath,in_fname,
     infile  = os.path.join(in_fpath,in_fname)
     outfile = os.path.join(out_fpath, out_fname)
 
-    if counter == 0 :
+    if os.path.isfile(outfile) == False:
         # open blueprint file for reading
+        print("open blueprint file for reading")
         with Dataset(bprfile, "r") as bpr:
 
             # remove pre-existing outputfile
@@ -45,9 +46,11 @@ def compile_output_ts(counter,blueprint_fpath,blueprint_fname,in_fpath,in_fname,
                 os.remove(outfile)
 
             # open output file for writing
+            print("open output file for writing")
             with Dataset(outfile, "w", format="NETCDF4") as dst:
 
                 # open input file holding relevant variables
+                print("open input file holding relevant variables")
                 with Dataset(infile, "r", format="NETCDF4") as src:
                     # Copy dimensions
                     for name, dim in bpr.dimensions.items():
@@ -71,7 +74,7 @@ def compile_output_ts(counter,blueprint_fpath,blueprint_fname,in_fpath,in_fname,
                         out_time.setncatts({k: in_time.getncattr(k) for k in in_time.ncattrs()})
                         out_time[:] = in_time[:]
 
-                    
+
                     # Copy global attributes
                     dst.setncatts({attr: getattr(bpr, attr) for attr in bpr.ncattrs()})
 
@@ -108,31 +111,32 @@ def compile_output_ts(counter,blueprint_fpath,blueprint_fname,in_fpath,in_fname,
 
                             # Write data
                             new_var[:] = np.zeros((np.shape(temp_var)[0],np.shape(temp_var)[1],np.shape(src_var)[0]))*np.nan
-                            
+
                             new_var[experiment_idx,member_idx,:] = np.asarray(src_var)
+        print('Done')
 
     else:
 
         if os.path.isfile(outfile) :
 
             # open output file for writing
-            #with Dataset(outfile, "a", format="NETCDF4") as dst:
-            dst = Dataset(outfile, "a")
+            print("open output file for writing")
+            with Dataset(outfile, "a", format="NETCDF4") as dst:
+                dst.setncattr("number_valid_results", counter)
 
-            dst.setncattr("number_valid_results", counter)
+                # open input file holding relevant variables
+                print("open input file holding relevant variables")
+                with Dataset(infile, "r", format="NETCDF4") as src:
 
-            # open input file holding relevant variables
-            with Dataset(infile, "r", format="NETCDF4") as src:
+                    for src_name, src_var in src.variables.items():
 
-                for src_name, src_var in src.variables.items():
+                        if not src_name == "time" :
 
-                    if not src_name == "time" :
+                            # Get pre-existing variable
+                            new_var = dst.variables[src_name]
 
-                        # Get pre-existing variable
-                        new_var = dst.variables[src_name]
-
-                        # Append at right position
-                        new_var[experiment_idx,member_idx,:] = np.asarray(src_var) 
+                            # Append at right position
+                            new_var[experiment_idx,member_idx,:] = np.asarray(src_var)
 
 
 if __name__ == '__main__':

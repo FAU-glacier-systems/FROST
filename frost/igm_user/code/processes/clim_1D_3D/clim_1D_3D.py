@@ -98,7 +98,6 @@ def initialize(cfg, state):
 
     #ds = xr.open_dataset(os.path.join(path_RGI, "climate_historical.nc"))
     ds = xr.open_dataset(os.path.join("../", "../", "../", "../", "../", "climate_historical.nc"))
-    print('JOHANNES JOHANNES JOHANNES JOHANNES JOHANNES JOHANNES JOHANNES JOHANNES JOHANNES')
 # end JJF
     
     time = ds["time"].values.astype("float32").squeeze()       # unit: year
