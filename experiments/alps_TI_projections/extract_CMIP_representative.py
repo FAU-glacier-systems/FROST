@@ -151,7 +151,8 @@ def extract_repo(in_fpath,in_fname,experiment):
             #prcp_diff_mean=np.nanmean(np.nanmean(np.asarray(prcp[ee,:,mask2]),axis=0)-np.nanmean(np.asarray(prcp[ee,:,mask1]),axis=0),axis=0)*12
             #print(np.nansum(mask2),temp_diff_mean,prcp_fac_mean)
 
-        print(member_idx, experiments[experiment], member_select) 
+        print(member_idx, experiments[experiment], member_select)
+        return member_idx, experiments[experiment], member_select
 
 if __name__ == '__main__':
     # Parse command-line arguments
