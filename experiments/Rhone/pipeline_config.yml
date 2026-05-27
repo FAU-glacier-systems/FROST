@@ -1,5 +1,5 @@
-experiment_name: "test_default"     # Name of the experiment
-rgi_id: "RGI2000-v7.0-G-11-01457"   # Glacier ID
+experiment_name: "Rhone"     # Name of the experiment
+rgi_id: "RGI2000-v7.0-G-11-01706"   # Glacier ID
 smb_model: "ELA"                    # Type of SMB model used
 
 pipeline_steps:

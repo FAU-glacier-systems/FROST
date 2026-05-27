@@ -141,6 +141,12 @@ def main(rgi_id_dir, year_interval, hugonnet_directory, target_resolution):
         usurf_err_change.append(usurf_err)
 
     # usurf error of final year
+    print("specific mb with and without bedrock clipping ")
+
+    print(np.mean(np.array(np.maximum(bedrock, usurf_change[0] + dhdt * data_interval) - usurf_change[0])[icemask_2000 == 1]) / 20)
+    print(np.mean(
+        np.array(np.maximum(0, usurf_change[0] + dhdt * data_interval) - usurf_change[0])[icemask_2000 == 1]) / 20)
+
     usurf_err = dhdt_err_change[-1] * data_interval / 2
     usurf_err_change.append(usurf_err)
 

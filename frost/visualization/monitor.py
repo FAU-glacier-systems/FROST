@@ -79,10 +79,10 @@ class Monitor:
                                             '2019 ('
                                             'm)'),
                     point1=dict(
-                        y_label='Mean surface elevation change\nof fifth bin from front ('
+                        y_label='Mean surface elevation change\nof third bin from front ('
                                 'm)'),
                     point2=dict(
-                        y_label=f'Mean surface elevation change\nof fifth bin from '
+                        y_label=f'Mean surface elevation change\nof third bin from '
                                 f'top ('
                                 f'm)'),
                     ela=dict(y_label='Equilibrium Line\nAltitude (m)'),
