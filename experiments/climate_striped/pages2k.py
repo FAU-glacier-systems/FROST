@@ -71,7 +71,7 @@ colors = cmap(norm)
 # =========================
 # 6. PLOT STRIPES
 # =========================
-fig, ax = plt.subplots(figsize=(5, 4))
+fig, ax = plt.subplots(figsize=(6, 4))
 
 ax.bar(concat_years, concat_temps, color=colors, width=1.0, edgecolor='none', zorder=10)
 #ax.plot(concat_years,concat_temps, color='black', linewidth=0.1, zorder=10)
@@ -86,7 +86,9 @@ point_x = 2000
 point_y = temps_had_rebased[-2]-0.01
 
 ax.annotate(
-    "heading for +3°C by 2100\n great for mosquitoes,\n bad for literally everything else.",
+    #"heading for +3°C by 2100\n great for mosquitoes,\n bad for literally everything else.",
+"heading for +3.2°C by 2100\n [IPCC 6th Synthesis Report]",
+
     xy=(point_x, point_y),          # point to annotate
     xytext=(point_x-150, point_y-0.3),   # text position (adjust as needed)
     arrowprops=dict(
@@ -102,7 +104,7 @@ ax.annotate(
 
 ax.text(
     0.5, 0.61,
-    "Global Temperature Rise",
+    "Global Temperature Record",
     ha="center", va="center",
     fontsize=13, zorder=8,
     transform=ax.transAxes,
@@ -128,7 +130,7 @@ bbox = dict(facecolor="white", edgecolor="none", pad=4)
 
 # Overlay the gray "PAGES2k" at the right spot
 ax.text(
-    0.5 - 0.08, 0.5,     # small manual offset tuning
+    0.5 - 0.06, 0.5,     # small manual offset tuning
     "PAGES2k",
     ha="center", va="center",
     fontsize=8, zorder=13,
@@ -163,37 +165,37 @@ for label in ax.get_yticklabels():
     label.set_zorder(50)
 
 
-import plotly.graph_objects as go
-import numpy as np
-
-Z = np.tile(concat_temps, (100,1))                # 2D array
-rows, cols = Z.shape
-
-# Optional X and Y axes
-X = np.arange(cols)
-Y = np.arange(rows)
-
-fig = go.Figure(data=[
-    go.Surface(
-        z=Z,
-        x=X,
-        y=Y,
-            colorscale='RdBu_r'
-    )
-])
-
-fig.update_layout(
-    title='3D Temperature Surface',
-    scene=dict(
-        xaxis_title='Time',
-        yaxis_title='Index',
-        zaxis_title='Temperature'
-    ),
-    width=900,
-    height=700
-)
-
-fig.show()
+# import plotly.graph_objects as go
+# import numpy as np
+#
+# Z = np.tile(concat_temps, (100,1))                # 2D array
+# rows, cols = Z.shape
+#
+# # Optional X and Y axes
+# X = np.arange(cols)
+# Y = np.arange(rows)
+#
+# fig = go.Figure(data=[
+#     go.Surface(
+#         z=Z,
+#         x=X,
+#         y=Y,
+#             colorscale='RdBu_r'
+#     )
+# ])
+#
+# fig.update_layout(
+#     title='3D Temperature Surface',
+#     scene=dict(
+#         xaxis_title='Time',
+#         yaxis_title='Index',
+#         zaxis_title='Temperature'
+#     ),
+#     width=900,
+#     height=700
+# )
+#
+# fig.show()
 
 
 

@@ -101,7 +101,7 @@ def plot_map_with_annotations(
     #plot_country_borders(ax, country_paths)
 
     # Plot glacier points (scaled by area, colored by the selected value_column)
-    sizes = gdf["area_km2"] * 20
+    sizes = gdf["area_km2"] * 10
     if value_column=='ela_sla':
         colors = gdf['ela']  # Dynamic value to colormap
     else:
@@ -125,7 +125,8 @@ def plot_map_with_annotations(
     if value_column == "ela" or value_column == "sla":
         scatter = ax.scatter(
             gdf.geometry.x, gdf.geometry.y,
-            c=colors, s=sizes, vmin=2850, vmax=3550,
+            c=colors, s=sizes,
+            vmin=2850, vmax=3550,
             transform=utm_crs, cmap=color_map,
             zorder=10, alpha=1, edgecolor='k', linewidth=0.8,
         )
@@ -201,24 +202,38 @@ def plot_map_with_annotations(
         value_column = 'ela'
     # Text Annotations (e.g., glacier names or IDs)
     texts = []
-    for _, row in gdf.head(5).iterrows():
-        # Add text annotations slightly offset from points
-        text = ax.text(
-            row.geometry.x, row.geometry.y,
-            f"{row['glac_name']} ({row[value_column]:.{num_dec}f})",
-            ha='center', va='center',
-            color='white',
+    offsets = [
+        (-60000, 30000),
+        (50000, -20000),
+        (60000, -50000),
+        (80000, -50000),
+        (0, 50000),
+]
+    for i, (_, row) in enumerate(gdf.head(5).iterrows()):
+        dx, dy = offsets[i % len(offsets)]
+        print(row['glacier_name'], row[value_column], row.geometry.x, row.geometry.y)
+        ax.annotate(
+            f"{row['glacier_name']} ({row[value_column]:.{num_dec}f})",
+            xy=(row.geometry.x, row.geometry.y),  # point
+            xytext=(row.geometry.x + dx, row.geometry.y + dy),  # label position
+            textcoords="data",
+            ha="center",
+            va="center",
+            color="white",
             fontsize=8,
             zorder=12,
             bbox=dict(
-                facecolor='black',  # Background color
-                edgecolor='none',  # No border
-                boxstyle='round,pad=0.2',  # Rounded corners, padded
-                alpha=0.6  # Optional transparency
-            )
+                facecolor="black",
+                edgecolor="none",
+                boxstyle="round,pad=0.2",
+                alpha=0.6,
+            ),
+            arrowprops=dict(
+                arrowstyle="->",
+                color="white",
+                lw=0.5,
+            ),
         )
-
-        texts.append(text)
 
     # Set dynamic extent based on glacier points
     buffer = 0  # in meters
@@ -228,12 +243,17 @@ def plot_map_with_annotations(
     )
     ax.set_extent([min_x, max_x, min_y, max_y], crs=utm_crs)
 
-    # Adjust text annotations to avoid overlapping
-    adjust_text(
-        texts,
-        arrowprops=dict(arrowstyle='->', color='white', lw=0.5, zorder=11),
-        expand=(3, 3), avoid_self=True, only_move={"text":"y"},
-    )
+    #Adjust text annotations to avoid overlapping
+    # adjust_text(
+    #     texts,
+    #     x=gdf.geometry.x,
+    #     y=gdf.geometry.y,
+    #     arrowprops=dict(arrowstyle='->', color='white', lw=0.5, zorder=11),
+    #     expand=(3, 3),
+    #     expand_points=(3, 3),
+    #     avoid_self=True,
+    #     only_move={"text": "xy"},
+    # )
     # Set dynamic extent based on glacier points
     buffer = 20000  # in meters
     min_x, min_y, max_x, max_y = (
@@ -299,8 +319,8 @@ def plot_map_with_annotations(
                        fontsize=10,
                        pad=10)  # move it up a bit
 
-    sizes = [40, 200, 400]  # marker sizes
-    labels = [f"{int(s / 20)}" for s in sizes]
+    sizes = [20, 100, 200]  # marker sizes
+    labels = [f"{int(s / 10)}" for s in sizes]
 
     handles = [plt.scatter([], [], s=s, color="none", alpha=1, edgecolors='white') for s in sizes]
 

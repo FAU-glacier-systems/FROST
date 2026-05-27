@@ -8,7 +8,7 @@ colors = tuple(cmap[i] for i in range(0, 20, 2)) + tuple(
     cmap[i] for i in range(1, 20, 2))
 
 def scatter_plot(ax, x, y, xlabel, ylabel, title, ticks, glacier_names=None,
-                 y_std=None, x_std=None, color=None):
+                 y_std=None, x_std=None, colors=None, markers=None):
     margin = (ticks[-1] - ticks[0]) * 0.05
     x_min = ticks[0] - margin
     x_max = ticks[-1] + margin
@@ -18,15 +18,17 @@ def scatter_plot(ax, x, y, xlabel, ylabel, title, ticks, glacier_names=None,
             label="1:1 Correlation")
 
     # y = predictions, x = observations
-    mae = np.mean(np.abs(y - x))
+    mae = np.nanmean(np.abs(y - x))
     bias = np.mean(y - x)
     y_corr = y - bias
     bc_didf = y_corr - x
-    bcmae = np.mean(np.abs(bc_didf))  # Bias-corrected MAE
-    correlation = np.corrcoef(x, y)[0, 1]
+    bcmae = np.nanmean(np.abs(bc_didf))  # Bias-corrected MAE
+
+    mask = ~np.isnan(x) & ~np.isnan(y)
+    correlation = np.corrcoef(x[mask], y[mask])[0, 1]
     txt = (
-        f"Correlation: {correlation:.2f}\n"
-        f"Mean error: {mae:.2f}"
+        f"r: {correlation:.2f}\n"
+        f"MAE: {mae:.2f}"
 
     )
     ax.text(0.95, 0.05,txt,
@@ -36,22 +38,37 @@ def scatter_plot(ax, x, y, xlabel, ylabel, title, ticks, glacier_names=None,
             horizontalalignment='right')
 
     scatter_handles = []
+
     if glacier_names is None:
         scatter = ax.scatter(x, y)
     else:
         for i, label in enumerate(glacier_names):
-            scatter = ax.scatter(x[i], y[i], label=label,
-                                 color=colors[i % len(colors)], zorder=10)
+
+            color = colors[i % len(colors)] if colors is not None else None
+            marker = markers[i % len(markers)] if markers is not None else "o"
+
+            scatter = ax.scatter(
+                x[i],
+                y[i],
+                label=label,
+                color=color,
+                marker=marker,
+                zorder=10
+            )
+
             scatter_handles.append(scatter)
-            if x_std is not None and y_std is not None:
-                ellipse = Ellipse(
-                    (x[i], y[i]),
-                    width=2 * x_std[i],
-                    height=2 * y_std[i],
-                    edgecolor='none', facecolor=colors[i % len(colors)],
-                    alpha=0.1, zorder=2
-                )
-                ax.add_patch(ellipse)
+
+            # if x_std is not None and y_std is not None:
+            #     ellipse = Ellipse(
+            #         (x[i], y[i]),
+            #         width=2 * x_std[i],
+            #         height=2 * y_std[i],
+            #         edgecolor='none',
+            #         facecolor=color,
+            #         alpha=0.1,
+            #         zorder=2
+            #     )
+            #     ax.add_patch(ellipse)
 
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
