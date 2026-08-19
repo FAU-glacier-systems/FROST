@@ -71,35 +71,54 @@ colors = cmap(norm)
 # =========================
 # 6. PLOT STRIPES
 # =========================
-fig, ax = plt.subplots(figsize=(6, 4))
+fig, ax = plt.subplots(figsize=(6, 4), facecolor="black")
+ax.set_facecolor("black")
 
 ax.bar(concat_years, concat_temps, color=colors, width=1.0, edgecolor='none', zorder=10)
-#ax.plot(concat_years,concat_temps, color='black', linewidth=0.1, zorder=10)
-ax.plot(year_pages[year_pages <= 1900], median_pages_rebased[year_pages <= 1900], color='gray', linewidth=0.3, zorder=10)
 
-ax.plot(years_had[cut_index:], temps_had_rebased[cut_index:], color='black', linewidth=0.3, zorder=10)
-# Labels and title
-# Main text (black)
-ax.axhline(0, color='black', linewidth=0.6, linestyle='-', zorder=50)
-ax.scatter(2025, temps_had_rebased[-2], color=colors[-2], zorder=100, edgecolors='black', )
+# ax.plot(
+#     year_pages[year_pages <= 1900],
+#     median_pages_rebased[year_pages <= 1900],
+#     color='black',
+#     linewidth=0.3,
+#     zorder=10
+# )
+#
+# ax.plot(
+#     years_had[cut_index:],
+#     temps_had_rebased[cut_index:],
+#     color='black',
+#     linewidth=0.3,
+#     zorder=10
+# )
+
+ax.axhline(0, color='white', linewidth=0.6, linestyle='-', zorder=50)
+
+ax.scatter(
+    2025,
+    temps_had_rebased[-2],
+    color=colors[-2],
+    zorder=100,
+    edgecolors='white'
+)
+
 point_x = 2000
-point_y = temps_had_rebased[-2]-0.01
+point_y = temps_had_rebased[-2] - 0.01
 
 ax.annotate(
-    #"heading for +3°C by 2100\n great for mosquitoes,\n bad for literally everything else.",
-"heading for +3.2°C by 2100\n [IPCC 6th Synthesis Report]",
-
-    xy=(point_x, point_y),          # point to annotate
-    xytext=(point_x-150, point_y-0.3),   # text position (adjust as needed)
+    "heading for +3.2°C by 2100\n [IPCC 6th Synthesis Report]",
+    xy=(point_x, point_y),
+    xytext=(point_x - 150, point_y - 0.3),
     arrowprops=dict(
         arrowstyle="->",
         lw=1,
-        color="black"
+        color="white"
     ),
     ha="right",
     va="bottom",
     fontsize=6,
-    bbox=dict(facecolor="white", edgecolor="none", pad=2)
+    color="white",
+    bbox=dict(facecolor="black", edgecolor="none", pad=2)
 )
 
 ax.text(
@@ -108,100 +127,72 @@ ax.text(
     ha="center", va="center",
     fontsize=13, zorder=8,
     transform=ax.transAxes,
-bbox = dict(facecolor="white", edgecolor="none", pad=4)
-
+    color="white",
+    bbox=dict(facecolor="black", edgecolor="none", pad=4)
 )
+
 ax.text(
     0.5, 0.55,
-    "Baseline: 1850 – 1900" ,     # leave space for PAGES2k
+    "Baseline: 1850 – 1900",
     ha="center", va="center",
     fontsize=10, zorder=10,
     transform=ax.transAxes,
-bbox = dict(facecolor="white", edgecolor="none", pad=4)
+    color="white",
+    bbox=dict(facecolor="black", edgecolor="none", pad=4)
 )
+
 ax.text(
     0.5, 0.5,
-    "[        + HadCRUT5]" ,     # leave space for PAGES2k
+    "[        + HadCRUT5]",
     ha="center", va="center",
     fontsize=8, zorder=12,
     transform=ax.transAxes,
-bbox = dict(facecolor="white", edgecolor="none", pad=4)
+    color="white",
+    bbox=dict(facecolor="black", edgecolor="none", pad=4)
 )
 
-# Overlay the gray "PAGES2k" at the right spot
 ax.text(
-    0.5 - 0.06, 0.5,     # small manual offset tuning
+    0.5 - 0.06, 0.5,
     "PAGES2k",
     ha="center", va="center",
     fontsize=8, zorder=13,
-    color="gray",
+    color="white",
     transform=ax.transAxes
 )
 
-ax.set_xlabel("Year", fontsize=8)
+ax.set_xlabel("Year", fontsize=8, color="white")
 
-# Clean look: minimal axes
 ax.spines['top'].set_visible(False)
 ax.spines['right'].set_visible(False)
 ax.spines['bottom'].set_visible(False)
 ax.spines['left'].set_visible(False)
+
 ax.set_ylim(np.nanmin(concat_temps))
 
 ax.grid(False)
-plt.xticks([0, 500, 1000, 1500,  2025])
-plt.yticks(ticks=[-0.2, 0.5, 1, 1.5], labels=["-0.2 °C", "+0.5 °C", "+1 °C", "+1.5 °C"])
+plt.xticks([0, 500, 1000, 1500, 2025], color="white")
+plt.yticks(
+    ticks=[-0.2, 0.5, 1, 1.5],
+    labels=["-0.2 °C", "+0.5 °C", "+1 °C", "+1.5 °C"],
+    color="white"
+)
 
-# Place horizontal line at 0°C anomaly
-ax.grid(axis="y", color="lightgray", linestyle="-", )
-ax.grid(axis="x", color="lightgray", linestyle="-",)
-ax.xaxis.set_tick_params(bottom=False)
-ax.yaxis.set_tick_params(left=False)
+ax.grid(axis="y", color="white", linestyle="-", alpha=0.5)
+ax.grid(axis="x", color="white", linestyle="-", alpha=0.5)
 
-# Move labels inside
-ax.tick_params(axis='y', direction='in', pad=-2)
+ax.xaxis.set_tick_params(bottom=False, colors="white")
+ax.yaxis.set_tick_params(left=False, colors="white")
+
+ax.tick_params(axis='y', direction='in', pad=-2, colors="white")
+ax.tick_params(axis='x', colors="white")
+
 for label in ax.get_yticklabels():
     label.set_ha("left")
-    label.set_bbox(dict(facecolor="white", edgecolor="none", pad=2))
+    label.set_color("white")
+    label.set_bbox(dict(facecolor="black", edgecolor="none", pad=2))
     label.set_zorder(50)
 
-
-# import plotly.graph_objects as go
-# import numpy as np
-#
-# Z = np.tile(concat_temps, (100,1))                # 2D array
-# rows, cols = Z.shape
-#
-# # Optional X and Y axes
-# X = np.arange(cols)
-# Y = np.arange(rows)
-#
-# fig = go.Figure(data=[
-#     go.Surface(
-#         z=Z,
-#         x=X,
-#         y=Y,
-#             colorscale='RdBu_r'
-#     )
-# ])
-#
-# fig.update_layout(
-#     title='3D Temperature Surface',
-#     scene=dict(
-#         xaxis_title='Time',
-#         yaxis_title='Index',
-#         zaxis_title='Temperature'
-#     ),
-#     width=900,
-#     height=700
-# )
-#
-# fig.show()
-
-
-
-
 plt.tight_layout()
-plt.savefig("climate_stripes_pages2k.svg", dpi=300, bbox_inches="tight")
-plt.savefig("climate_stripes_pages2k.png", dpi=300, bbox_inches="tight")
-plt.savefig("climate_stripes_pages2k.pdf", dpi=300, bbox_inches="tight")
-
+plt.savefig("climate_stripes_pages2k.svg", dpi=300, bbox_inches="tight", facecolor="black")
+plt.savefig("climate_stripes_pages2k.png", dpi=300, bbox_inches="tight", facecolor="black")
+plt.savefig("climate_stripes_pages2k.pdf", dpi=300, bbox_inches="tight", facecolor="black")

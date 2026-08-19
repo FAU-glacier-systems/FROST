@@ -11,6 +11,21 @@ import matplotlib.pyplot as plt
 
 from frost.visualization.utils import scatter_plot
 
+plt.rcParams["font.family"] = "monospace"
+plt.rcParams.update({
+    "figure.facecolor": "black",
+    "axes.facecolor": "black",
+    "savefig.facecolor": "black",
+    "text.color": "white",
+    "axes.labelcolor": "white",
+    "axes.titlecolor": "white",
+    "xtick.color": "white",
+    "ytick.color": "white",
+    "axes.edgecolor": "white",
+    "legend.facecolor": "black",
+    "legend.edgecolor": "black",
+    "legend.labelcolor": "white",
+})
 
 def ensure_dir(path: Path) -> None:
     path.mkdir(parents=True, exist_ok=True)
@@ -112,6 +127,7 @@ def plot_glamos_vs_predictions(merged_df_glamos: pd.DataFrame, out_path: Path) -
     )
 
     fig, axes = plt.subplots(3, 3, figsize=(10, 10))
+    fig.patch.set_facecolor("black")
     axes = axes.flatten()
 
 
@@ -243,13 +259,25 @@ def plot_glamos_vs_predictions(merged_df_glamos: pd.DataFrame, out_path: Path) -
 
     handles = scatter_handles_ela
     leg = fig.legend(
-        handles[::-1], glacier_names[::-1],
-        loc="upper left", bbox_to_anchor=(0.36, 0.67),
+        handles[::-1],
+        glacier_names[::-1],
+        loc="upper left",
+        bbox_to_anchor=(0.36, 0.67),
         fontsize=10,
+        frameon=True  # keep frame so we can style it
     )
+
+    # transparent background
+    leg.get_frame().set_facecolor("black")
+    leg.get_frame().set_edgecolor("black")
+
+    # white text
+    for text in leg.get_texts():
+        text.set_color("white")
     fig.text(
         0.36, 0.5, "Glaciers (RGI7-ID)",  # x, y in figure coordinates
-        rotation=90, va="center", ha="center", fontsize=11
+        rotation=90, va="center", ha="center", fontsize=11,
+        color="white"
     )
     # Optionally adjust alignment
     leg.get_title().set_verticalalignment("bottom")
@@ -265,10 +293,11 @@ def plot_glamos_vs_predictions(merged_df_glamos: pd.DataFrame, out_path: Path) -
     labels_subplot = [f"{letter})" for letter in string.ascii_lowercase[:len(axes_with_label)]]
     for ax, label in zip(axes_with_label, labels_subplot):
         ax.text(-0.1, 1.02, label, transform=ax.transAxes,
-                fontsize=12, va='bottom', ha='left', fontweight='bold')
+                fontsize=12, va='bottom', ha='left', fontweight='bold',
+                color="white")
 
     fig.tight_layout()
-    fig.savefig(out_path, dpi=300)
+    fig.savefig(out_path, dpi=300, transparent=True)
     plt.close(fig)
 
 
@@ -279,7 +308,7 @@ def plot_sla_vs_predictions(merged_df_sla: pd.DataFrame, out_path: Path) -> None
     ax = axes[1]
     min = 2300
     max = 3601
-    ax.plot([min - 100, max + 100], [min - 100, max + 100], "--", color="black", alpha=0.3,
+    ax.plot([min - 100, max + 100], [min - 100, max + 100], "--", color="white", alpha=0.7,
             zorder=-4,
             label="1:1 Correlation")
 
@@ -306,14 +335,14 @@ def plot_sla_vs_predictions(merged_df_sla: pd.DataFrame, out_path: Path) -> None
     bcmae = np.mean(np.abs(bc_didf))  # Bias-corrected MAE
     correlation = np.corrcoef(x, y)[0, 1]
     txt = (
-        f"r:    {correlation:.2f}\n"
+        f"r: {correlation:.2f}\n"
         f"MAE: {mae:.0f} m\n"
         f"Bias: {bias:.0f} m\n"
         f"MAE*: {bcmae:.0f} m"
     )
     ax.text(0.95, 0.05, txt,
             transform=ax.transAxes, zorder=10,
-            bbox=dict(facecolor='white', alpha=0.8),
+            bbox=dict(facecolor='black', alpha=0.8),
             verticalalignment='bottom',
             horizontalalignment='right')
 
@@ -344,7 +373,7 @@ def plot_sla_vs_predictions(merged_df_sla: pd.DataFrame, out_path: Path) -> None
     ax = axes[0]
     min = -2.
     max = 0.1
-    ax.plot([min, max ], [min, max ], "--", color="black", alpha=0.3,
+    ax.plot([min, max ], [min, max ], "--", color="white", alpha=0.7,
             zorder=-4,
             label="1:1 Correlation")
 
@@ -387,7 +416,7 @@ def plot_sla_vs_predictions(merged_df_sla: pd.DataFrame, out_path: Path) -> None
     )
     ax.text(0.95, 0.05, txt,
             transform=ax.transAxes,
-            bbox=dict(facecolor='white', alpha=0.8),
+            bbox=dict(facecolor='black', alpha=0.8),
             verticalalignment='bottom', zorder=10,
             horizontalalignment='right')
 
@@ -419,11 +448,11 @@ def plot_sla_vs_predictions(merged_df_sla: pd.DataFrame, out_path: Path) -> None
     axes_with_label = [axes[0], axes[1]]
     labels_subplot = [f"{letter})" for letter in string.ascii_lowercase[:len(axes_with_label)]]
     for ax, label in zip(axes_with_label, labels_subplot):
-        ax.text(-0.23, 1.02, label, transform=ax.transAxes,
+        ax.text(-0.33, 1.02, label, transform=ax.transAxes,
                 fontsize=12, va='bottom', ha='left', fontweight='bold')
 
     fig.tight_layout()
-    fig.savefig(out_path)
+    fig.savefig(out_path, dpi=300, transparent=True)
     plt.close(fig)
 
 

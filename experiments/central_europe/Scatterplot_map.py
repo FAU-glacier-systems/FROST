@@ -10,6 +10,7 @@ from rasterio.plot import show
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from adjustText import adjust_text
 
+plt.rcParams["font.family"] = "monospace"
 
 # -----------------------------------------------------
 # 1. Load and prepare the DEM (GeoTIFF)
@@ -298,7 +299,16 @@ def plot_map_with_annotations(
     # Set ticks only at full degrees
     gl.xlocator = mticker.MultipleLocator(1)  # Every 1° in longitude
     gl.ylocator = mticker.MultipleLocator(1)  # Every 1° in latitude
+    # Label appearance
+    gl.xlabel_style = {
+        "color": "white",
+        "size": 10,
+    }
 
+    gl.ylabel_style = {
+        "color": "white",
+        "size": 10,
+    }
     # Add colorbar for elevation
     cax2 = inset_axes(
         ax,
@@ -372,7 +382,9 @@ def plot_map_with_annotations(
 
     # Save the figure
     #plt.tight_layout()
-    plt.savefig(save_path, dpi=200)
+
+
+    plt.savefig(save_path, dpi=400, transparent=True)
     print(f"Map saved to {save_path}")
     plt.close()
 
@@ -431,7 +443,7 @@ def main():
 
     plot_map_with_annotations(
         dem_data, extent, gdf,
-        save_path="../central_europe_submit/plots/ALPS_ela_Scatter.pdf",
+        save_path="../central_europe_submit/plots/ALPS_ela_Scatter.png",
         country_paths=country_paths,
         value_column="ela",  # Column for ELA
         color_map="viridis_r",  # Colormap

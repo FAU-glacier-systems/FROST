@@ -42,4 +42,4 @@ ax.set_xlim(years.min() - 0.5, years.max() + 0.5)
 ax.set_frame_on(False)
 
 plt.tight_layout()
-plt.savefig("climate_stripes.png", dpi=300)
+plt.savefig("climate_stripes.png", dpi=300, transparent=True)

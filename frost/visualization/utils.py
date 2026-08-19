@@ -13,7 +13,7 @@ def scatter_plot(ax, x, y, xlabel, ylabel, title, ticks, glacier_names=None,
     x_min = ticks[0] - margin
     x_max = ticks[-1] + margin
 
-    ax.plot([x_min, x_max], [x_min, x_max], "--", color="black", alpha=0.3,
+    ax.plot([x_min, x_max], [x_min, x_max], "--", color="white", alpha=0.7,
             zorder=-4,
             label="1:1 Correlation")
 
@@ -33,7 +33,7 @@ def scatter_plot(ax, x, y, xlabel, ylabel, title, ticks, glacier_names=None,
     )
     ax.text(0.95, 0.05,txt,
             transform=ax.transAxes,
-            bbox=dict(facecolor='white', alpha=0.8),
+            bbox=dict(facecolor='black', alpha=0.8),
             verticalalignment='bottom', zorder=100,
             horizontalalignment='right')
 
@@ -79,6 +79,12 @@ def scatter_plot(ax, x, y, xlabel, ylabel, title, ticks, glacier_names=None,
     ax.set_yticks(ticks)
     ax.set_aspect('equal', adjustable='box')
 
+    ax.set_xlabel(xlabel, color="white")
+    ax.set_ylabel(ylabel, color="white")
+    ax.set_title(title, color="white")
+    ax.tick_params(colors="white")
+
+
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
     ax.spines['bottom'].set_visible(False)
@@ -91,4 +97,137 @@ def scatter_plot(ax, x, y, xlabel, ylabel, title, ticks, glacier_names=None,
 
     return scatter_handles
 
+import numpy as np
 
+DIGITS= {
+    "0": [
+        [1,1,1,1,1],
+        [1,0,0,0,1],
+        [1,0,0,0,1],
+        [1,0,0,0,1],
+        [1,0,0,0,1],
+        [1,0,0,0,1],
+        [1,1,1,1,1],
+    ],
+    "1": [
+        [0,0,1,0,0],
+        [0,1,1,0,0],
+        [1,0,1,0,0],
+        [0,0,1,0,0],
+        [0,0,1,0,0],
+        [0,0,1,0,0],
+        [1,1,1,1,1],
+    ],
+    "2": [
+        [1,1,1,1,1],
+        [0,0,0,0,1],
+        [0,0,0,0,1],
+        [1,1,1,1,1],
+        [1,0,0,0,0],
+        [1,0,0,0,0],
+        [1,1,1,1,1],
+    ],
+    "3": [
+        [1,1,1,1,1],
+        [0,0,0,0,1],
+        [0,0,0,0,1],
+        [1,1,1,1,1],
+        [0,0,0,0,1],
+        [0,0,0,0,1],
+        [1,1,1,1,1],
+    ],
+    "4": [
+        [1,0,0,1,0],
+        [1,0,0,1,0],
+        [1,0,0,1,0],
+        [1,1,1,1,1],
+        [0,0,0,1,0],
+        [0,0,0,1,0],
+        [0,0,0,1,0],
+    ],
+    "5": [
+        [1,1,1,1,1],
+        [1,0,0,0,0],
+        [1,0,0,0,0],
+        [1,1,1,1,1],
+        [0,0,0,0,1],
+        [0,0,0,0,1],
+        [1,1,1,1,1],
+    ],
+    "6": [
+        [1,1,1,1,1],
+        [1,0,0,0,0],
+        [1,0,0,0,0],
+        [1,1,1,1,1],
+        [1,0,0,0,1],
+        [1,0,0,0,1],
+        [1,1,1,1,1],
+    ],
+    "7": [
+        [1,1,1,1,1],
+        [0,0,0,0,1],
+        [0,0,0,1,0],
+        [0,0,1,0,0],
+        [0,1,0,0,0],
+        [0,1,0,0,0],
+        [0,1,0,0,0],
+    ],
+    "8": [
+        [1,1,1,1,1],
+        [1,0,0,0,1],
+        [1,0,0,0,1],
+        [1,1,1,1,1],
+        [1,0,0,0,1],
+        [1,0,0,0,1],
+        [1,1,1,1,1],
+    ],
+    "9": [
+        [1,1,1,1,1],
+        [1,0,0,0,1],
+        [1,0,0,0,1],
+        [1,1,1,1,1],
+        [0,0,0,0,1],
+        [0,0,0,0,1],
+        [1,1,1,1,1],
+    ],
+}
+
+
+import numpy as np
+
+import numpy as np
+
+import numpy as np
+from scipy.ndimage import rotate
+
+def year_to_pixel_array(year: int, step: int = 2):
+    """
+    Rotated 45° digits placed diagonally.
+    """
+
+    digits = str(year)
+
+    digit_arrays = [
+        rotate(np.array(DIGITS[d]), angle=-45, reshape=True, order=0)
+        for d in digits
+    ]
+
+    h = max(d.shape[0] for d in digit_arrays)
+    w = max(d.shape[1] for d in digit_arrays)
+
+    n = len(digit_arrays)
+
+    canvas = np.zeros((h + (n - 1) * step, w + (n - 1) * step), dtype=int)
+
+    for i, d in enumerate(digit_arrays):
+        y = i * step
+        x = i * step
+
+        dh, dw = d.shape
+
+        canvas[y:y+dh, x:x+dw] = np.maximum(
+            canvas[y:y+dh, x:x+dw],
+            (d > 0).astype(int)
+        )
+
+    return canvas

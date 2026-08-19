@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 
 from frost.visualization.utils import scatter_plot
 
+plt.rcParams["font.family"] = "monospace"
 
 def ensure_dir(path: Path) -> None:
     path.mkdir(parents=True, exist_ok=True)

@@ -4,30 +4,40 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
+plt.rcParams["font.family"] = "monospace"
 
 def plot_results(hyperparameters):
     # global figure
     nrows = len(hyperparameters)
     fig_para, ax_para = plt.subplots(nrows=nrows, ncols=2, figsize=(10, nrows * 3))
 
+    fig_para.patch.set_facecolor("black")
+    plt.rcParams.update({
+        "text.color": "white",
+        "axes.labelcolor": "white",
+        "xtick.color": "white",
+        "ytick.color": "white",
+        "axes.edgecolor": "white",
+    })
+
     # run for every hyperparameters
     for fig_num, hyperparameter in enumerate(hyperparameters):
 
         if hyperparameter == 'elevation_step':
             experiment_folder = os.path.join(
-                '../../Experiments/RGI2000-v7.0-G-11-01706_v5/', hyperparameter)
+                '../../data/results/MethodPaper_v2/RGI2000-v7.0-G-11-01706_v5/', hyperparameter)
         elif hyperparameter == 'ensemble_size':
             experiment_folder = os.path.join(
-                '../../Experiments/RGI2000-v7.0-G-11-01706_v1/', hyperparameter)
+                '../../data/results/MethodPaper_v2/RGI2000-v7.0-G-11-01706_v1/', hyperparameter)
         elif hyperparameter == 'init_offset':
             experiment_folder = os.path.join(
-                '../../Experiments/RGI2000-v7.0-G-11-01706_v2/', hyperparameter)
+                '../../data/results/MethodPaper_v2/RGI2000-v7.0-G-11-01706_v2/', hyperparameter)
         elif hyperparameter == 'iterations':
             experiment_folder = os.path.join(
-                '../../Experiments/RGI2000-v7.0-G-11-01706_v3/', hyperparameter)
+                '../../data/results/MethodPaper_v2/RGI2000-v7.0-G-11-01706_v3/', hyperparameter)
         elif hyperparameter == 'obs_uncertainty':
             experiment_folder = os.path.join(
-                '../../Experiments/RGI2000-v7.0-G-11-01706_v4/', hyperparameter)
+                '../../data/results/MethodPaper_v2/RGI2000-v7.0-G-11-01706_v4/', hyperparameter)
 
         # load result json files
         results = []
@@ -120,7 +130,7 @@ def plot_results(hyperparameters):
         # df = df[df['spread2'] < 0.2]
         colorscale = plt.get_cmap('tab20c')
         colormap = [colorscale(0), colorscale(2), colorscale(3),
-                    'black', colorscale(18), colorscale(19),
+                    'white', colorscale(18), colorscale(19),
 
                     colorscale(4), colorscale(6), colorscale(7)]
         # csfont = {'fontname': 'Comic Sans'}
@@ -281,6 +291,7 @@ def plot_results(hyperparameters):
                                      yticks_positions_lin])
 
         for num, grad_axis in [(0, grad_axis_para), (1, grad_axis_spread)]:
+            ax_para[fig_num, num].set_facecolor("black")
             ax_para[fig_num, num].get_yaxis().set_tick_params(which='minor', size=0)
             ax_para[fig_num, num].get_yaxis().set_tick_params(which='minor', width=0)
             grad_axis.get_yaxis().set_tick_params(which='minor', size=0)
@@ -291,8 +302,8 @@ def plot_results(hyperparameters):
             ax_para[fig_num, num].spines['left'].set_visible(False)
             grad_axis.spines['right'].set_visible(False)
 
-            ax_para[fig_num, num].grid(axis="y", color="lightgray", linestyle="-")
-            ax_para[fig_num, num].grid(axis="x", color="lightgray", linestyle="-",
+            ax_para[fig_num, num].grid(axis="y", color="dimgray", linestyle="-")
+            ax_para[fig_num, num].grid(axis="x", color="dimgray", linestyle="-",
                                        which='minor')
             ax_para[fig_num, num].set_ylim(-0.03, 1.03)
             ax_para[fig_num, num].set_xlim(-0.75, len(bin_list_para) * 3 - 0.25)
@@ -300,11 +311,13 @@ def plot_results(hyperparameters):
                 np.arange(-0.5, len(bin_list_para) * 3, 3), minor=True)
             ax_para[fig_num, num].set_xticks(np.arange(1, len(bin_list_para) * 3, 3),
                                              bin_centers)
-            ax_para[fig_num, num].yaxis.set_tick_params(left=False)
+            ax_para[fig_num, num].yaxis.set_tick_params(left=False, colors="white")
             # ax[i,j].xaxis.set_tick_params(bottom=True, which='minor',color="lightgray")
-            ax_para[fig_num, num].xaxis.set_tick_params(bottom=False, which='both', )
+            ax_para[fig_num, num].xaxis.set_tick_params(bottom=False, which='both',
+                                                        colors="white")
 
-            grad_axis.yaxis.set_tick_params(right=False)
+            grad_axis.yaxis.set_tick_params(right=False, colors="white")
+            grad_axis.yaxis.label.set_color("white")
             handles, labels = ax_para[fig_num, num].get_legend_handles_labels()
 
             if hyperparameter == 'covered_area':
@@ -333,7 +346,7 @@ def plot_results(hyperparameters):
                     '$u$: Observation Uncertainty (m a$^{-1}$)')
             else:
                 ax_para[fig_num, num].set_xlabel(hyperparameter)
-
+            ax_para[fig_num, num].xaxis.label.set_color('white')
     import string
     axes = ax_para.flatten()  # Flatten for easy iteration
 
@@ -342,14 +355,22 @@ def plot_results(hyperparameters):
     for ax, label in zip(axes, labels_subplot):
         # Add label to lower-left corner (relative coordinates)
         ax.text(-0.21, 1, label, transform=ax.transAxes,
-                fontsize=12, va='bottom', ha='left', fontweight='bold')
-    fig_para.legend(handles, labels, loc='upper center', ncol=3)
+                fontsize=12, va='bottom', ha='left', fontweight='bold',
+                color="white")
+    legend = fig_para.legend(handles, labels, loc='upper center', ncol=3)
+    legend.get_frame().set_facecolor("black")
+    legend.get_frame().set_edgecolor("black")
+    for text in legend.get_texts():
+        text.set_color("white")
+
     fig_para.tight_layout()
     fig_para.subplots_adjust(top=0.92, bottom=0.08)
-    fig_para.savefig(f'../../Plots/MAE_{hyperparameters}.pdf', format="pdf")
-    #fig_para.savefig(f'../../Plots/MAE_ext.png', format="png", dpi=300)
+    fig_para.savefig(f'Plots/MAE_{hyperparameters}.pdf', format="pdf",
+                     facecolor=fig_para.get_facecolor())
+    fig_para.savefig(f'Plots/MAE_{hyperparameters}.png',dpi=300, format="png",
+                     facecolor=fig_para.get_facecolor())
 
 
 if __name__ == '__main__':
-    #plot_results(['obs_uncertainty','init_offset'])
-    plot_results(['ensemble_size','iterations','elevation_step'])
+    plot_results(['obs_uncertainty','init_offset'])
+    #plot_results(['ensemble_size','iterations'])
