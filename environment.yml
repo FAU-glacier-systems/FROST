@@ -11,5 +11,6 @@ dependencies:
     - utm
     - pyvista
     - gstools
+    - pytest
     - git+https://github.com/instructed-glacier-model/igm@v3.0.1
 
