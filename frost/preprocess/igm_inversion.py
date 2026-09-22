@@ -70,9 +70,12 @@ def main(rgi_id_dir, params_inversion_path):
     with open(params_inversion_path, 'r') as file:
         inv_params = yaml.safe_load(file)
 
-    # Add velocity observation parameters if available
+    # Drop the velsurf misfit term if no usable velocity observations are available
     if not flag_velsurfobs:
-        inv_params['processes']['data_assimilation']['cost_list'] = ['thk', 'icemask', 'usurf']
+        misfit = inv_params['assimilations']['field_inversion']['objective']['misfit']
+        inv_params['assimilations']['field_inversion']['objective']['misfit'] = [
+            term for term in misfit if term['name'] != 'velsurf'
+        ]
 
     # Prepare inversion directory
     preprocess_dir = os.path.join(rgi_id_dir, 'Preprocess')
@@ -96,11 +99,19 @@ def main(rgi_id_dir, params_inversion_path):
     igm_main()
     # subprocess.run(["igm_run", "+experiment=params"], check=True)
 
+    # TODO remove unnecessary files
+    latest = max(Path("outputs").glob("*/*"), key=lambda p: p.stat().st_mtime)
+
+    # field_inversion (IGM >= 3.2) writes its result to optimize.nc inside the
+    # hydra run dir, not to a configurable save_result_in_ncdf path like the
+    # old data_assimilation strategy did. Copy it to outputs/output.nc so the
+    # rest of FROST (create_observation.py, analyze_inversion.py,
+    # ensemble_kalman_filter.py, ...) can keep expecting that fixed path.
+    os.makedirs('outputs', exist_ok=True)
+    shutil.copy(os.path.join(latest, 'optimize.nc'), os.path.join('outputs', 'output.nc'))
     with Dataset(os.path.join('outputs', 'output.nc'), 'a') as output:
         output.setncattr('epsg', epsg)
         output.setncattr('pyproj_srs', pyproj_srs)
-    # TODO remove unnecessary files
-    latest = max(Path("outputs").glob("*/*"), key=lambda p: p.stat().st_mtime)
 
     src = os.path.join(latest, 'iceflow-model')
     dst = os.path.join('outputs', 'iceflow-model')

@@ -5,58 +5,51 @@ defaults:
 - override /inputs:
   - local
 - override /processes:
-  - data_assimilation
   - iceflow
   - thk
+- override /assimilations:
+  - field_inversion
 - override /outputs: []
 inputs:
   local:
     filename: input.nc
 processes:
   iceflow:
+    method: unified
     physics:
-      init_slidingco: 0.045
-    emulator:
-      save_model: true
-      retrain_freq: 1
-  data_assimilation:
+      sliding:
+        u_ref: 100.0
+        # tau_ref = slidingco * u_ref^(1/m); m = physics.sliding.exponent (3.0 default).
+        # 0.045 was the old init_slidingco value: 0.045 * 100^(1/3) = 0.208872
+        tau_ref: 0.208872
+    unified:
+      network:
+        pretrained: true
+assimilations:
+  field_inversion:
+    variables:
+    - { name: thk, transform: identity, lower_bound: 0.0, upper_bound: 1000.0, mask: icemask }
+    - { name: usurf, transform: identity, mask: icemask }
+    - { name: tau_ref, transform: log10 }
+    objective:
+      misfit:
+      - { name: velsurf, kind: gaussian, components: [uvelsurf, vvelsurf], obs: [uvelsurfobs, vvelsurfobs], std: 1.0 }
+      - { name: thk, kind: gaussian, components: [thk], obs: [thkobs], std: 1.0 }
+      - { name: usurf, kind: gaussian, components: [usurf], obs: [usurfobs], std: 1.0 }
+      regularization:
+      - { name: thk, penalty: squared_laplacian, lam: 1000000.0 }
+      - { name: tau_ref, penalty: l2, lam: 1.0 }
+    optimization:
+      nbitmax: 100
+      retrain_iter: 5
     output:
-      save_result_in_ncdf: ../../output.nc
+      freq: 100
       vars_to_save:
       - usurf
-      - topg
       - thk
-      - slidingco
+      - topg
+      - icemask
+      - velbase_mag
       - velsurf_mag
       - velsurfobs_mag
-      - divflux
-      - icemask
-      - arrhenius
-      - thkobs
-      - dhdt
-      plot2d_live: false
-      plot2d: false
-    control_list:
-    - thk
-    - usurf
-    - slidingco
-    cost_list:
-    - thk
-    - icemask
-    - usurf
-    - velsurf
-    fitting:
-      thkobs_std: 1
-      usurfobs_std: 1
-      velsurfobs_std: 1
-    optimization:
-      retrain_iceflow_model: true
-      nbitmax: 100
-      nb_relaxation_steps: 100
-    regularization:
-      thk: 10
-      slidingco: 10
-      smooth_anisotropy_factor: 1.0
-      convexity_weight: 0.0
-      to_regularize: thk
 outputs: {}
