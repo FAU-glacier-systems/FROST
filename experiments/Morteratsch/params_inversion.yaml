@@ -1,0 +1,62 @@
+# @package _global_
+core:
+  url_data: ''
+defaults:
+- override /inputs:
+  - local
+- override /processes:
+  - data_assimilation
+  - iceflow
+  - thk
+- override /outputs: []
+inputs:
+  local:
+    filename: input.nc
+processes:
+  iceflow:
+    physics:
+      init_slidingco: 0.045
+    emulator:
+      save_model: true
+      retrain_freq: 1
+  data_assimilation:
+    output:
+      save_result_in_ncdf: ../../output.nc
+      vars_to_save:
+      - usurf
+      - topg
+      - thk
+      - slidingco
+      - velsurf_mag
+      - velsurfobs_mag
+      - divflux
+      - icemask
+      - arrhenius
+      - thkobs
+      - dhdt
+      plot2d_live: false
+      plot2d: false
+    control_list:
+    - thk
+    - usurf
+    - slidingco
+    cost_list:
+    - thk
+    - icemask
+    - usurf
+    - velsurf
+    fitting:
+       usurfobs_std: 0.3
+       velsurfobs_std: 0.25
+       thkobs_std: 1
+       divfluxobs_std: 0.1
+    optimization:
+      retrain_iceflow_model: true
+      nbitmax: 100
+      nb_relaxation_steps: 100
+    regularization:
+       thk: 1.0
+       slidingco: 1.0e6
+       smooth_anisotropy_factor: 1.0
+       convexity_weight: 0.0
+outputs: {}

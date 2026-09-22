@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import copy
 import plotly.graph_objects as go
@@ -283,7 +284,8 @@ def visualise_3d(property, glacier_surface, bedrock, x, y, property_name):
         # ])
         #
         # app.run_server(debug=True)
-        fig.write_image(f"Plots/glacier_present_{i:03d}_surface{year}_{property_name}.png")
+        os.makedirs("Plots/present_state_3d", exist_ok=True)
+        fig.write_image(f"Plots/present_state_3d/glacier_present_{i:03d}_surface{year}_{property_name}.png")
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(

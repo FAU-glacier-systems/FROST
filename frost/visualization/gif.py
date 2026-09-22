@@ -8,7 +8,7 @@ from PIL import Image
 import numpy as np
 
 # get file names in correct order
-dir = 'Plots/'
+dir = 'Plots/aletsch/'
 dir = '/home/oskar//Desktop/HPC/FROST/data/results/Aletsch/glaciers/RGI2000-v7.0-G-11-02596/Monitor/'
 
 files = os.listdir(dir)
@@ -31,8 +31,9 @@ for image in files:
 
 frame_one = Image.open(dir + 'status_001_2020.png').convert("RGBA")
 
+os.makedirs("Plots/aletsch", exist_ok=True)
 frame_one.save(
-    "Plots/Aletsch_calibration.gif",
+    "Plots/aletsch/Aletsch_calibration.gif",
     save_all=True,
     append_images=frames,
     duration=1000,

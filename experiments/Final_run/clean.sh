@@ -1,0 +1,11 @@
+rm params_saved.json
+rm params_saved.json
+rm output.nc
+rm params_saved.json
+rm output.nc
+rm params_saved.json
+rm output.nc
+rm params_saved.json
+rm output.nc
+rm params_saved.json
+rm output.nc

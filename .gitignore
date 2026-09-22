@@ -1,14 +1,20 @@
 # Data & results
 data/
-experiments/*/plots/
-experiments/*/*.csv
-experiments/*/*.png
-experiments/*/*.pdf
-experiments/*/*.nc
+experiments/**/plots/
+experiments/**/Plots/
+experiments/**/*.csv
+experiments/**/*.png
+experiments/**/*.pdf
+experiments/**/*.nc
+experiments/**/*.gif
+frost/visualization/Plots/
 
 # Python cache
 __pycache__/
 *.pyc
+
+# Editor backup files
+*~
 
 # IDE configs
 .idea/

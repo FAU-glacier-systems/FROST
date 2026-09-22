@@ -365,9 +365,10 @@ def plot_results(hyperparameters):
 
     fig_para.tight_layout()
     fig_para.subplots_adjust(top=0.92, bottom=0.08)
-    fig_para.savefig(f'Plots/MAE_{hyperparameters}.pdf', format="pdf",
+    os.makedirs('Plots/sensitivity', exist_ok=True)
+    fig_para.savefig(f'Plots/sensitivity/MAE_{hyperparameters}.pdf', format="pdf",
                      facecolor=fig_para.get_facecolor())
-    fig_para.savefig(f'Plots/MAE_{hyperparameters}.png',dpi=300, format="png",
+    fig_para.savefig(f'Plots/sensitivity/MAE_{hyperparameters}.png',dpi=300, format="png",
                      facecolor=fig_para.get_facecolor())
 
 

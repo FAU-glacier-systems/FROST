@@ -1,3 +1,4 @@
+import os
 import xarray as xr
 import matplotlib.pyplot as plt
 import numpy as np
@@ -20,7 +21,8 @@ plt.rcParams.update({
 #     '../../data/results/MethodPaper_v2/RGI2000-v7.0-G-11-01706/Inversion/geology-optimized.nc')
 optimized_file = (
     '../../data/results/Aletsch/glaciers/RGI2000-v7.0-G-11-02596/Preprocess/outputs/output.nc')
-figure_path = "Plots/inversion_result"
+figure_path = "Plots/inversion_result/inversion_result"
+os.makedirs(os.path.dirname(figure_path), exist_ok=True)
 
 # ds = xr.open_dataset(output_file)
 ds_optimized = xr.open_dataset(optimized_file)

@@ -1,3 +1,4 @@
+import os
 import xarray as xr
 import numpy as np
 import matplotlib.pyplot as plt
@@ -10,7 +11,8 @@ plt.rcParams["font.family"] = "monospace"
 # paths
 # --------------------------------------------------
 path_to_netcdf = "../../data/results/central_europe_submit/glaciers/RGI2000-v7.0-G-11-01706/Preprocess/data/input.nc"
-output_pdf = "Plots/glacier_velocity_dhdt_map.pdf"
+output_pdf = "Plots/velocity/glacier_velocity_dhdt_map.pdf"
+os.makedirs(os.path.dirname(output_pdf), exist_ok=True)
 
 # --------------------------------------------------
 # open dataset

@@ -1,7 +1,11 @@
+import os
 import xarray as xr
-import matplotlib.pyplot as plt
 import numpy as np
-import matplotlib.ticker as mticker
+import matplotlib.pyplot as plt
+from pyproj import Transformer
+from matplotlib.ticker import FuncFormatter
+from matplotlib.colors import TwoSlopeNorm
+
 plt.rcParams["font.family"] = "monospace"
 
 plt.rcParams.update({
@@ -15,172 +19,247 @@ plt.rcParams.update({
     "ytick.color": "white",
     "axes.edgecolor": "white",
 })
-# output_file = '../ReferenceSimulation/output.nc'
-# optimized_file = (
-#     '../../data/results/MethodPaper_v2/RGI2000-v7.0-G-11-01706/Inversion/geology-optimized.nc')
-optimized_file = (
-    '../../data/results/Aletsch/glaciers/RGI2000-v7.0-G-11-02596/Preprocess/outputs/output.nc')
-figure_path = "Plots/inversion_result"
+# --------------------------------------------------
+# paths
+# --------------------------------------------------
+path_to_netcdf = "../../data/results/central_europe_submit/glaciers/RGI2000-v7.0-G-11-02596/Preprocess/data/input.nc"
+output_pdf = "Plots/velocity/glacier_velocity_dhdt_map"
+os.makedirs(os.path.dirname(output_pdf), exist_ok=True)
 
-# ds = xr.open_dataset(output_file)
-ds_optimized = xr.open_dataset(optimized_file)
+# --------------------------------------------------
+# open dataset
+# --------------------------------------------------
+ds = xr.open_dataset(path_to_netcdf)
 
-icemask = np.array(ds_optimized["icemask"])
-surface = np.array(ds_optimized["usurf"])
+# --------------------------------------------------
+# helper
+# --------------------------------------------------
+def find_first_existing(dataset, candidates):
+    for name in candidates:
+        if name in dataset.variables:
+            return name
+    return None
 
-arrhenius = np.array(ds_optimized["arrhenius"])
-slidingco = np.array(ds_optimized["slidingco"])
-velocity = np.array(ds_optimized["velsurf_mag"])
-thickness = np.array(ds_optimized["thk"])
-divflux = np.array(ds_optimized["divflux"])
-thkobs= np.array(ds_optimized["thkobs"])
+u_name = find_first_existing(ds, ["uvelsurfobs", "uvelsurfaobs"])
+v_name = find_first_existing(ds, ["vvelsurfobs", "vvelsurfaobs"])
+dhdt_name = find_first_existing(ds, ["dhdt", "dhdtobs", "dhdt", "dhdt_observation"])
 
+if u_name is None or v_name is None:
+    raise ValueError(f"Could not find velocity fields. Available variables: {list(ds.variables)}")
 
-velocity_obs = np.array(ds_optimized["velsurfobs_mag"])
+if dhdt_name is None:
+    raise ValueError(
+        f"Could not find a dhdt field. Available variables: {list(ds.variables)}"
+    )
 
-fig, ax = plt.subplots(2, 4, figsize=(12, 6))
+for required in ["usurf", "icemask"]:
+    if required not in ds.variables:
+        raise ValueError(f"Could not find '{required}' in dataset.")
 
+if "x" not in ds.coords or "y" not in ds.coords:
+    raise ValueError(f"Could not find x/y coordinates. Available coords: {list(ds.coords)}")
 
+# --------------------------------------------------
+# variables
+# --------------------------------------------------
+u = ds[u_name].copy()
+v = ds[v_name].copy()
+dhdt = ds[dhdt_name].copy()
+usurf = ds["usurf"]
+icemask = ds["icemask"]
 
-p = 10
+x = ds["x"].values
+y = ds["y"].values
 
-for i,axi in enumerate(ax.flatten()):
-    surface_im = axi.imshow(surface[p:-p,p:-p], cmap='gray',
-                                               vmin=1450,
-                                          vmax=3600,
-                                   origin='lower')
-    if i==3:
+crop = 15  # pixels to remove on each side
 
-        cbar = fig.colorbar(surface_im)
-        cbar.ax.set_ylabel('Surface Elevation (m)', rotation=90)
-        cbar.outline.set_linewidth(0)
+# crop coordinates
+x = x[crop:-crop]
+y = y[crop:-crop]
 
-        ax[0,3].set_title("Surface Elevation\n[NASADEM]")
+# crop fields
+usurf = usurf[crop:-crop, crop:-crop]
+u = u[crop:-crop, crop:-crop]
+v = v[crop:-crop, crop:-crop]
+dhdt = dhdt[crop:-crop, crop:-crop]
+icemask = icemask[crop:-crop, crop:-crop]
 
+# --------------------------------------------------
+# clean invalid values
+# --------------------------------------------------
+bad_threshold = 1e6
 
-velocity_obs[icemask < 0.01] = None
-vel_img = ax[0,0].imshow(velocity_obs[p:-p,p:-p], vmin=0, vmax=np.nanmax(velocity_obs),
-                       cmap="magma", zorder=2, origin="lower")
-cbar = fig.colorbar(vel_img)
-cbar.outline.set_linewidth(0)
+u = u.where(np.abs(u) < bad_threshold)
+v = v.where(np.abs(v) < bad_threshold)
+dhdt = dhdt.where(np.abs(dhdt) < bad_threshold)
 
-cbar.ax.set_ylabel('Surface Velocity (m a$^{-1}$)', rotation=90)
-ax[0,0].set_title("Observed Velocity\n[Millan22]")
+if "_FillValue" in u.attrs:
+    u = u.where(u != u.attrs["_FillValue"])
+if "_FillValue" in v.attrs:
+    v = v.where(v != v.attrs["_FillValue"])
+if "_FillValue" in dhdt.attrs:
+    dhdt = dhdt.where(dhdt != dhdt.attrs["_FillValue"])
 
+# --------------------------------------------------
+# mask to glacier only
+# --------------------------------------------------
+ice = icemask > 0
+u = u.where(ice)
+v = v.where(ice)
+dhdt = dhdt.where(ice)
 
+vel_mag = np.sqrt(u**2 + v**2).where(ice)
 
-velocity_iter = velocity
-velocity_obs[icemask < 0.01] = None
-dif = velocity_iter[p:-p,p:-p]-velocity_obs[p:-p,p:-p]
-vel_img = ax[0,1].imshow(dif, vmin=-50, vmax=50,
-                       cmap="RdBu_r", zorder=2, origin='lower')
-cbar = fig.colorbar(vel_img)
-cbar.outline.set_linewidth(0)
+# --------------------------------------------------
+# cell center coordinates for quiver
 
-cbar.ax.set_ylabel('Velocity Difference (m a$^{-1}$)', rotation=90)
-ax[0,1].set_title("Velocity Difference\nModel - Observed")
+# --------------------------------------------------
+dx = np.median(np.diff(x)) if len(x) > 1 else 0
+dy = np.median(np.diff(y)) if len(y) > 1 else 0
 
-velocity_iter[icemask < 0.01] = None
-vel_img = ax[1,0].imshow(velocity_iter[p:-p,p:-p], vmin=0, vmax=np.nanmax(
-    velocity_obs),
-                       cmap="magma", zorder=2, origin='lower')
-cbar = fig.colorbar(vel_img)
-cbar.outline.set_linewidth(0)
+Xc, Yc = np.meshgrid(x + dx / 2, y + dy / 2)
 
-cbar.ax.set_ylabel('Surface Velocity (m a$^{-1}$)', rotation=90)
-ax[1,0].set_title("Model Velocity")
+step = 10
 
-slidingco_iter = slidingco
-slidingco_iter[icemask < 0.01] = None
-img = ax[1,1].imshow(slidingco_iter[p:-p,p:-p], zorder=2, origin='lower')
-cbar = fig.colorbar(img)
-cbar.outline.set_linewidth(0)
+Xq = Xc[::step, ::step]
+Yq = Yc[::step, ::step]
+Uq = u.values[::step, ::step]
+Vq = v.values[::step, ::step]
+Mq = ice.values[::step, ::step]
 
-cbar.ax.set_ylabel('Sliding Co. (MPa a$^{3}$ m$^{-3}$)', rotation=90)
-cbar.formatter = mticker.FuncFormatter(lambda x, _: f"{x:.3f}")
-cbar.update_ticks()
-ax[1,1].set_title("Model Sliding Co.")
-resolution = ds_optimized.x[1].data - ds_optimized.x[0].data
-resolution = 100
+valid = np.isfinite(Uq) & np.isfinite(Vq) & (Mq > 0)
 
-thickness[icemask < 0.01] = None
-img = ax[1,2].imshow(thickness[p:-p,p:-p], cmap='Blues', zorder=2, origin='lower')
-cbar = fig.colorbar(img)
-cbar.outline.set_linewidth(0)
+Xq = Xq[valid]
+Yq = Yq[valid]
+Uq = Uq[valid]
+Vq = Vq[valid]
 
-cbar.ax.invert_yaxis()
-cbar.ax.set_ylabel('Thickness (m)', rotation=90)
-ax[1,2].set_title("Model Thickness ")
+# --------------------------------------------------
+# coordinate transformer
+# EPSG:32632 -> EPSG:4326
+# --------------------------------------------------
+transformer = Transformer.from_crs("EPSG:32632", "EPSG:4326", always_xy=True)
 
-thkobs
-img = ax[0,2].imshow(thkobs[p:-p,p:-p], cmap='Blues', zorder=2, origin='lower',
-                     interpolation='nearest')
-cbar = fig.colorbar(img)
-cbar.outline.set_linewidth(0)
+def format_lon(x_val, pos):
+    lon, lat = transformer.transform(x_val, np.mean(y))
+    return f"{lon:.2f}°E"
 
-cbar.ax.invert_yaxis()
-cbar.ax.set_ylabel('Thickness (m)', rotation=90)
-ax[0,2].set_title("Observed Thickness\n[GlaThiDa]")
+def format_lat(y_val, pos):
+    lon, lat = transformer.transform(np.mean(x), y_val)
+    return f"{lat:.2f}°N"
 
+# --------------------------------------------------
+# dhdt normalization centered at 0
+# --------------------------------------------------
+dhdt_vals = dhdt.values[np.isfinite(dhdt.values)]
+dhdt_abs = np.nanpercentile(np.abs(dhdt_vals), 98) if dhdt_vals.size > 0 else 1.0
+dhdt_norm = TwoSlopeNorm(vmin=-dhdt_abs, vcenter=0.0, vmax=dhdt_abs)
 
+# --------------------------------------------------
+# figure
+# --------------------------------------------------
+fig, axes = plt.subplots(1, 2, figsize=(8, 4), sharex=True, sharey=True)
 
-divflux[icemask < 0.01] = None
-img = ax[1,3].imshow(divflux[p:-p,p:-p], cmap='RdBu_r', zorder=2, origin='lower',vmin=-5,vmax=5)
-cbar = fig.colorbar(img)
-cbar.outline.set_linewidth(0)
+# ==========================
+# panel 1: velocity
+# ==========================
+ax = axes[0]
 
-cbar.ax.set_ylabel('Flux Divergence (m a$^{-1}$)', rotation=90)
+im0 = ax.pcolormesh(
+    x, y, usurf.values,
+    cmap="gray",
+    shading="auto",
+    rasterized=True
+)
 
+im1 = ax.pcolormesh(
+    x, y, vel_mag.values,
+    cmap="magma",
+    shading="auto",
+    zorder=2,
+    rasterized=True
+)
 
-ax[1,3].set_title("Flux Divergence")
+q = ax.quiver(
+    Xq, Yq, Uq, Vq,
+    color="white",
+    scale=1600,
+    width=0.004,
+    headwidth=3.0,
+    headlength=4.0,
+    headaxislength=3.5,
+    pivot="middle",
+    zorder=3
+)
 
+cbar1 = fig.colorbar(im1, ax=ax, fraction=0.046, pad=0.04)
+cbar1.set_label(r"m yr$^{-1}$", labelpad=10)
+cbar1.outline.set_linewidth(0)
+cbar1.ax.tick_params(labelsize=7)
 
+ax.set_title("Surface velocity 2017-2018 \n [Millan et al. 2022]")
 
+# ==========================
+# panel 2: dhdt
+# ==========================
+ax2 = axes[1]
 
-def formatter(x, pos):
-    del pos
-    return str(int(x * resolution / 1000))
+im0b = ax2.pcolormesh(
+    x, y, usurf.values,
+    cmap="gray",
+    shading="auto",
+    rasterized=True
+)
 
+im2 = ax2.pcolormesh(
+    x, y, dhdt.values,
+    cmap="RdBu",
+    norm=dhdt_norm,
+    shading="auto",
+    zorder=2,
+    rasterized=True
+)
 
-for axi in ax.flatten():
-    #ax[int(i/3), int(i%3)].invert_yaxis()
-    # axi.set_xticks(np.arange(p, dif.shape[1] , step=resolution))  # From 25 to
-    # # 130, step 20                             step=self.resolution)
-    # axi.set_yticks(np.arange(p, dif.shape[0] , step=resolution)  )
-    #
-    axi.yaxis.set_ticks([50, 100, 150, 200])
-    axi.xaxis.set_ticks([50,100, 150, ])
-    axi.xaxis.set_major_formatter(formatter)
-    axi.yaxis.set_major_formatter(formatter)
-    axi.grid(axis="y", color="white", linestyle="--", zorder=0, alpha=.4)
-    axi.grid(axis="x", color="white", linestyle="--", zorder=0, alpha=.4)
+cbar2 = fig.colorbar(im2, ax=ax2, fraction=0.046, pad=0.04)
+cbar2.set_label(r"m yr$^{-1}$", labelpad=10)
+cbar2.outline.set_linewidth(0)
+cbar2.ax.tick_params(labelsize=7)
+# ==========================
+# shared usurf colorbar
+# ==========================
 
-    for axis in ['top', 'bottom', 'left', 'right']:
-        axi.spines[axis].set_linewidth(0)
-    axi.set_xlabel('km', color='white')
-    axi.tick_params(axis='x', colors='white')
-    axi.tick_params(axis='y', colors='white')
+ax2.set_title("Elevation change rate 2000-2019 \n [Hugonnet et al. 2019]")
 
-for i in range(4):
-    ax[0,i].set_xlabel('')
+# --------------------------------------------------
+# shared styling
+# --------------------------------------------------
+for ax in axes:
+    ax.tick_params(axis='both', which='both', length=0, labelsize=7)
+    ax.tick_params(axis='y', labelrotation=90)
+    # ax.tick_params(axis='y', labelrotation=90)
+    # for label in ax.get_yticklabels():
+    #     label.set_verticalalignment('center')
+        #label.set_horizontalalignment('center')
+    ax.xaxis.set_major_locator(plt.MaxNLocator(nbins=3))
+    ax.xaxis.set_major_formatter(FuncFormatter(format_lon))
+    ax.yaxis.set_major_formatter(FuncFormatter(format_lat))
 
-ax[0,0].set_ylabel('km')
-ax[1,0].set_ylabel('km')
+    ax.grid(axis="y", color="white", linestyle="--", zorder=0, alpha=0.4)
+    ax.grid(axis="x", color="white", linestyle="--", zorder=0, alpha=0.4)
 
-# fig.suptitle("inversion", fontsize=32)
-import string
-axes = ax.flatten()  # Flatten for easy iteration
+    for spine in ax.spines.values():
+        spine.set_visible(False)
 
-labels_subplot = [f"{letter})" for letter in
-                  string.ascii_lowercase[:len(axes)]]
+    ax.set_aspect("equal")
+    ax.set_xlabel("Longitude")
 
-for ax, label in zip(axes, labels_subplot):
-    # Add label to lower-left corner (relative coordinates)
-    ax.text(-0.35, 1.02, label, transform=ax.transAxes,
-            fontsize=12, va='bottom', ha='left', fontweight='bold')
+axes[0].set_ylabel("Latitude", rotation=90)
 
 plt.tight_layout()
-plt.subplots_adjust(wspace=0.5, left=0.05, )
+for ax in axes:
+    for label in ax.get_yticklabels():
+        label.set_verticalalignment('center')
+plt.savefig(output_pdf+".pdf", format="pdf", bbox_inches="tight")
+plt.savefig(output_pdf+".png", format="png", dpi=300, bbox_inches="tight")
 
-plt.savefig(figure_path + '.pdf', format='pdf')
-plt.savefig(figure_path + '.png', format='png', dpi=300,)
+print(f"Saved figure to: {output_pdf}")

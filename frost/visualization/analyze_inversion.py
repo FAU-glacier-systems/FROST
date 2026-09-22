@@ -10,7 +10,7 @@ import json
 glacier_list = "../../data/raw/glamos/GLAMOS_RGI.csv"
 df = pd.read_csv(glacier_list)
 
-outdir = "Plots"
+outdir = "Plots/inversion_4panels"
 os.makedirs(outdir, exist_ok=True)
 
 vars_to_plot = {

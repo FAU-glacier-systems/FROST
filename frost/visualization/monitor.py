@@ -869,5 +869,6 @@ class Monitor:
             plot_bgcolor='rgba(0,0,0,0)'  # Make inner plot background transparent
         )
 
-        fig.write_image(f"Plots/glacier_surface_{year}.png", width=1500,
+        os.makedirs("Plots/aletsch", exist_ok=True)
+        fig.write_image(f"Plots/aletsch/glacier_surface_{year}.png", width=1500,
                         height=1200, scale=0.75)
