@@ -8,7 +8,7 @@
 #SBATCH --output=Experiments/Log/frost_%j.out
 #SBATCH --error=Experiments/Log/frost_%j.err
 module load python
-conda activate igm
+conda activate igm32-frost
 
 # Default value for rgi_id
 forward_parallel=true

@@ -13,7 +13,7 @@ export http_proxy=http://proxy:80
 export https_proxy=http://proxy:80
 
 module load python
-conda activate igm3
+conda activate igm32-frost
 
 python frost_pipeline.py --config "$1" --rgi_id "$2"
 

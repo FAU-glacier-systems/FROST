@@ -8,7 +8,7 @@
 #SBATCH --output=Experiments/Log/frost_%j.out
 #SBATCH --error=Experiments/Log/frost_%j.err
 module load python
-conda activate igm
+conda activate igm32-frost
 
 # Default value for rgi_id
 rgi_id="RGI2000-v7.0-G-11-01706_v1"

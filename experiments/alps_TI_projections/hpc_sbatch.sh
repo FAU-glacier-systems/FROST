@@ -13,7 +13,7 @@ export http_proxy=http://proxy:80
 export https_proxy=http://proxy:80
 
 module load python
-conda activate igm3
+conda activate igm32-frost
 
 python projections_parallel.py
 

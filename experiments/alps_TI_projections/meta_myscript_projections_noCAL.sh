@@ -17,7 +17,7 @@ set -e
 
 module add python
 #conda activate frost_env_igm3
-conda activate frost_env_IGM3
+conda activate igm32-frost
 
 export http_proxy=http://proxy:80
 export https_proxy=http://proxy:80
