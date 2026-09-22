@@ -7,6 +7,8 @@ experiments/**/*.png
 experiments/**/*.pdf
 experiments/**/*.nc
 experiments/**/*.gif
+experiments/**/*.pkl
+experiments/**/*.zip
 frost/visualization/Plots/
 
 # Python cache
