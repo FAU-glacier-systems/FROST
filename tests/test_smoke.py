@@ -2,25 +2,25 @@
 Fast smoke tests for the FROST pipeline.
 
 These checks are deliberately cheap: no network access, no glacier data
-download, no IGM inversion or EnKF ensemble runs. They only verify that the
-package imports cleanly and that every experiment config in the repo is
-valid, structured YAML. That makes them safe to run on every commit (e.g. in
-CI), unlike a real end-to-end run of an experiment such as `test_default`,
-which downloads real glacier data and takes tens of minutes.
+download, no IGM inversion or EnKF ensemble runs, and no `igm`/TensorFlow
+install at all. They only verify that the package's own modules import
+cleanly and that every experiment config in the repo is valid, structured
+YAML. That makes them safe and fast to run on every commit (e.g. in CI),
+unlike a real end-to-end run of an experiment such as `test_default`, which
+downloads real glacier data and takes tens of minutes.
+
+Note: frost_pipeline.py itself (and frost_calibration.py, which it imports)
+pull in `igm`, which drags in full GPU-enabled TensorFlow and a set of CUDA
+wheels that are never used here (the pipeline forces CPU-only execution
+anyway). Exercising that CLI entrypoint is intentionally left out of this
+fast tier to avoid that cost on every commit; every frost.* module it
+depends on is still checked individually below.
 """
 import glob
 import os
-import subprocess
-import sys
 
 import pytest
 import yaml
-
-# Match frost_pipeline.py: force CPU-only execution before any igm import,
-# so this test suite behaves the same on a GPU-less CI runner as it does here.
-os.environ.setdefault("CUDA_VISIBLE_DEVICES", "")
-os.environ.setdefault("XLA_PYTHON_CLIENT_PREALLOCATE", "false")
-os.environ.setdefault("XLA_FLAGS", "--xla_force_host_platform_device_count=1")
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -84,17 +84,3 @@ def test_default_pipeline_config_schema():
 
     for key in ("ensemble_size", "iterations", "seed"):
         assert isinstance(cfg["EnKF"][key], int)
-
-
-def test_pipeline_cli_help():
-    """frost_pipeline.py should import cleanly and expose a working --help,
-    without needing to reach the actual (expensive) pipeline execution."""
-    result = subprocess.run(
-        [sys.executable, "frost_pipeline.py", "--help"],
-        cwd=REPO_ROOT,
-        capture_output=True,
-        text=True,
-        timeout=60,
-    )
-    assert result.returncode == 0, result.stderr
-    assert "usage" in result.stdout.lower()

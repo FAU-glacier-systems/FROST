@@ -1,16 +1,14 @@
 name: frost_env
 channels:
-  - defaults
+  - conda-forge
 dependencies:
   - python=3.10
-  - numpy
-  - xarray
-  - dash
-  - rioxarray
   - pip:
-    - utm
-    - pyvista
-    - gstools
-    - pytest
+    # Installs the frost package itself plus everything in setup.py's
+    # install_requires/dev extra - see setup.py for the actual dependency
+    # list and pinned versions, kept there so there's a single source of
+    # truth instead of duplicating it here.
+    - -e .[dev]
+    # igm is a git source, not a normal PyPI release, so it can't live in
+    # setup.py's install_requires - pinned to the tag FROST is built against.
     - git+https://github.com/instructed-glacier-model/igm@v3.0.1
-
