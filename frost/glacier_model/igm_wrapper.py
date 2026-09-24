@@ -22,7 +22,8 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"  # 0 = all, 1 = info, 2 = warning, 3 = 
 
 
 def forward(exp, output1D, output2D_3D, member_id, smb_model, usurf, smb,
-            year_start, year_end, workdir, climate_file):
+            year_start, year_end, workdir, climate_file,
+            emulator_path="dahunet_mini.keras"):
     '''
     Runs a single forward model simulation for an ensemble member.
 
@@ -42,6 +43,9 @@ def forward(exp, output1D, output2D_3D, member_id, smb_model, usurf, smb,
                                   * 'gradacc' (float)  - Accumulation gradient (per km)
         start_year (int)      - Year that simulation starts
         end_year (int)        - Year that simulaiton ends
+        emulator_path (str)   - Iceflow network; pass the one saved by the
+                                inversion (igm_inversion.emulator_path) to
+                                avoid an initialisation shock
 
     Returns:
         member_id (int)         - Ensemble member ID
@@ -51,9 +55,11 @@ def forward(exp, output1D, output2D_3D, member_id, smb_model, usurf, smb,
 
     # Extract SMB parameters and convert gradients from m/km to m/m
     if str(smb_model) == 'ELA':
-        ela = smb['ela']
-        abl_grad = smb['abl_grad'] / 1000
-        acc_grad = smb['acc_grad'] / 1000
+        # Scalars give a constant SMB; sequences give one value per year
+        # from year_start to year_end
+        ela = np.asarray(smb['ela'])
+        abl_grad = np.asarray(smb['abl_grad']) / 1000
+        acc_grad = np.asarray(smb['acc_grad']) / 1000
     elif str(smb_model) == 'TI':
         melt_f = smb['melt_f']
         prcp_fac = smb['prcp_fac']
@@ -82,9 +88,8 @@ def forward(exp, output1D, output2D_3D, member_id, smb_model, usurf, smb,
         },
         "processes": {
             "iceflow": {
-                # Frozen off-line emulator, as igm-examples aletsch
-                # common/iceflow_offline.yaml; same network as the inversion
-                # (params_inversion.yaml). tau_ref comes from input.nc.
+                # Frozen emulator, as igm-examples aletsch
+                # common/iceflow_offline.yaml. tau_ref comes from input.nc.
                 "method": "unified",
                 "numerics": {
                     "Nz": 2,
@@ -97,7 +102,7 @@ def forward(exp, output1D, output2D_3D, member_id, smb_model, usurf, smb,
                     "nbit_init": 0,
                     "retrain_freq": 0,
                     "network": {
-                        "pretrained_path": "dahunet_mini.keras",
+                        "pretrained_path": str(emulator_path),
                         "pretrained": True,
                     }
                 },
@@ -154,11 +159,13 @@ def forward(exp, output1D, output2D_3D, member_id, smb_model, usurf, smb,
             "method": "simple",
             "simple": {"array": []},
         }
+        years = np.arange(year_start, year_end + 1)
+        abl_grads, acc_grads, elas = (np.broadcast_to(v, years.shape)
+                                      for v in (abl_grad, acc_grad, ela))
         igm_params['processes']['smb']['simple']['array'] = [
-            ['time', 'gradabl', 'gradacc', 'ela', 'accmax'],
-            [year_start, abl_grad, acc_grad, ela, 100],
-            [year_end, abl_grad, acc_grad, ela, 100]
-        ]
+            ['time', 'gradabl', 'gradacc', 'ela', 'accmax']] + [
+            [int(y), float(ab), float(ac), float(e), 100]
+            for y, ab, ac, e in zip(years, abl_grads, acc_grads, elas)]
 
     if output1D and output2D_3D:
         igm_params['defaults'] += [{'override /outputs': ["write_ts", "write_ncdf"]}]

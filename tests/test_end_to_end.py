@@ -62,8 +62,11 @@ def test_test_default_rhone():
     assert _is_fresh(os.path.join(preprocess_outputs, "igm", "inversion",
                                   "optimize.nc"), start)
     assert _is_fresh(os.path.join(preprocess_outputs, "output.nc"), start)
+    # Fine-tuned iceflow network, reused by the ensemble forward runs
+    assert _is_fresh(os.path.join(preprocess_outputs, "emulator.keras"), start)
     new_entries = set(os.listdir(preprocess_outputs)) - outputs_before
-    assert new_entries <= {"igm", "output.nc", "iceflow-model"}, \
+    assert new_entries <= {"igm", "output.nc", "emulator.keras",
+                           "iceflow-model"}, \
         f"unexpected new entries in Preprocess/outputs: {new_entries}"
 
     # Calibration

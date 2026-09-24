@@ -8,6 +8,7 @@ from netCDF4 import Dataset
 import numpy as np
 from concurrent.futures import ThreadPoolExecutor
 import frost.glacier_model.igm_wrapper as IGM_wrapper
+from frost.preprocess.igm_inversion import emulator_path
 import shutil
 import concurrent.futures
 import json
@@ -81,6 +82,12 @@ class EnsembleKalmanFilter:
         # Load geology file (bedrock and initial icemask)
         inversion_dir = os.path.join(self.rgi_id_dir, 'Preprocess', 'outputs')
         inversion_file = os.path.join(inversion_dir, 'output.nc')
+        # Same iceflow network as the inversion, so the members start from
+        # the inverted velocities
+        self.emulator_path = os.path.abspath(emulator_path(self.rgi_id_dir))
+        if not os.path.exists(self.emulator_path):
+            raise FileNotFoundError(
+                f"{self.emulator_path} not found; rerun the inversion step.")
         with Dataset(inversion_file, 'r') as geology_dataset:
             self.icemask_init = np.array(geology_dataset['icemask'])
             self.bedrock = np.array(geology_dataset['topg'])
@@ -232,6 +239,7 @@ class EnsembleKalmanFilter:
                         year_end,
                         os.path.join(self.rgi_id_dir, "Ensemble", f"Member_{member_id}"),
                         "../../climate_historical.nc",
+                        self.emulator_path,
                     )
                     for member_id, (usurf, smb) in enumerate(zip(self.ensemble_usurf, self.ensemble_smb))
                 ]
@@ -261,6 +269,7 @@ class EnsembleKalmanFilter:
                         year_end,
                         os.path.join(self.rgi_id_dir, "Ensemble", f"Member_{member_id}"),
                         "../../climate_historical.nc",
+                        self.emulator_path,
                     )
                 new_usurf_ensemble[member_id] = new_usurf
                 new_smb_raster_ensemble[member_id] = new_smb_raster

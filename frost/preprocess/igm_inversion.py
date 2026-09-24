@@ -12,6 +12,11 @@ from netCDF4 import Dataset
 import netCDF4
 
 
+def emulator_path(rgi_id_dir):
+    """Iceflow network saved by the inversion, to be used by forward runs."""
+    return os.path.join(rgi_id_dir, 'Preprocess', 'outputs', 'emulator.keras')
+
+
 def main(rgi_id_dir, params_inversion_path):
     """
     Generates params.json for IGM inversion and runs igm_run.
@@ -90,6 +95,29 @@ def main(rgi_id_dir, params_inversion_path):
     # shutil.rmtree(inversion_dir, ignore_errors=True)
     exp_dir = os.path.join(preprocess_dir, 'experiment')
     os.makedirs(exp_dir, exist_ok=True)
+
+    # Save the iceflow network the inversion used (the pretrained emulator,
+    # fine-tuned on this glacier at initialisation), so the forward runs
+    # continue with the same ice flow instead of the raw pretrained one.
+    # IGM loads the save_emulator user module from Preprocess/user; it has
+    # to be both a processes key and in the defaults list (module order).
+    frost_user_dir = os.path.join(os.path.dirname(os.path.dirname(
+        os.path.abspath(__file__))), 'igm_user')
+    shutil.copytree(
+        os.path.join(frost_user_dir, 'code', 'processes', 'save_emulator'),
+        os.path.join(preprocess_dir, 'user', 'code', 'processes', 'save_emulator'),
+        dirs_exist_ok=True)
+    os.makedirs(os.path.join(preprocess_dir, 'user', 'conf', 'processes'),
+                exist_ok=True)
+    shutil.copy(
+        os.path.join(frost_user_dir, 'conf', 'processes', 'save_emulator.yaml'),
+        os.path.join(preprocess_dir, 'user', 'conf', 'processes'))
+    inv_params['processes']['save_emulator'] = {
+        'path': os.path.abspath(emulator_path(rgi_id_dir))}
+    for default in inv_params['defaults']:
+        if 'override /processes' in default \
+                and 'save_emulator' not in default['override /processes']:
+            default['override /processes'].append('save_emulator')
     # Change to inversion directory and save params
     original_dir = os.getcwd()
     os.chdir(preprocess_dir)
@@ -133,6 +161,10 @@ def main(rgi_id_dir, params_inversion_path):
             out_var.setncatts({k: var.getncattr(k) for k in var.ncattrs()
                                if k != '_FillValue'})
             out_var[:] = var[-1] if 'iterations' in var.dimensions else var[:]
+        # field_inversion changes thk under a fixed usurf but saves the
+        # original topg. The forward runs rebuild thk as usurf - topg, so
+        # store the bed that belongs to the inverted thickness.
+        output['topg'][:] = output['usurf'][:] - output['thk'][:]
         output.setncattr('epsg', epsg)
         output.setncattr('pyproj_srs', pyproj_srs)
 

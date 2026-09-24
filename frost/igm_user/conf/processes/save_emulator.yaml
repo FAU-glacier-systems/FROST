@@ -1,0 +1,2 @@
+save_emulator:
+  path: emulator.keras  # .keras file, or a directory to put emulator.keras in
