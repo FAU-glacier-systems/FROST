@@ -1,24 +1,18 @@
 # @package _global_
-core:
-  url_data: ''
 defaults:
 - override /inputs:
   - load_ncdf
 - override /processes:
   - iceflow
-  - thk
 - override /assimilations:
   - field_inversion
 - override /outputs: []
-inputs:
-  load_ncdf:
-    input_file: input.nc
 processes:
   iceflow:
-    method: unified
+    numerics:
+      Nz: 10  # match the Nz=10 pretrained emulator shipped in igm (default Nz=4 has no pretrained weights)
     physics:
       sliding:
-        u_ref: 100.0
         # tau_ref = slidingco * u_ref^(1/m); m = physics.sliding.exponent (3.0 default).
         # 0.045 was the old init_slidingco value: 0.045 * 100^(1/3) = 0.208872
         tau_ref: 0.208872
@@ -41,9 +35,7 @@ assimilations:
       - { name: tau_ref, penalty: l2, lam: 1.0 }
     optimization:
       nbitmax: 1000
-      retrain_iter: 5
     output:
-      freq: 100
       vars_to_save:
       - usurf
       - thk
@@ -52,5 +44,4 @@ assimilations:
       - velbase_mag
       - velsurf_mag
       - velsurfobs_mag
-      - divflux
 outputs: {}
