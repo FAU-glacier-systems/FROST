@@ -1,48 +1,84 @@
 # @package _global_
+# IGM field_inversion, set up exactly as igm-examples aletsch Part D, Step 1
+# (params_D_real.yaml, with its common/iceflow_online.yaml fragment inlined).
+# Only the run dir, input and output handling differ, to fit FROST's layout.
+
+# Fixed run dir so reruns overwrite instead of creating outputs/<date>/<time>.
+# Keep it two levels deep: FROST resolves some paths relative to it (../../).
+hydra:
+  run:
+    dir: outputs/igm/inversion
 defaults:
 - override /inputs:
   - local
-- override /processes:
-  - iceflow
 - override /assimilations:
   - field_inversion
+- override /processes:
+  - iceflow
 - override /outputs: []
 processes:
   iceflow:
-    numerics:
-      Nz: 10  # match the Nz=10 pretrained emulator shipped in igm (default Nz=4 has no pretrained weights)
+    method: unified
     physics:
       sliding:
-        # tau_ref = slidingco * u_ref^(1/m); m = physics.sliding.exponent (3.0 default).
-        # 0.045 was the old init_slidingco value: 0.045 * 100^(1/3) = 0.208872
-        tau_ref: 0.208872
+        tau_ref: 0.213 # basal shear stress (MPa) required to ...
+        u_ref: 100.0   # ... achieve u_ref basal sliding speed (m/yr)
+    numerics:
+      Nz: 2
+      basis_vertical: molho
+      basis_horizontal: q1
     unified:
+      display:
+        print_cost: true
+      mapping: network
+      inputs: [thk, usurf, arrhenius, tau_ref, dX]
+      optimizer: lbfgs
+      line_search: hager-zhang
+      nbit_init: 300
+      nbit: 0
+      nbit_warmup: -1
+      retrain_freq: 0
       network:
+        pretrained_path: "dahunet_mini.keras"  # shipped inside the igm package
         pretrained: true
+        architecture: dahunet
+        params:
+          backend: cnn
+          features: [dsdx, dsdy, grad_s, u_sia, u_weertman]
+          nb_out_filter: 24
+          nb_layers: 6
+          conv_ker_size: 3
+          residual: true
 assimilations:
   field_inversion:
+    optimization:
+      retrain_iter: 0
     variables:
-    - { name: thk, transform: identity, lower_bound: 0.0, upper_bound: 1000.0, mask: icemask }
-    - { name: usurf, transform: identity, mask: icemask }
-    - { name: tau_ref, transform: log10 }
+      - name: thk
+        transform: identity
+        lower_bound: 0.0
+        upper_bound: 1000.0
+        mask: icemask
     objective:
       misfit:
-      - { name: thk, kind: gaussian, components: [thk], obs: [thkobs], std: 1.0 }
-      - { name: usurf, kind: gaussian, components: [usurf], obs: [usurfobs], std: 0.3 }
-      - { name: velsurf, kind: gaussian, components: [uvelsurf, vvelsurf], obs: [uvelsurfobs, vvelsurfobs], std: 0.25 }
+        - name: velsurf
+          kind: huber
+          components: [uvelsurf, vvelsurf]
+          obs: [uvelsurfobs, vvelsurfobs]
+          std: 1.0
       regularization:
-      - { name: thk, penalty: squared_laplacian, lam: 1000000.0 }
-      - { name: tau_ref, penalty: l2, lam: 1.0 }
-    optimization:
-      nbitmax: 100
+        - name: thk
+          penalty: squared_laplacian
+          lam: 1000000.0
+          ref: usurf
+    # FROST: fields the ensemble forward runs read from the inversion result
     output:
       vars_to_save:
       - usurf
       - thk
       - topg
       - icemask
+      - tau_ref
       - velbase_mag
       - velsurf_mag
       - velsurfobs_mag
-      - divflux
-outputs: {}

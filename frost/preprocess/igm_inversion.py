@@ -4,7 +4,6 @@
 # Published under the GNU GPL (Version 3), check the LICENSE file
 
 import argparse
-from pathlib import Path
 import os
 import shutil
 import yaml
@@ -73,9 +72,18 @@ def main(rgi_id_dir, params_inversion_path):
     # Drop the velsurf misfit term if no usable velocity observations are available
     if not flag_velsurfobs:
         misfit = inv_params['assimilations']['field_inversion']['objective']['misfit']
-        inv_params['assimilations']['field_inversion']['objective']['misfit'] = [
-            term for term in misfit if term['name'] != 'velsurf'
-        ]
+        misfit = [term for term in misfit if term['name'] != 'velsurf']
+        if not misfit:
+            raise ValueError(
+                f"No usable surface velocity observations for {rgi_id_dir}, "
+                f"and {params_inversion_path} has no other misfit term to "
+                "invert against.")
+        inv_params['assimilations']['field_inversion']['objective']['misfit'] = misfit
+
+    # Fixed hydra run dir so reruns overwrite instead of creating
+    # outputs/<date>/<time>; params_inversion.yaml may set its own
+    run_dir = inv_params.setdefault('hydra', {}).setdefault('run', {}) \
+        .setdefault('dir', os.path.join('outputs', 'igm', 'inversion'))
 
     # Prepare inversion directory
     preprocess_dir = os.path.join(rgi_id_dir, 'Preprocess')
@@ -100,28 +108,33 @@ def main(rgi_id_dir, params_inversion_path):
     # subprocess.run(["igm_run", "+experiment=params"], check=True)
 
     # TODO remove unnecessary files
-    latest = max(Path("outputs").glob("*/*"), key=lambda p: p.stat().st_mtime)
+    latest = run_dir
 
     # field_inversion (IGM >= 3.2) writes its result to optimize.nc inside the
     # hydra run dir, not to a configurable save_result_in_ncdf path like the
     # old data_assimilation strategy did. Copy it to outputs/output.nc so the
     # rest of FROST (create_observation.py, analyze_inversion.py,
     # ensemble_kalman_filter.py, ...) can keep expecting that fixed path.
+    # optimize.nc stores snapshots along an 'iterations' dimension; keep only
+    # the last one so output.nc holds plain 2D (y, x) fields.
     os.makedirs('outputs', exist_ok=True)
-    shutil.copy(os.path.join(latest, 'optimize.nc'), os.path.join('outputs', 'output.nc'))
-    with Dataset(os.path.join('outputs', 'output.nc'), 'a') as output:
+    with Dataset(os.path.join(latest, 'optimize.nc'), 'r') as src, \
+            Dataset(os.path.join('outputs', 'output.nc'), 'w') as output:
+        output.setncatts(src.__dict__)
+        for name, dim in src.dimensions.items():
+            if name != 'iterations':
+                output.createDimension(name, None if dim.isunlimited() else len(dim))
+        for name, var in src.variables.items():
+            if name == 'iterations':
+                continue
+            dims = tuple(d for d in var.dimensions if d != 'iterations')
+            fill = var.getncattr('_FillValue') if '_FillValue' in var.ncattrs() else None
+            out_var = output.createVariable(name, var.dtype, dims, fill_value=fill)
+            out_var.setncatts({k: var.getncattr(k) for k in var.ncattrs()
+                               if k != '_FillValue'})
+            out_var[:] = var[-1] if 'iterations' in var.dimensions else var[:]
         output.setncattr('epsg', epsg)
         output.setncattr('pyproj_srs', pyproj_srs)
-
-    src = os.path.join(latest, 'iceflow-model')
-    dst = os.path.join('outputs', 'iceflow-model')
-
-    # Delete destination if it exists
-    if os.path.exists(dst):
-        shutil.rmtree(dst)
-
-    # Copy source to destination
-    shutil.copytree(src, dst)
 
     os.chdir(original_dir)
 

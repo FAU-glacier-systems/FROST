@@ -14,7 +14,8 @@ import numpy as np
 
 # Suppress warnings and optimize TensorFlow execution
 
-os.environ["CUDA_VISIBLE_DEVICES"] = ""
+os.environ.setdefault("CUDA_VISIBLE_DEVICES", "")
+os.environ.setdefault("TF_FORCE_GPU_ALLOW_GROWTH", "true")
 os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
 os.environ["XLA_FLAGS"] = "--xla_force_host_platform_device_count=1"
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"  # 0 = all, 1 = info, 2 = warning, 3 = error
@@ -63,6 +64,14 @@ def forward(exp, output1D, output2D_3D, member_id, smb_model, usurf, smb,
 
     # Define input parameters for the ice flow model (IGM)
     igm_params = {
+        # Fixed run dir so reruns overwrite instead of creating
+        # outputs/<date>/<time>; two levels deep because the output paths
+        # below ('../../output.nc') and clim_1D_3D rely on that depth.
+        "hydra": {
+            "run": {
+                "dir": "outputs/igm/forward",
+            }
+        },
         "core": {
             "url_data": "",
         },
@@ -73,11 +82,25 @@ def forward(exp, output1D, output2D_3D, member_id, smb_model, usurf, smb,
         },
         "processes": {
             "iceflow": {
-                "emulator": {
-                    "pretrained": True,
-                    "name": 'iceflow-model',
+                # Frozen off-line emulator, as igm-examples aletsch
+                # common/iceflow_offline.yaml; same network as the inversion
+                # (params_inversion.yaml). tau_ref comes from input.nc.
+                "method": "unified",
+                "numerics": {
+                    "Nz": 2,
+                    "basis_horizontal": "q1",
+                    "basis_vertical": "molho",
+                },
+                "unified": {
+                    "mapping": "network",
+                    "inputs": ["thk", "usurf", "arrhenius", "tau_ref", "dX"],
+                    "nbit_init": 0,
                     "retrain_freq": 0,
-                }
+                    "network": {
+                        "pretrained_path": "dahunet_mini.keras",
+                        "pretrained": True,
+                    }
+                },
             },
             "time": {
                 "start": year_start,
@@ -124,12 +147,14 @@ def forward(exp, output1D, output2D_3D, member_id, smb_model, usurf, smb,
     elif str(smb_model) == 'ELA':
 
         igm_params['defaults'] = [{"override /inputs": ["local"]}]
-        igm_params['defaults'] += [{'override /processes': ["smb_simple", "iceflow", "time", "thk"]}]
+        igm_params['defaults'] += [{'override /processes': ["smb", "iceflow", "time", "thk"]}]
 
-        igm_params['processes']["smb_simple"] = {
-            "array": []
+        # smb_simple became the `smb` umbrella with method: simple (IGM >= 3.2)
+        igm_params['processes']["smb"] = {
+            "method": "simple",
+            "simple": {"array": []},
         }
-        igm_params['processes']['smb_simple']['array'] = [
+        igm_params['processes']['smb']['simple']['array'] = [
             ['time', 'gradabl', 'gradacc', 'ela', 'accmax'],
             [year_start, abl_grad, acc_grad, ela, 100],
             [year_end, abl_grad, acc_grad, ela, 100]

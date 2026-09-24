@@ -84,7 +84,11 @@ class EnsembleKalmanFilter:
         with Dataset(inversion_file, 'r') as geology_dataset:
             self.icemask_init = np.array(geology_dataset['icemask'])
             self.bedrock = np.array(geology_dataset['topg'])
-            init_divflux = np.array(geology_dataset['divflux'])
+            # field_inversion (IGM >= 3.2) cannot save divflux
+            if 'divflux' in geology_dataset.variables:
+                init_divflux = np.array(geology_dataset['divflux'])
+            else:
+                init_divflux = np.zeros_like(self.icemask_init)
             init_velsurf_mag = np.array(geology_dataset['velsurf_mag'])
 
         # average the surface elevation into bins
@@ -163,12 +167,6 @@ class EnsembleKalmanFilter:
             data_dir = os.path.join(member_dir, 'data')
             os.makedirs(data_dir, exist_ok=True)
             shutil.copy2(inversion_file, os.path.join(data_dir, 'input.nc'))
-
-            # Copy iceflow-model directory
-            member_iceflow_dir = os.path.join(member_dir, "iceflow-model")
-            shutil.rmtree(member_iceflow_dir, ignore_errors=True)
-            shutil.copytree(os.path.join(inversion_dir, "iceflow-model"),
-                            member_iceflow_dir)
 
         # Logging initialization
         self.ensemble_init_surf_raster = copy.copy(self.ensemble_usurf)

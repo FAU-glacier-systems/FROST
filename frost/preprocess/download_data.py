@@ -320,6 +320,13 @@ def download_OGGM_shop(rgi_id, rgi_id_dir, flag_OGGM_climate):
 
     # create params.yaml
     params = {
+        # Fixed run dir so reruns overwrite instead of creating
+        # outputs/<date>/<time>
+        "hydra": {
+            "run": {
+                "dir": "outputs/igm/oggm_shop"
+            }
+        },
         "core": {
             "url_data": ""
         },

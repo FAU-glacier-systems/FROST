@@ -8,7 +8,10 @@ import frost.preprocess.igm_inversion as igm_inversion
 import frost.preprocess.create_observation as create_observation
 import frost_calibration
 
-os.environ["CUDA_VISIBLE_DEVICES"] = ""  # Hides all GPUs
+# Use the GPU Slurm assigned (it sets CUDA_VISIBLE_DEVICES); without one, CPU only
+os.environ.setdefault("CUDA_VISIBLE_DEVICES", "")
+# The ensemble members share one GPU, so don't let each grab all its memory
+os.environ.setdefault("TF_FORCE_GPU_ALLOW_GROWTH", "true")
 os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"  # Optional for JAX
 os.environ[
     "XLA_FLAGS"] = "--xla_force_host_platform_device_count=1"  # Makes JAX use only CPU
