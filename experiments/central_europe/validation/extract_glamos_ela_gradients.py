@@ -1,8 +1,13 @@
+import argparse
+import sys
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+import plot_style
 
 
 class GlacierAnalysis:
@@ -33,7 +38,8 @@ class GlacierAnalysis:
     # Public workflow
     # ============================================================
 
-    def run(self):
+    def run(self, style=None):
+        self.style = style or plot_style.Style()
         self.load_all_data()
         self.results_df = self.process_glaciers()
         self.results_df = self.add_rgi_id(self.results_df)
@@ -273,7 +279,7 @@ class GlacierAnalysis:
         )
 
         plt.tight_layout()
-        plt.savefig("all_gradients.pdf", dpi=300)
+        self.style.savefig(fig, "plots/all_gradients")
         plt.close()
 
     def plot_subplot(self, ax, df, key, ylabel, mean_key, title_fmt, panel_label):
@@ -285,9 +291,9 @@ class GlacierAnalysis:
                 (2010 - 10, mean - std),
                 20,
                 2 * std,
-                facecolor="black",
+                facecolor=plot_style.fg(),
                 alpha=0.3,
-                edgecolor="black",
+                edgecolor=plot_style.fg(),
                 zorder=5,
             )
         )
@@ -295,7 +301,7 @@ class GlacierAnalysis:
             mean,
             2000,
             2019,
-            colors="black",
+            colors=plot_style.fg(),
             linestyles="-",
             linewidth=1.5,
             label="Distribution\nof 20 year mean",
@@ -333,11 +339,13 @@ class GlacierAnalysis:
 
 
 if __name__ == "__main__":
+    style = plot_style.setup(argparse.ArgumentParser(
+        description="GLAMOS ELA and mass-balance gradients, 2000-2019."))
     analysis = GlacierAnalysis(
-        "../../data/raw/glamos/massbalance_observation.csv",
-        "../../data/raw/glamos/massbalance_observation_elevationbins.csv",
-        "../../data/raw/RGI2000-v7.0-G-11_central_europe/RGI2000-v7.0-G-11_central_europe-attributes.csv",
-        "../../data/raw/glamos/GLAMOS_RGI.csv",
-        "../../data/raw/glamos/GLAMOS_analysis_results.csv",
+        "../../../data/raw/glamos/massbalance_observation.csv",
+        "../../../data/raw/glamos/massbalance_observation_elevationbins.csv",
+        "../../../data/raw/RGI2000-v7.0-G-11_central_europe/RGI2000-v7.0-G-11_central_europe-attributes.csv",
+        "../../../data/raw/glamos/GLAMOS_RGI.csv",
+        "tables/GLAMOS_analysis_results.csv",
     )
-    analysis.run()
+    analysis.run(style)

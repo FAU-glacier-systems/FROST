@@ -1,0 +1,10 @@
+rgi_id,country,glacier_name_wgms,ELA_wgms,abl_wgms,acc_wgms,mb_wgms,mb_wgms_std,n_years_mb,glacier_name_glamos,ELA_glamos,abl_glamos,acc_glamos,Years_with_ELA,mb_glamos,mb_glamos_std,glacier_name,ELA_diff
+RGI2000-v7.0-G-11-02438,CH,Griesgletscher,3173.05,4.081,,-1.404,0.65,20.0,Griesgletscher,3146,4.9629,1.7387,20,-1.347,0.6566898999999999,Griesgletscher,27.050000000000182
+RGI2000-v7.0-G-11-00879,CH,Glacier du Giétro,3302.5,7.516,2.071,-0.773,0.615,20.0,Glacier du Giétro,3300,8.2478,1.9013,20,-0.75575,0.60709,Glacier du Giétro,2.5
+RGI2000-v7.0-G-11-01189,CH,Findelgletscher,3302.333,8.858,1.574,-0.533,0.383,15.0,Findelgletscher,3302,8.9608,1.5638,15,-0.5008667,0.3359047,Findelgletscher,0.3330000000000837
+RGI2000-v7.0-G-11-01182,CH,Allalingletscher,3434.0,4.01,1.327,-0.505,0.616,20.0,Allalingletscher,3434,4.1645,1.3076,20,-0.49895,0.606936,Allalingletscher,0.0
+RGI2000-v7.0-G-11-01084,CH,Schwarzberggletscher,3126.0,8.479,2.775,-0.716,0.607,20.0,Schwarzberggletscher,3128,8.5395,3.2781,20,-0.7301,0.5776961,Schwarzberggletscher,-2.0
+RGI2000-v7.0-G-11-01949,CH,Silvrettagletscher,2912.5,5.667,,-0.915,0.735,20.0,Silvrettagletscher,2913,5.7404,1.8518,20,-0.84945,0.6298758,Silvrettagletscher,-0.5
+RGI2000-v7.0-G-11-02484,CH,Ghiacciaio del Basòdino,3040.25,2.332,,-0.843,0.735,20.0,Ghiacciaio del Basòdino,3045,3.7262,1.7047,20,-0.8175,0.6722100000000001,Ghiacciaio del Basòdino,-4.75
+RGI2000-v7.0-G-11-01838,CH,Claridenfirn,2909.5,6.793,-0.408,-0.937,0.562,20.0,Claridenfirn,2906,12.0324,1.5544,20,-0.81445,0.4709399,Claridenfirn,3.5
+RGI2000-v7.0-G-11-01075,CH,Adlergletscher,3490.0,5.691,0.821,-0.422,0.342,14.0,Adlergletscher,3490,4.0204,2.1142,14,-0.4223571,0.3296508,Adlergletscher,0.0

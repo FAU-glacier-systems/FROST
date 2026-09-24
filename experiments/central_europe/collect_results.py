@@ -9,15 +9,18 @@ import xarray as xr
 # ============================================================
 # Paths
 # ============================================================
+# Ensemble and inversion statistics are slow to gather (one NetCDF per glacier),
+# so they are cached; set these to True to rebuild the caches.
 RECOMPUTE_ENSEMBLE = False
-ENSEMBLE_CACHE_CSV = Path("../central_europe_submit/tables/ensemble_stats.csv")
+RECOMPUTE_INVERSION = False
+ENSEMBLE_CACHE_CSV = Path("tables/ensemble_stats.csv")
+INVERSION_CACHE_CSV = Path("tables/inversion_results.csv")
 RGI_FILES_PATH = Path("../../data/raw/central_europe/Split_Files")
 SLA_PATH = Path("../../data/raw/central_europe/Alps_Glacier_EoS_SLA_2000-2019_stats_v2.csv")
-WGMS_GLAMOS_PATH = Path("../WGMS/tables/combined_ela_gradients.csv")
+WGMS_GLAMOS_PATH = Path("validation/tables/combined_ela_gradients.csv")
 
-INVERSION_PATH = Path("../central_europe_submit/tables/inversion_results.csv")
 EXPERIMENTS_PATH = Path("../../data/results/central_europe_submit/glaciers")
-OUTPUT_CSV = Path("../central_europe_submit/tables/aggregated_results.csv")
+OUTPUT_CSV = Path("tables/aggregated_results.csv")
 
 
 # ============================================================
@@ -253,6 +256,99 @@ def collect_or_load_ensemble_stats(rgi_ids, recompute: bool = False) -> pd.DataF
     df.to_csv(ENSEMBLE_CACHE_CSV, index=False, float_format="%.4f")
     print(f"Saved ensemble cache to {ENSEMBLE_CACHE_CSV}")
     return df
+
+
+# ============================================================
+# Inversion statistics (velocity and thickness vs observations)
+# ============================================================
+def to_scalar(x) -> float:
+    """Return Python float or np.nan from xarray reduction."""
+    try:
+        return x.item()
+    except Exception:
+        return float(x) if np.isscalar(x) else np.nan
+
+
+def build_inversion_row(rgi_id: str) -> dict:
+    row = {"rgi_id": rgi_id}
+    nc_path = EXPERIMENTS_PATH / rgi_id / "Preprocess" / "outputs" / "output.nc"
+    if not nc_path.exists():
+        print(f"Warning: inversion output not found: {nc_path}")
+        return row
+
+    try:
+        with xr.open_dataset(nc_path) as ds:
+            # Velocity (masked by icemask)
+            if all(v in ds.variables for v in ["velsurf_mag", "velsurfobs_mag", "icemask"]):
+                mask_ice = ds["icemask"] == 1
+                for name, var in [("velsurf_mag", ds["velsurf_mag"]),
+                                  ("velsurfobs_mag", ds["velsurfobs_mag"])]:
+                    v = var.where(mask_ice)
+                    row[f"Mean_{name}"] = to_scalar(v.mean(skipna=True))
+                    row[f"Std_{name}"] = to_scalar(v.std(skipna=True))
+                    row[f"Min_{name}"] = to_scalar(v.min(skipna=True))
+                    row[f"Q1_{name}"] = to_scalar(v.quantile(0.25, skipna=True))
+                    row[f"Median_{name}"] = to_scalar(v.quantile(0.50, skipna=True))
+                    row[f"Q3_{name}"] = to_scalar(v.quantile(0.75, skipna=True))
+                    row[f"Max_{name}"] = to_scalar(v.max(skipna=True))
+                vmod = ds["velsurf_mag"].where(mask_ice)
+                vobs = ds["velsurfobs_mag"].where(mask_ice)
+                row["MAE_velsurf_mag"] = to_scalar(np.abs(vmod - vobs).mean(skipna=True))
+            else:
+                print(f"Warning: missing velocity variables for {rgi_id}")
+
+            # Thickness (only where thkobs is present)
+            if all(v in ds.variables for v in ["thk", "thkobs", "icemask"]):
+                ice_mask = ds["icemask"] == 1
+                valid = ice_mask & ds["thkobs"].notnull()
+                thk_mod = ds["thk"].where(valid)
+                thk_obs = ds["thkobs"].where(valid)
+
+                n_obs = int(valid.sum().item())
+                total_ice = int(ice_mask.sum().item())
+                diff = thk_mod - thk_obs
+                absdiff = np.abs(diff)
+
+                row["n_obs_thk"] = n_obs
+                row["coverage_pct"] = 100.0 * n_obs / total_ice if total_ice > 0 else np.nan
+                row["Mean_thk_model_at_obs"] = to_scalar(thk_mod.mean(skipna=True))
+                row["Std_thk_model_at_obs"] = to_scalar(thk_mod.std(skipna=True))
+                row["Mean_thk_obs"] = to_scalar(thk_obs.mean(skipna=True))
+                row["Std_thk_obs"] = to_scalar(thk_obs.std(skipna=True))
+                row["MAE_thk"] = to_scalar(absdiff.mean(skipna=True))
+                row["Bias_thk"] = to_scalar(diff.mean(skipna=True))
+                row["RMSE_thk"] = to_scalar(np.sqrt((diff ** 2).mean(skipna=True)))
+                row["MedianAE_thk"] = to_scalar(absdiff.quantile(0.50, skipna=True))
+                row["Q95AE_thk"] = to_scalar(absdiff.quantile(0.95, skipna=True))
+                row["Min_thk_obs"] = to_scalar(thk_obs.min(skipna=True))
+                row["Q1_thk_obs"] = to_scalar(thk_obs.quantile(0.25, skipna=True))
+                row["Median_thk_obs"] = to_scalar(thk_obs.quantile(0.50, skipna=True))
+                row["Q3_thk_obs"] = to_scalar(thk_obs.quantile(0.75, skipna=True))
+                row["Max_thk_obs"] = to_scalar(thk_obs.max(skipna=True))
+            else:
+                print(f"Warning: missing thickness variables for {rgi_id}")
+    except Exception as exc:
+        print(f"Warning: failed reading {nc_path}: {exc}")
+
+    return row
+
+
+def collect_or_load_inversion_stats(rgi_ids, recompute: bool = False) -> pd.DataFrame:
+    if INVERSION_CACHE_CSV.exists() and not recompute:
+        print(f"Loading inversion cache from {INVERSION_CACHE_CSV}")
+        return pd.read_csv(INVERSION_CACHE_CSV)
+
+    print("Recomputing inversion statistics")
+    rows = []
+    for rgi_id in rgi_ids:
+        print(f"Inversion: {rgi_id}")
+        rows.append(build_inversion_row(rgi_id))
+
+    df = pd.DataFrame(rows)
+    INVERSION_CACHE_CSV.parent.mkdir(parents=True, exist_ok=True)
+    df.to_csv(INVERSION_CACHE_CSV, index=False)
+    print(f"Saved inversion cache to {INVERSION_CACHE_CSV}")
+    return df
 # ============================================================
 # Collect model results
 # ============================================================
@@ -291,8 +387,7 @@ def collect_model_results(parts) -> pd.DataFrame:
 # Load external tables
 # ============================================================
 
-def load_external_tables() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    inversion_df = safe_read_csv(INVERSION_PATH)
+def load_external_tables() -> tuple[pd.DataFrame, pd.DataFrame]:
 
     sla_df = safe_read_csv(
         SLA_PATH,
@@ -318,7 +413,7 @@ def load_external_tables() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         ],
     )
 
-    return inversion_df, sla_df, wgms_glamos_df
+    return sla_df, wgms_glamos_df
 
 
 # ============================================================
@@ -368,7 +463,11 @@ def main():
     if not ensemble_df.empty:
         model_results = pd.merge(model_results, ensemble_df, on="rgi_id", how="left")
 
-    inversion_df, sla_df, wgms_glamos_df = load_external_tables()
+    inversion_df = collect_or_load_inversion_stats(
+        model_results["rgi_id"].unique(),
+        recompute=RECOMPUTE_INVERSION,
+    )
+    sla_df, wgms_glamos_df = load_external_tables()
 
     merged = model_results.copy()
 

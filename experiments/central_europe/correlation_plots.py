@@ -1,7 +1,11 @@
+import argparse
+
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.stats import spearmanr
+
+import plot_style
 
 labels = {
     "area_km2": "Area\n(km²)",
@@ -22,7 +26,7 @@ labels = {
     "gradacc_std": "Accumulation\ngradient\nstd (m yr⁻¹ km⁻¹)"
 }
 
-def plot_colored_correlation_points(data, factors, targets):
+def plot_colored_correlation_points(data, factors, targets, style):
     num_factors = len(factors)
     num_targets = len(targets)
 
@@ -48,7 +52,7 @@ def plot_colored_correlation_points(data, factors, targets):
             ax.annotate(f"r = {corr:.2f}",
                         xy=(0.05, 0.9), xycoords="axes fraction",
                         fontsize=9, ha="left", va="top",
-                        bbox=dict(boxstyle="round", facecolor="white", alpha=0.8))
+                        bbox=dict(boxstyle="round", facecolor=plot_style.bg(), alpha=0.8))
 
             if factor == "area_km2":
                 ax.set_yscale("log")
@@ -72,12 +76,15 @@ def plot_colored_correlation_points(data, factors, targets):
     plt.tight_layout()
     plt.subplots_adjust(wspace=0.15, hspace=0.15)  # smaller values = less space
 
-    plt.savefig("../central_europe_submit/plots/correlation.pdf")
+    style.savefig(fig, "plots/correlation")
     plt.close(fig)
 
 
 # Load and clean data
-csv_path = "../central_europe_submit/tables/aggregated_results.csv"
+style = plot_style.setup(argparse.ArgumentParser(
+    description="Correlation of calibrated parameters with glacier properties."))
+
+csv_path = "tables/aggregated_results.csv"
 data = pd.read_csv(csv_path)
 
 factors = ["area_km2", "lmax_m", "zmax_m", "EastWest", "SouthNorth",
@@ -87,4 +94,4 @@ targets = ["ela", "gradabl", "gradacc", "ela_std", "gradabl_std", "gradacc_std"]
 data[factors + targets] = data[factors + targets].apply(pd.to_numeric, errors="coerce")
 filtered_data = data.dropna(subset=factors + targets)
 
-plot_colored_correlation_points(filtered_data, factors, targets)
+plot_colored_correlation_points(filtered_data, factors, targets, style)

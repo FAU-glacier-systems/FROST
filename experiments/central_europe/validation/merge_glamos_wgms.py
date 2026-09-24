@@ -1,3 +1,5 @@
+import argparse
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -5,17 +7,23 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+import plot_style
+
 # ============================================================
 # Configuration
 # ============================================================
 
 WGMS_FILE = Path("tables/wgms_ELA_gradients.csv")
-GLAMOS_FILE = Path("../../data/raw/glamos/GLAMOS_analysis_results.csv")
+GLAMOS_FILE = Path("tables/GLAMOS_analysis_results.csv")
 KEY = "rgi_id"
 
 OUTPUT_ELA_COMPARISON = Path("tables/ELA_comparison_wgms_vs_glamos.csv")
 OUTPUT_MB_COMPARISON = Path("tables/MB_comparison_wgms_vs_glamos.csv")
 OUTPUT_COMBINED = Path("tables/combined_ela_gradients.csv")
+
+# Set in main() from --dark / --pdf
+STYLE = plot_style.Style()
 
 
 # ============================================================
@@ -44,6 +52,7 @@ def prepare_wgms(wgms: pd.DataFrame) -> pd.DataFrame:
     ]
     wgms = wgms[cols].copy()
 
+    # Use the WGMS-reported ELA ("ela_mean"), not the fitted "ELA_m". See README.md.
     wgms = wgms.rename(
         columns={
             "ela_mean": "ELA_wgms",
@@ -339,7 +348,7 @@ def plot_comparisons(
         frameon=False,
     )
     plt.tight_layout()
-    plt.savefig("glamos_wgms_comparison.pdf", bbox_inches="tight")
+    STYLE.savefig(None, "plots/glamos_wgms_comparison", bbox_inches="tight")
 
 
 # ============================================================
@@ -347,6 +356,10 @@ def plot_comparisons(
 # ============================================================
 
 def main() -> None:
+    global STYLE
+    STYLE = plot_style.setup(argparse.ArgumentParser(
+        description="Merge WGMS and GLAMOS references into one table."))
+
     wgms_raw, glamos_raw = load_data(WGMS_FILE, GLAMOS_FILE)
 
     wgms = prepare_wgms(wgms_raw)

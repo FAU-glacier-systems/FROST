@@ -1,3 +1,4 @@
+import argparse
 import os
 import pandas as pd
 import geopandas as gpd
@@ -9,6 +10,8 @@ import cartopy.crs as ccrs
 from rasterio.plot import show
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from adjustText import adjust_text
+
+import plot_style
 
 plt.rcParams["font.family"] = "monospace"
 
@@ -35,6 +38,15 @@ def load_dem(dem_path):
 # -----------------------------------------------------
 # 2. Load and prepare glacier data from CSV
 # -----------------------------------------------------
+# Readable labels for the annotated glaciers (RGI names are upper case)
+LABEL_NAMES = {
+    "RGI2000-v7.0-G-11-01225": "Gornergletscher",
+    "RGI2000-v7.0-G-11-02611": "Fieschergletscher",
+    "RGI2000-v7.0-G-11-00757": "Mer de Glace",
+    "RGI2000-v7.0-G-11-02645": "Unteraargletscher",
+}
+
+
 def load_glacier_data(csv_path):
     """
     Load glacier data from a CSV file and prepare it as a GeoDataFrame.
@@ -73,7 +85,7 @@ def plot_country_borders(ax, country_paths):
 def plot_map_with_annotations(
     dem_data, extent, gdf, 
     save_path, country_paths, 
-    value_column, color_map, colorbar_label, num_dec=1
+    value_column, color_map, colorbar_label, num_dec=1, style=None
 ):
     """
     Generalized function for plotting a map with glacier data and text annotations.
@@ -212,9 +224,10 @@ def plot_map_with_annotations(
 ]
     for i, (_, row) in enumerate(gdf.head(5).iterrows()):
         dx, dy = offsets[i % len(offsets)]
-        print(row['glacier_name'], row[value_column], row.geometry.x, row.geometry.y)
+        name = LABEL_NAMES.get(row['rgi_id'], row['glacier_name'])
+        print(name, row[value_column], row.geometry.x, row.geometry.y)
         ax.annotate(
-            f"{row['glacier_name']} ({row[value_column]:.{num_dec}f})",
+            f"{name} ({row[value_column]:.{num_dec}f})",
             xy=(row.geometry.x, row.geometry.y),  # point
             xytext=(row.geometry.x + dx, row.geometry.y + dy),  # label position
             textcoords="data",
@@ -301,12 +314,12 @@ def plot_map_with_annotations(
     gl.ylocator = mticker.MultipleLocator(1)  # Every 1° in latitude
     # Label appearance
     gl.xlabel_style = {
-        "color": "white",
+        "color": plot_style.fg(),
         "size": 10,
     }
 
     gl.ylabel_style = {
-        "color": "white",
+        "color": plot_style.fg(),
         "size": 10,
     }
     # Add colorbar for elevation
@@ -384,7 +397,7 @@ def plot_map_with_annotations(
     #plt.tight_layout()
 
 
-    plt.savefig(save_path, dpi=400, transparent=True)
+    save_path = (style or plot_style.Style()).savefig(None, save_path, dpi=400)
     print(f"Map saved to {save_path}")
     plt.close()
 
@@ -393,10 +406,12 @@ def plot_map_with_annotations(
 # 5. Main Function
 # -----------------------------------------------------
 def main():
+    style = plot_style.setup(argparse.ArgumentParser(
+        description="Maps of calibrated ELA, gradients and snowlines across the Alps."))
+
     # File paths
     dem_path = "../../data/raw/visualization_context/alpsDEM.tif"
-    csv_path = "../central_europe_submit/tables/aggregated_results.csv"
-    sla_path = "../../data/raw/central_europe/Alps_EOS_SLA_2000-2019_mean.csv"
+    csv_path = "tables/aggregated_results.csv"
     country_paths = [
         "../../data/raw/visualization_context/gadm41_CHE_shp/gadm41_CHE_0.shp",
         "../../data/raw/visualization_context/gadm41_ITA_shp/gadm41_ITA_0.shp"
@@ -408,89 +423,80 @@ def main():
 
     print("Loading glacier data...")
     gdf = load_glacier_data(csv_path)
-    sla_df = load_glacier_data(sla_path)
-    # Filter rows where 'sla' > 4000
-    #sla_df = sla_df[sla_df['sla'] < 4000]
 
-    merged_df = pd.merge(gdf, sla_df, on="rgi_id", how="left",
-                         suffixes=('', '_drop'))
-    
-    
-    # Calculate bias correction as mean difference
-    # bias_correction = np.mean(merged_df['ela'] - merged_df['sla'])
-    # # Apply bias correction to SLA values
-    # merged_df['sla_corrected'] = merged_df['sla'] + bias_correction
-    # # Calculate corrected difference
-    merged_df['sla_ela_diff'] = merged_df['ela']-merged_df['sla']#-
-    # merged_df[
-    # 'sla_corrected']
-
-    gdf = merged_df.loc[:, ~merged_df.columns.str.endswith('_drop')]
-    print(
-        f"Mean absolute difference after bias correction: {np.mean(abs(gdf['sla_ela_diff'])):.2f}")
+    # Same end-of-summer snowline dataset as collect_results.py / evaluation.py
+    gdf["sla"] = gdf["eos_sla_mean"]
+    gdf["sla_ela_diff"] = gdf["ela"] - gdf["sla"]
+    print(f"Mean absolute ELA - SLA difference: {np.mean(abs(gdf['sla_ela_diff'])):.2f}")
 
     # Map for "ela"
     print("Plotting map for 'ela'...")
     plot_map_with_annotations(
         dem_data, extent, gdf,
-        save_path="../central_europe_submit/plots/ALPS_ela_sla_scatter.pdf",
+        save_path="plots/ALPS_ela_sla_scatter.pdf",
         country_paths=country_paths,
         value_column="ela_sla",  # Column for ELA
         color_map="viridis_r",  # Colormap
         colorbar_label="Equilibrium Line Altitude (m)",
         num_dec=0,
+        style=style,
     )
 
     plot_map_with_annotations(
         dem_data, extent, gdf,
-        save_path="../central_europe_submit/plots/ALPS_ela_Scatter.png",
+        save_path="plots/ALPS_ela_Scatter.png",
         country_paths=country_paths,
         value_column="ela",  # Column for ELA
         color_map="viridis_r",  # Colormap
         colorbar_label="Equilibrium Line Altitude (m)",
         num_dec=0,
+        style=style,
     )
 
     # Map for "gradabl" (reds)
     print("Plotting map for 'gradabl'...")
     plot_map_with_annotations(
         dem_data, extent, gdf,
-        save_path="../central_europe_submit/plots/ALPS_gradabl_Scatter.pdf",
+        save_path="plots/ALPS_gradabl_Scatter.pdf",
         country_paths=country_paths,
         value_column="gradabl",  # Column for Gradient Ablation
         color_map="Reds",       # Colormap
-        colorbar_label="Gradient Ablation (m$\,$yr$^{-1}\,$km$^{-1}$)"
+        colorbar_label="Gradient Ablation (m$\,$yr$^{-1}\,$km$^{-1}$)",
+        style=style,
     )
 
     # Map for "gradacc" (blues)
     print("Plotting map for 'gradacc'...")
     plot_map_with_annotations(
         dem_data, extent, gdf,
-        save_path="../central_europe_submit/plots/ALPS_gradacc_Scatter.pdf",
+        save_path="plots/ALPS_gradacc_Scatter.pdf",
         country_paths=country_paths,
         value_column="gradacc",  # Column for Gradient Accumulation
         color_map="Blues",       # Colormap
-        colorbar_label="Gradient Accumulation (m$\,$yr$^{-1}\,$km$^{-1}$)"
+        colorbar_label="Gradient Accumulation (m$\,$yr$^{-1}\,$km$^{-1}$)",
+        style=style,
     )
 
     plot_map_with_annotations(
         dem_data, extent, gdf,
-        save_path="../central_europe_submit/plots/ALPS_sla_Scatter.pdf",
+        save_path="plots/ALPS_sla_Scatter.pdf",
         country_paths=country_paths,
         value_column="sla",  # Column for ELA
         color_map="viridis_r",  # Colormap
         colorbar_label="End of summer snowline altitude (m)",
         num_dec=0,
+        style=style,
     )
 
     plot_map_with_annotations(
         dem_data, extent, gdf,
-        save_path="../central_europe_submit/plots/ALPS_difslaela_Scatter.pdf",
+        save_path="plots/ALPS_difslaela_Scatter.pdf",
         country_paths=country_paths,
         value_column="sla_ela_diff",  # Column for ELA
         color_map="RdBu",  # Colormap
         colorbar_label="Difference between SLA and ELA (m)",
         num_dec=0,
+        style=style,
     )
 
 

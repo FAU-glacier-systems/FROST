@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # --- Load data ---
-glamos_file = Path("../WGMS/tables/combined_ela_gradients.csv")
+glamos_file = Path("../central_europe/validation/tables/combined_ela_gradients.csv")
 calibrated_file = Path("MB_compare_output_v06.csv")
 
 glamos_df = pd.read_csv(glamos_file)

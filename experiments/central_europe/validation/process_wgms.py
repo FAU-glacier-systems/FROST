@@ -1,21 +1,30 @@
-from pathlib import Path
+import argparse
 import re
+import sys
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+import plot_style
+
 
 # ============================================================
 # Configuration
 # ============================================================
 
-INPUT_FILE_MB_Bands = Path("../../data/raw/DOI-WGMS-FoG-2025-02b/data/mass_balance_band.csv")
-INPUT_FILE_MB = Path("../../data/raw/DOI-WGMS-FoG-2025-02b/data/mass_balance.csv")
+INPUT_FILE_MB_Bands = Path("../../../data/raw/DOI-WGMS-FoG-2025-02b/data/mass_balance_band.csv")
+INPUT_FILE_MB = Path("../../../data/raw/DOI-WGMS-FoG-2025-02b/data/mass_balance.csv")
 LOOKUP_FILE = Path("tables/RGI6-7.csv")
 OUTPUT_CSV = Path("tables/wgms_ELA_gradients.csv")
-PLOT_DIR = Path("Plots")
+PLOT_DIR = Path("plots")
+GLACIER_PLOT_DIR = PLOT_DIR / "glacier_smb"  # one mass-balance profile fit per glacier
+
+# Set in main() from --dark / --pdf
+STYLE = plot_style.Style()
 
 COUNTRIES = ["AT", "IT", "FR", "CH", "DE"]
 YEAR_MIN = 2000
@@ -239,7 +248,7 @@ def plot_glacier_fit(result: dict, output_dir: Path) -> None:
             alpha=0.5,
         )
 
-    plt.plot(elev, mb, color="black", linewidth=2, label="Mean SMB")
+    plt.plot(elev, mb, color=plot_style.fg(), linewidth=2, label="Mean SMB")
 
     lower_mask = elev <= ela
     upper_mask = elev >= ela
@@ -322,7 +331,7 @@ def plot_glacier_fit(result: dict, output_dir: Path) -> None:
     plt.tight_layout()
 
     filename = output_dir / f"{safe_filename(glacier_name)}_{glacier_id}_fit.png"
-    plt.savefig(filename, dpi=300)
+    STYLE.savefig(None, filename)
     plt.close()
 
 def plot_ela_diff_from_true_mean(mb_agg: pd.DataFrame,
@@ -377,7 +386,7 @@ def plot_ela_diff_from_true_mean(mb_agg: pd.DataFrame,
 
     ax.boxplot(data_to_plot, positions=positions, widths=0.5, patch_artist=True,
                boxprops=dict(facecolor="steelblue", alpha=0.6),zorder=10,
-               medianprops=dict(color="black", linewidth=2))
+               medianprops=dict(color=plot_style.fg(), linewidth=2))
 
     #ax.axhline(0, color="red", linestyle="--", linewidth=1.5, label="True 20-year mean")
 
@@ -386,8 +395,8 @@ def plot_ela_diff_from_true_mean(mb_agg: pd.DataFrame,
     ax.set_xlabel("Number of sampled years")
     ax.set_ylabel("Mean absolute error to 20-year mean (m)")
     ax.set_title(f"ELA sampling error")
-    ax.grid(axis="y", color="black", linestyle="-", zorder=-1, alpha=.2)
-    ax.grid(axis="x", color="black", linestyle="-", zorder=-1, alpha=.2)
+    ax.grid(axis="y", color=plot_style.fg(), linestyle="-", zorder=-1, alpha=.2)
+    ax.grid(axis="x", color=plot_style.fg(), linestyle="-", zorder=-1, alpha=.2)
     ax.xaxis.set_tick_params(bottom=False)
     ax.yaxis.set_tick_params(left=False)
     ax.spines['top'].set_visible(False)
@@ -396,13 +405,17 @@ def plot_ela_diff_from_true_mean(mb_agg: pd.DataFrame,
     ax.spines['left'].set_visible(False)
     #ax.legend()
     plt.tight_layout()
-    plt.savefig(PLOT_DIR / "ela_sampling_error.pdf")
+    STYLE.savefig(None, PLOT_DIR / "ela_sampling_error.pdf")
 
 # ============================================================
 # Main workflow
 # ============================================================
 
 def main() -> None:
+    global STYLE
+    STYLE = plot_style.setup(argparse.ArgumentParser(
+        description="WGMS ELA and mass-balance gradients, 2000-2019."))
+
     df_band_raw, df_mb_raw, lookup = load_data(INPUT_FILE_MB_Bands, INPUT_FILE_MB, LOOKUP_FILE)
     df = prepare_mass_balance_data(df_band_raw)
     df_mb = prepare_mass_balance_timeseries(df_mb_raw)
@@ -418,7 +431,7 @@ def main() -> None:
         if result is None:
             continue
 
-        plot_glacier_fit(result, PLOT_DIR)
+        plot_glacier_fit(result, GLACIER_PLOT_DIR)
 
         results.append(
             {
@@ -440,14 +453,16 @@ def main() -> None:
         right_on="wgms_name",
         how="left",
     )
-    import matplotlib.pyplot as plt
-
+    # Two ELAs per glacier: "ela_mean" is the ELA reported by WGMS (mass_balance.csv),
+    # "ELA_m" is the zero crossing of the mean band profile fitted here.
+    # merge_glamos_wgms.py uses the reported "ela_mean"; the gradients are fitted
+    # relative to "ELA_m". See README.md.
     plt.figure(figsize=(6, 6))
     plt.scatter(results_df["ela_mean"], results_df["ELA_m"])
-    plt.xlabel("Observed ELA (m)")
-    plt.ylabel("Computed ELA (m)")
-
-    plt.show()
+    plt.xlabel("Reported ELA, WGMS (m)")
+    plt.ylabel("Fitted ELA, zero crossing of mean profile (m)")
+    STYLE.savefig(None, PLOT_DIR / "wgms_ela_reported_vs_fitted.pdf", bbox_inches="tight")
+    plt.close()
     # use GLAMOS name
     results_df["glacier_name"] = results_df["glamos_name"]
 

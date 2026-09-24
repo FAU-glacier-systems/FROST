@@ -1,7 +1,14 @@
+import argparse
+import sys
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.patches import Ellipse
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+import plot_style
 
 
 def scatter_plot(ax, x, y, xlabel, ylabel, title, ticks, glacier_names=None,
@@ -9,7 +16,7 @@ def scatter_plot(ax, x, y, xlabel, ylabel, title, ticks, glacier_names=None,
     x_min = ticks[0]
     x_max = ticks[-1]
 
-    ax.plot([x_min, x_max], [x_min, x_max], "--", color="black", alpha=0.3,
+    ax.plot([x_min, x_max], [x_min, x_max], "--", color=plot_style.fg(), alpha=0.3,
             zorder=-4,
             label="1:1 Correlation")
 
@@ -25,7 +32,7 @@ def scatter_plot(ax, x, y, xlabel, ylabel, title, ticks, glacier_names=None,
             f'MAE: {mae:.0f} Bias: {bias:.0f}\nBias-corrected-\nMAE:'
             f' {bcmae:.0f}\nPearson r: {correlation:.2f}',
             transform=ax.transAxes,
-            bbox=dict(facecolor='white', alpha=0.8),
+            bbox=dict(facecolor=plot_style.bg(), alpha=0.8),
             verticalalignment='top')
 
     scatter_handles = []
@@ -67,13 +74,11 @@ def scatter_plot(ax, x, y, xlabel, ylabel, title, ticks, glacier_names=None,
     return scatter_handles
 
 
-# Read both CSV files
-velocity_df = pd.read_csv('../central_europe_submit/tables/inversion_results.csv')
-#aggregated_df = pd.read_csv('aggregated_results.csv')
+# Inversion statistics are gathered by ../collect_results.py
+style = plot_style.setup(argparse.ArgumentParser(
+    description="Observed vs modelled surface velocity after the IGM inversion."))
 
-# Merge the dataframes on RGI_ID
-#merged_df = pd.merge(velocity_df, aggregated_df, on='rgi_id', how='inner')
-
+velocity_df = pd.read_csv('../tables/aggregated_results.csv')
 # Compute the velocity error for each glacier
 velocity_df['velocity_error'] = abs(
     velocity_df['Mean_velsurf_mag'] - velocity_df['Mean_velsurfobs_mag'])
@@ -86,9 +91,6 @@ highest_error_value = highest_error_row['velocity_error']
 
 print(f"The glacier with the highest velocity error is: {highest_error_rgi_id}")
 print(f"The highest velocity error value is: {highest_error_value}")
-
-# Save the merged results
-print("Results merged and saved to merged_results.csv")
 
 # Define velocity statistics to compare
 vel_stats = [
@@ -125,5 +127,4 @@ for ax, label in zip(axes, labels_subplot):
     ax.text(0, 1.02, label, transform=ax.transAxes,
             fontsize=12, va='bottom', ha='left', fontweight='bold')
 fig.tight_layout()
-plt.savefig("../central_europe_submit/plots/inversion_results.pdf",
-            bbox_inches="tight")
+style.savefig(fig, "plots/inversion_results", bbox_inches="tight")

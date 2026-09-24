@@ -13,7 +13,7 @@ def scatter_plot(ax, x, y, xlabel, ylabel, title, ticks, glacier_names=None,
     x_min = ticks[0] - margin
     x_max = ticks[-1] + margin
 
-    ax.plot([x_min, x_max], [x_min, x_max], "--", color="white", alpha=0.7,
+    ax.plot([x_min, x_max], [x_min, x_max], "--", color=plt.rcParams["text.color"], alpha=0.7,
             zorder=-4,
             label="1:1 Correlation")
 
@@ -33,7 +33,7 @@ def scatter_plot(ax, x, y, xlabel, ylabel, title, ticks, glacier_names=None,
     )
     ax.text(0.95, 0.05,txt,
             transform=ax.transAxes,
-            bbox=dict(facecolor='black', alpha=0.8),
+            bbox=dict(facecolor=plt.rcParams["axes.facecolor"], alpha=0.8),
             verticalalignment='bottom', zorder=100,
             horizontalalignment='right')
 
@@ -79,10 +79,10 @@ def scatter_plot(ax, x, y, xlabel, ylabel, title, ticks, glacier_names=None,
     ax.set_yticks(ticks)
     ax.set_aspect('equal', adjustable='box')
 
-    ax.set_xlabel(xlabel, color="white")
-    ax.set_ylabel(ylabel, color="white")
-    ax.set_title(title, color="white")
-    ax.tick_params(colors="white")
+    ax.set_xlabel(xlabel, color=plt.rcParams["text.color"])
+    ax.set_ylabel(ylabel, color=plt.rcParams["text.color"])
+    ax.set_title(title, color=plt.rcParams["text.color"])
+    ax.tick_params(colors=plt.rcParams["text.color"])
 
 
     ax.spines['top'].set_visible(False)
