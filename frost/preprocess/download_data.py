@@ -54,12 +54,12 @@ def main(rgi_id,
     input_orig_file = os.path.join(rgi_id_dir, 'Preprocess', 'data',
                                    'input_OGGM_orig.nc')
     input_file = os.path.join(rgi_id_dir, 'Preprocess', 'data', 'input.nc')
-    if os.path.exists(input_orig_file):
-        print('OGGM original file exists.')
+    # A fresh download (in input.nc) replaces the kept original; without
+    # one, input.nc is rebuilt from the original of an earlier download
+    if oggm_shop or not os.path.exists(input_orig_file):
+        os.replace(input_file, input_orig_file)
     else:
-        print('OGGM original file does not exist')
-        print(input_file)
-        os.rename(input_file, input_orig_file)
+        print('Reusing OGGM original file', input_orig_file)
 
     # Open the input netCDF file in read mode
     with Dataset(input_orig_file, 'r') as src:
