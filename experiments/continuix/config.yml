@@ -1,0 +1,31 @@
+# FROST for ContinuIX WP2/WP3 (https://github.com/ContinuIX/ContinuIX-1)
+data_dir: "data/raw/continuix"     # unzipped Zenodo record 10.5281/zenodo.21401808
+results_dir: "data/results/continuix"
+method: "method01"                 # EXP##_G##_<method>.nc
+resolution: 50                     # model grid (m); coarser ContinuIX grids are kept
+smb_model: "ELA"
+# provided THK fixed, sliding (tau_ref) inverted; params_inversion.yaml
+# inverts the thickness from an SIA start instead
+params_inversion: "params_inversion_tau.yaml"
+# velocities are always provided; slow glaciers (G04: 99th percentile
+# 8.7 m/yr) must not be treated as missing data
+min_velocity_p99: 1.0
+
+EnKF:
+  seed: 6
+  inflation: 1
+  ensemble_size: 36
+  iterations: 6
+  init_offset: 0
+  elev_band_height: 50
+  forward_parallel: true
+  synthetic: false
+
+  # ELA prior: median ice elevation, a third of the elevation range as std
+  # (continuix.smb_prior)
+  smb_prior_mean:
+    abl_grad: 7.55
+    acc_grad: 3.09
+  smb_prior_std:
+    abl_grad: 9.04
+    acc_grad: 3.39
