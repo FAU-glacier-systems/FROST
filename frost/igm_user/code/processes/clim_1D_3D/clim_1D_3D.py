@@ -97,7 +97,8 @@ def initialize(cfg, state):
     #print(os.getcwd())
 
     #ds = xr.open_dataset(os.path.join(path_RGI, "climate_historical.nc"))
-    ds = xr.open_dataset(os.path.join("../", "../", "../", "../", "../", "climate_historical.nc"))
+    # relative to the run dir <workdir>/outputs/forward (igm_wrapper)
+    ds = xr.open_dataset(os.path.join("../", "../", "../", "../", "climate_historical.nc"))
 # end JJF
     
     time = ds["time"].values.astype("float32").squeeze()       # unit: year

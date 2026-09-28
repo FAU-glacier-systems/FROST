@@ -59,13 +59,13 @@ def test_test_default_rhone():
                                   "input.nc"), start)
 
     # Inversion: fixed hydra run dir, no new outputs/<date>/<time> folders
-    assert _is_fresh(os.path.join(preprocess_outputs, "igm", "inversion",
+    assert _is_fresh(os.path.join(preprocess_outputs, "inversion",
                                   "optimize.nc"), start)
     assert _is_fresh(os.path.join(preprocess_outputs, "output.nc"), start)
     # Fine-tuned iceflow network, reused by the ensemble forward runs
     assert _is_fresh(os.path.join(preprocess_outputs, "emulator.keras"), start)
     new_entries = set(os.listdir(preprocess_outputs)) - outputs_before
-    assert new_entries <= {"igm", "output.nc", "emulator.keras",
+    assert new_entries <= {"oggm_shop", "inversion", "output.nc", "emulator.keras",
                            "iceflow-model"}, \
         f"unexpected new entries in Preprocess/outputs: {new_entries}"
 
@@ -80,4 +80,4 @@ def test_test_default_rhone():
     assert len(results["final_mean"]) == 3  # ela, abl_grad, acc_grad
     assert all(v == v for v in results["final_mean"]), "NaN in final_mean"
     assert os.path.isdir(os.path.join(rgi_id_dir, "Ensemble", "Member_0",
-                                      "outputs", "igm", "forward"))
+                                      "outputs", "forward"))

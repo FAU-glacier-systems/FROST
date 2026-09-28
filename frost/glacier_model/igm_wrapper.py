@@ -71,11 +71,11 @@ def forward(exp, output1D, output2D_3D, member_id, smb_model, usurf, smb,
     # Define input parameters for the ice flow model (IGM)
     igm_params = {
         # Fixed run dir so reruns overwrite instead of creating
-        # outputs/<date>/<time>; two levels deep because the output paths
-        # below ('../../output.nc') and clim_1D_3D rely on that depth.
+        # outputs/<date>/<time>. The output paths below ('../output.nc') and
+        # clim_1D_3D's climate file are relative to this depth.
         "hydra": {
             "run": {
-                "dir": "outputs/igm/forward",
+                "dir": "outputs/forward",
             }
         },
         "core": {
@@ -180,7 +180,7 @@ def forward(exp, output1D, output2D_3D, member_id, smb_model, usurf, smb,
                 "output_file": []
             }
         }
-        igm_params['outputs']['write_ts']['output_file'] = '../../output_ts.nc'
+        igm_params['outputs']['write_ts']['output_file'] = '../output_ts.nc'
     if output2D_3D:
         igm_params['outputs'] = {
             "write_ncdf": {
@@ -192,9 +192,9 @@ def forward(exp, output1D, output2D_3D, member_id, smb_model, usurf, smb,
             igm_params['outputs']['write_ts'] = {
                 "output_file": []
             }
-            igm_params['outputs']['write_ts']['output_file'] = '../../output_ts.nc'
+            igm_params['outputs']['write_ts']['output_file'] = '../output_ts.nc'
 
-        igm_params['outputs']['write_ncdf']['output_file'] = '../../output.nc'
+        igm_params['outputs']['write_ncdf']['output_file'] = '../output.nc'
 
         if str(smb_model) == 'TI':
             igm_params['outputs']['write_ncdf']['vars_to_save'] = ['topg',

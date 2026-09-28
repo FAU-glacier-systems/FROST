@@ -324,7 +324,7 @@ def download_OGGM_shop(rgi_id, rgi_id_dir, flag_OGGM_climate):
         # outputs/<date>/<time>
         "hydra": {
             "run": {
-                "dir": "outputs/igm/oggm_shop"
+                "dir": "outputs/oggm_shop"
             }
         },
         "core": {

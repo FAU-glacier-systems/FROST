@@ -88,7 +88,7 @@ def main(rgi_id_dir, params_inversion_path):
     # Fixed hydra run dir so reruns overwrite instead of creating
     # outputs/<date>/<time>; params_inversion.yaml may set its own
     run_dir = inv_params.setdefault('hydra', {}).setdefault('run', {}) \
-        .setdefault('dir', os.path.join('outputs', 'igm', 'inversion'))
+        .setdefault('dir', os.path.join('outputs', 'inversion'))
 
     # Prepare inversion directory
     preprocess_dir = os.path.join(rgi_id_dir, 'Preprocess')

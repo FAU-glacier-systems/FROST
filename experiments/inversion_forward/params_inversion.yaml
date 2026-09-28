@@ -4,10 +4,9 @@
 # Only the run dir, input and output handling differ, to fit FROST's layout.
 
 # Fixed run dir so reruns overwrite instead of creating outputs/<date>/<time>.
-# Keep it two levels deep: FROST resolves some paths relative to it (../../).
 hydra:
   run:
-    dir: outputs/igm/inversion
+    dir: outputs/inversion
 defaults:
 - override /inputs:
   - local
