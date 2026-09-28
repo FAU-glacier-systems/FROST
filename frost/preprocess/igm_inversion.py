@@ -17,12 +17,14 @@ def emulator_path(rgi_id_dir):
     return os.path.join(rgi_id_dir, 'Preprocess', 'outputs', 'emulator.keras')
 
 
-def main(rgi_id_dir, params_inversion_path):
+def main(rgi_id_dir, params_inversion_path, min_velocity_p99=10.0):
     """
     Generates params.json for IGM inversion and runs igm_run.
 
     Args:
         rgi_id (str) - Glacier RGI ID
+        min_velocity_p99 (float) - velocity observations are used only if
+                                   their 99th percentile exceeds this (m/yr)
     """
 
     # Check if velocity observations are available
@@ -67,7 +69,7 @@ def main(rgi_id_dir, params_inversion_path):
             # Check if velocity input is meaningful (nonzero, not NaN, percentile check)
             if np.nansum(np.nansum(modified_data)) != 0 and not (
                     np.isnan(np.nansum(np.nansum(modified_data)))):
-                if np.nanpercentile(np.abs(modified_data.flatten()), 99) > 10.0:
+                if np.nanpercentile(np.abs(modified_data.flatten()), 99) > min_velocity_p99:
                     flag_velsurfobs = True
 
     # Load base parameters from params_inversion.yaml

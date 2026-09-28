@@ -456,7 +456,8 @@ class Monitor:
     def plot_maps_prognostic(self, ensembleKF, obs_dhdt_raster,
                              obs_velsurf_mag_raster, init_surf_bin, new_observation, noise_samples,
                              modeled_surface, uncertainty, iteration, year, write_json=True):
-
+        # Length of the observation period, for rates in m/yr
+        period = year - ensembleKF.start_year
 
 
         ###################### MAPS #################################################
@@ -483,7 +484,7 @@ class Monitor:
             member_usurf = ensembleKF.ensemble_usurf
             member_thk = member_usurf - ensembleKF.bedrock
             member_mask = member_thk > 0
-            member_elevation_change = (member_usurf - ensembleKF.ensemble_init_surf_raster) / 20
+            member_elevation_change = (member_usurf - ensembleKF.ensemble_init_surf_raster) / period
             member_dhdt_mean = []
             member_dhdt_binned_mean = []
             observation_samples = []
@@ -493,10 +494,10 @@ class Monitor:
                 member_dhdt_mean.append(np.nanmean(elevation_change[mask]))
 
                 # binned dhdt
-                binned_difference = (binned_surface - init_surf_bin) / 20
+                binned_difference = (binned_surface - init_surf_bin) / period
                 mapped_difference = self.vector_to_map(binned_difference)
                 member_dhdt_binned_mean.append(np.nanmean(mapped_difference[mask]))
-                noisy_observation = self.vector_to_map(new_observation + noise_sample - init_surf_bin) / 20
+                noisy_observation = self.vector_to_map(new_observation + noise_sample - init_surf_bin) / period
                 observation_samples.append(np.nanmean(noisy_observation[mask]))
 
 
@@ -517,7 +518,7 @@ class Monitor:
                                                                    mask=new_mask)
 
         # Observed Elevation Changes binned
-        binned_difference = (new_observation - init_surf_bin) / 20
+        binned_difference = (new_observation - init_surf_bin) / period
         new_observation_mapped = self.vector_to_map(binned_difference)
 
         observed_elevation_change_binned = self.plot_glacier_property_map(ax=ax[0, 1],
@@ -546,7 +547,7 @@ class Monitor:
         # Estimated elevation change (modelled)
         ensemble_usurf = np.mean(ensembleKF.ensemble_usurf, axis=0)
         init_usurf = np.mean(ensembleKF.ensemble_init_surf_raster, axis=0)
-        modeled_dhdt = (ensemble_usurf - init_usurf) / 20
+        modeled_dhdt = (ensemble_usurf - init_usurf) / period
         modelled_elevation_change = self.plot_glacier_property_map(ax=ax[1, 0],
                                                                    data_map=modeled_dhdt,
                                                                    x_ticks=x_ticks,
@@ -558,7 +559,7 @@ class Monitor:
 
         # Modelled elevation Change (binned)
         ensemble_surface_mean = np.mean(modeled_surface, axis=0)
-        ensemble_dhdt_mean = (ensemble_surface_mean - init_surf_bin) / 20
+        ensemble_dhdt_mean = (ensemble_surface_mean - init_surf_bin) / period
         ensemble_dhdt_mean_mapped = self.vector_to_map(ensemble_dhdt_mean)
         modelled_elevation_change_binned = self.plot_glacier_property_map(ax=ax[1, 1],
                                                                           data_map=ensemble_dhdt_mean_mapped,
