@@ -112,13 +112,50 @@ def load_results(rgi_id_dir, output_files):
                                   'output.nc')
     with Dataset(inversion_file) as ds:
         inv = {name: np.array(ds[name]) for name in
-               ['velsurf_mag', 'velsurfobs_mag', 'icemask', 'thk', 'x']}
+               ['velsurf_mag', 'velsurfobs_mag', 'icemask', 'thk', 'usurf',
+                'x']}
+    # Hugonnet et al. dh/dt 2000-2020 and GlaThiDa thickness (not used by
+    # the inversion, so an independent check), from the OGGM shop data
+    with Dataset(os.path.join(rgi_id_dir, 'Preprocess', 'data',
+                              'input.nc')) as ds:
+        inv['dhdt_obs'] = np.array(ds['dhdt'])
+        thkobs = np.array(ds['thkobs'])
+        inv['thkobs'] = np.where(np.isfinite(thkobs) & (thkobs > 0)
+                                 & (thkobs < 1e4), thkobs, np.nan)
     fwd = {}
     for variant, path in output_files.items():
         with Dataset(path) as ds:
             fwd[variant] = {name: np.array(ds[name]) for name in
-                            ['time', 'velsurf_mag', 'thk']}
+                            ['time', 'velsurf_mag', 'thk', 'usurf']}
     return inv, fwd
+
+
+def dhdt_bands(inv, fwd, band_height=100):
+    """Observed and modelled 2000-2020 dh/dt per surface elevation band."""
+    mask = inv['icemask'] > 0.5
+    usurf = inv['usurf']
+    edges = np.arange(np.floor(usurf[mask].min() / band_height),
+                      np.ceil(usurf[mask].max() / band_height) + 1) \
+        * band_height
+    band = np.digitize(usurf, edges)
+    modelled = {variant: (f['usurf'][-1] - f['usurf'][0])
+                / (f['time'][-1] - f['time'][0])
+                for variant, f in fwd.items()}
+    rows = []
+    for i in range(1, len(edges)):
+        cells = mask & (band == i)
+        if cells.sum() == 0:
+            continue
+        row = {'band_bottom': edges[i - 1], 'band_top': edges[i],
+               'cells': int(cells.sum()),
+               'observed': np.nanmean(inv['dhdt_obs'][cells])}
+        row.update({variant: np.nanmean(dh[cells])
+                    for variant, dh in modelled.items()})
+        rows.append(row)
+    glacier = {'observed': np.nanmean(inv['dhdt_obs'][mask])}
+    glacier.update({variant: np.nanmean(dh[mask])
+                    for variant, dh in modelled.items()})
+    return pd.DataFrame(rows), glacier
 
 
 def summarize(inv, fwd):
@@ -141,10 +178,15 @@ def summarize(inv, fwd):
                 'volume_km3': np.sum(f['thk'][i]) * dx ** 2 / 1e9,
             })
     table = pd.DataFrame(rows)
+    measured = np.isfinite(inv['thkobs'])
+    thk_error = (inv['thk'] - inv['thkobs'])[measured]
     reference = {
         'mean_speed': np.nanmean(inv['velsurf_mag'][mask]),
         'rms_vs_obs': np.sqrt(np.nanmean(
             (inv['velsurf_mag'] - inv['velsurfobs_mag'])[obs] ** 2)),
+        'glathida_cells': int(measured.sum()),
+        'glathida_bias': np.mean(thk_error),
+        'glathida_rms': np.sqrt(np.mean(thk_error ** 2)),
     }
     return table, reference
 
@@ -178,7 +220,7 @@ def plot_maps(inv, fwd, path):
 
     fig, axes = plt.subplots(2, 3, figsize=(12, 8), constrained_layout=True)
     for ax, (title, v) in zip(axes[0], speed_panels):
-        im = ax.imshow(masked(v), origin='lower', cmap='Blues', vmin=0,
+        im = ax.imshow(masked(v), origin='lower', cmap='magma', vmin=0,
                        vmax=vmax)
         ax.set_title(title, fontsize=10, color=INK)
     fig.colorbar(im, ax=axes[0], label='Surface speed (m/yr)', shrink=0.8)
@@ -218,6 +260,46 @@ def plot_series(table, reference, path):
     plt.close(fig)
 
 
+def plot_dhdt(bands, glacier, path):
+    elevation = (bands['band_bottom'] + bands['band_top']) / 2
+    fig, ax = plt.subplots(figsize=(6, 5), constrained_layout=True)
+    ax.axvline(0, color='#c3c2b7', linewidth=1)
+    ax.plot(bands['observed'], elevation, color=INK, linewidth=2,
+            marker='o', markersize=4,
+            label=f"observed (Hugonnet), mean {glacier['observed']:.2f}")
+    for variant in VARIANTS:
+        ax.plot(bands[variant], elevation, color=COLORS[variant],
+                linewidth=2, marker='o', markersize=4,
+                label=f"{LABELS[variant]}, mean {glacier[variant]:.2f}")
+    ax.set_xlabel('Elevation change 2000-2020 (m/yr)', color=MUTED)
+    ax.set_ylabel('Surface elevation in 2000 (m)', color=MUTED)
+    ax.grid(color='#e6e5e1', linewidth=0.8)
+    ax.spines[['top', 'right']].set_visible(False)
+    ax.legend(frameon=False, loc='lower right', fontsize=9)
+    fig.savefig(path, dpi=150)
+    plt.close(fig)
+
+
+def plot_convergence(optimize_file, path):
+    """Cost history of the field_inversion (IGM's optimize.nc)."""
+    with Dataset(optimize_file) as ds:
+        cost = {term: np.array(ds[f'da_cost_{term}_hist'])
+                for term in ['total', 'data', 'reg']}
+    step = np.arange(1, len(cost['total']) + 1)
+    fig, ax = plt.subplots(figsize=(8, 4), constrained_layout=True)
+    for term, color, label in [('total', '#2a78d6', 'total'),
+                               ('data', '#eb6834', 'velocity misfit'),
+                               ('reg', '#1baf7a', 'regularisation')]:
+        ax.plot(step, cost[term], color=color, linewidth=2, label=label)
+    ax.set_xlabel('Inversion iteration', color=MUTED)
+    ax.set_ylabel('Cost', color=MUTED)
+    ax.grid(color='#e6e5e1', linewidth=0.8)
+    ax.spines[['top', 'right']].set_visible(False)
+    ax.legend(frameon=False)
+    fig.savefig(path, dpi=150)
+    plt.close(fig)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
     parser.add_argument('--rgi_id', default='RGI2000-v7.0-G-11-01706',
@@ -250,13 +332,26 @@ def main():
     plot_dir = os.path.join(EXPERIMENT_DIR, 'plots')
     os.makedirs(plot_dir, exist_ok=True)
     table.to_csv(os.path.join(rgi_id_dir, 'forward_summary.csv'), index=False)
+    bands, glacier = dhdt_bands(inv, fwd)
+    bands.to_csv(os.path.join(rgi_id_dir, 'dhdt_bands.csv'), index=False)
+    plot_dhdt(bands, glacier,
+              os.path.join(plot_dir, f'{args.rgi_id}_dhdt_bands.png'))
+    plot_convergence(os.path.join(rgi_id_dir, 'Preprocess', 'outputs',
+                                  'inversion', 'optimize.nc'),
+                     os.path.join(plot_dir, f'{args.rgi_id}_inversion_cost.png'))
     plot_maps(inv, fwd, os.path.join(plot_dir, f'{args.rgi_id}_velocity_maps.png'))
     plot_series(table, reference,
                 os.path.join(plot_dir, f'{args.rgi_id}_velocity_series.png'))
 
     print(f"End of inversion: mean speed {reference['mean_speed']:.1f} m/yr, "
-          f"RMS vs obs {reference['rms_vs_obs']:.1f} m/yr")
+          f"RMS vs obs {reference['rms_vs_obs']:.1f} m/yr; thickness vs "
+          f"GlaThiDa ({reference['glathida_cells']} cells): bias "
+          f"{reference['glathida_bias']:+.0f} m, RMS "
+          f"{reference['glathida_rms']:.0f} m")
     print(table.round(2).to_string(index=False))
+    print("dh/dt 2000-2020 (m/yr), glacier mean: " + ", ".join(
+        f"{k} {v:.2f}" for k, v in glacier.items()))
+    print(bands.round(2).to_string(index=False))
 
 
 if __name__ == '__main__':
