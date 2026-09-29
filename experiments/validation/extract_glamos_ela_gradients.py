@@ -1,13 +1,18 @@
-import argparse
+import os
 import sys
+import argparse
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-import plot_style
+# run from the repository root, which holds the frost package
+sys.path.insert(0, os.getcwd())
+from frost.paths import DATA_RAW
+from frost.visualization import plot_style
+
+HERE = Path(__file__).resolve().parent
 
 
 class GlacierAnalysis:
@@ -279,7 +284,7 @@ class GlacierAnalysis:
         )
 
         plt.tight_layout()
-        self.style.savefig(fig, "plots/all_gradients")
+        self.style.savefig(fig, HERE / "plots" / "all_gradients")
         plt.close()
 
     def plot_subplot(self, ax, df, key, ylabel, mean_key, title_fmt, panel_label):
@@ -342,10 +347,11 @@ if __name__ == "__main__":
     style = plot_style.setup(argparse.ArgumentParser(
         description="GLAMOS ELA and mass-balance gradients, 2000-2019."))
     analysis = GlacierAnalysis(
-        "../../../data/raw/glamos/massbalance_observation.csv",
-        "../../../data/raw/glamos/massbalance_observation_elevationbins.csv",
-        "../../../data/raw/RGI2000-v7.0-G-11_central_europe/RGI2000-v7.0-G-11_central_europe-attributes.csv",
-        "../../../data/raw/glamos/GLAMOS_RGI.csv",
-        "tables/GLAMOS_analysis_results.csv",
+        DATA_RAW / "glamos" / "massbalance_observation.csv",
+        DATA_RAW / "glamos" / "massbalance_observation_elevationbins.csv",
+        DATA_RAW / "RGI2000-v7.0-G-11_central_europe"
+        / "RGI2000-v7.0-G-11_central_europe-attributes.csv",
+        DATA_RAW / "glamos" / "GLAMOS_RGI.csv",
+        HERE / "tables" / "GLAMOS_analysis_results.csv",
     )
     analysis.run(style)

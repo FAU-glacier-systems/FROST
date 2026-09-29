@@ -22,7 +22,7 @@ plt.rcParams.update({
 # --------------------------------------------------
 # paths
 # --------------------------------------------------
-path_to_netcdf = "../../data/results/central_europe_submit/glaciers/RGI2000-v7.0-G-11-02596/Preprocess/data/input.nc"
+path_to_netcdf = "../../data/results/central_europe_submit/RGI2000-v7.0-G-11-02596/Preprocess/data/input.nc"
 output_pdf = "Plots/velocity/glacier_velocity_dhdt_map"
 os.makedirs(os.path.dirname(output_pdf), exist_ok=True)
 

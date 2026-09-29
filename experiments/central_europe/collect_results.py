@@ -1,3 +1,5 @@
+import os
+import sys
 import json
 from pathlib import Path
 
@@ -5,6 +7,11 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
+# run from the repository root, which holds the frost package
+sys.path.insert(0, os.getcwd())
+from frost.paths import DATA_RAW, DATA_RESULTS
+
+HERE = Path(__file__).resolve().parent
 
 # ============================================================
 # Paths
@@ -13,14 +20,15 @@ import xarray as xr
 # so they are cached; set these to True to rebuild the caches.
 RECOMPUTE_ENSEMBLE = False
 RECOMPUTE_INVERSION = False
-ENSEMBLE_CACHE_CSV = Path("tables/ensemble_stats.csv")
-INVERSION_CACHE_CSV = Path("tables/inversion_results.csv")
-RGI_FILES_PATH = Path("../../data/raw/central_europe/Split_Files")
-SLA_PATH = Path("../../data/raw/central_europe/Alps_Glacier_EoS_SLA_2000-2019_stats_v2.csv")
-WGMS_GLAMOS_PATH = Path("validation/tables/combined_ela_gradients.csv")
+ENSEMBLE_CACHE_CSV = HERE / "tables" / "ensemble_stats.csv"
+INVERSION_CACHE_CSV = HERE / "tables" / "inversion_results.csv"
+RGI_FILES_PATH = DATA_RAW / "central_europe" / "Split_Files"
+SLA_PATH = DATA_RAW / "central_europe" / "Alps_Glacier_EoS_SLA_2000-2019_stats_v2.csv"
+WGMS_GLAMOS_PATH = (HERE.parent / "validation" / "tables"
+                    / "combined_ela_gradients.csv")
 
-EXPERIMENTS_PATH = Path("../../data/results/central_europe_submit/glaciers")
-OUTPUT_CSV = Path("tables/aggregated_results.csv")
+EXPERIMENTS_PATH = DATA_RESULTS / "central_europe_submit"
+OUTPUT_CSV = HERE / "tables" / "aggregated_results.csv"
 
 
 # ============================================================

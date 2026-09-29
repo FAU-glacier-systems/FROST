@@ -1,13 +1,15 @@
-"""Shared plotting options for the central_europe scripts.
+"""Shared plotting options for the experiment scripts.
 
 Every plotting script accepts
     --dark   dark theme with transparent background (for slides)
     --pdf    save figures as PDF instead of PNG (the default)
 
 Usage:
+    from frost.visualization import plot_style
+
     parser = argparse.ArgumentParser()
     style = plot_style.setup(parser)       # parses args, applies the theme
-    style.savefig(fig, "plots/name")       # -> plots/name.png or plots/name.pdf
+    style.savefig(fig, HERE / "plots/name")  # -> plots/name.png or .pdf
 """
 import argparse
 from dataclasses import dataclass

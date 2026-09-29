@@ -51,7 +51,7 @@ for row in df.itertuples(index=False):
     glamos_name = row.glamos_name
 
     print(rgi_id, glamos_name)
-    rgi_dir = f"../../data/results/central_europe_submit/glaciers/{rgi_id}"
+    rgi_dir = f"../../data/results/central_europe_submit/{rgi_id}"
     nc_path = rgi_dir+"/Preprocess/outputs/output.nc"
     smb_results = rgi_dir+"/calibration_results.json"
 

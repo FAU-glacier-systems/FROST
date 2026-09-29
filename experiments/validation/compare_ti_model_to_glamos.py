@@ -3,9 +3,11 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
+HERE = Path(__file__).resolve().parent
+
 # --- Load data ---
-glamos_file = Path("../central_europe/validation/tables/combined_ela_gradients.csv")
-calibrated_file = Path("MB_compare_output_v06.csv")
+glamos_file = HERE / "tables" / "combined_ela_gradients.csv"
+calibrated_file = HERE / "tables" / "ti_model" / "MB_compare_output_v06.csv"
 
 glamos_df = pd.read_csv(glamos_file)
 calibrated_df = pd.read_csv(calibrated_file)
@@ -114,4 +116,4 @@ ax.legend(
     handletextpad=0.5
 )
 # save figure
-fig.savefig("compare_to_GLAMOS_WGMS.pdf", bbox_inches="tight")
+fig.savefig(HERE / "plots" / "compare_to_GLAMOS_WGMS.pdf", bbox_inches="tight")

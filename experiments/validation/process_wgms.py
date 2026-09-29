@@ -1,6 +1,7 @@
+import os
+import sys
 import argparse
 import re
-import sys
 from pathlib import Path
 
 import numpy as np
@@ -8,19 +9,24 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-import plot_style
+# run from the repository root, which holds the frost package
+sys.path.insert(0, os.getcwd())
+from frost.paths import DATA_RAW
+from frost.visualization import plot_style
+
+HERE = Path(__file__).resolve().parent
 
 
 # ============================================================
 # Configuration
 # ============================================================
 
-INPUT_FILE_MB_Bands = Path("../../../data/raw/DOI-WGMS-FoG-2025-02b/data/mass_balance_band.csv")
-INPUT_FILE_MB = Path("../../../data/raw/DOI-WGMS-FoG-2025-02b/data/mass_balance.csv")
-LOOKUP_FILE = Path("tables/RGI6-7.csv")
-OUTPUT_CSV = Path("tables/wgms_ELA_gradients.csv")
-PLOT_DIR = Path("plots")
+WGMS_DIR = DATA_RAW / "DOI-WGMS-FoG-2025-02b" / "data"
+INPUT_FILE_MB_Bands = WGMS_DIR / "mass_balance_band.csv"
+INPUT_FILE_MB = WGMS_DIR / "mass_balance.csv"
+LOOKUP_FILE = HERE / "tables" / "RGI6-7.csv"
+OUTPUT_CSV = HERE / "tables" / "wgms_ELA_gradients.csv"
+PLOT_DIR = HERE / "plots"
 GLACIER_PLOT_DIR = PLOT_DIR / "glacier_smb"  # one mass-balance profile fit per glacier
 
 # Set in main() from --dark / --pdf

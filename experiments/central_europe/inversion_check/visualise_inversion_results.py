@@ -1,5 +1,6 @@
-import argparse
+import os
 import sys
+import argparse
 from pathlib import Path
 
 import numpy as np
@@ -7,8 +8,11 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.patches import Ellipse
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-import plot_style
+# run from the repository root, which holds the frost package
+sys.path.insert(0, os.getcwd())
+from frost.visualization import plot_style
+
+HERE = Path(__file__).resolve().parent
 
 
 def scatter_plot(ax, x, y, xlabel, ylabel, title, ticks, glacier_names=None,
@@ -78,7 +82,7 @@ def scatter_plot(ax, x, y, xlabel, ylabel, title, ticks, glacier_names=None,
 style = plot_style.setup(argparse.ArgumentParser(
     description="Observed vs modelled surface velocity after the IGM inversion."))
 
-velocity_df = pd.read_csv('../tables/aggregated_results.csv')
+velocity_df = pd.read_csv(HERE.parent / 'tables' / 'aggregated_results.csv')
 # Compute the velocity error for each glacier
 velocity_df['velocity_error'] = abs(
     velocity_df['Mean_velsurf_mag'] - velocity_df['Mean_velsurfobs_mag'])
@@ -127,4 +131,4 @@ for ax, label in zip(axes, labels_subplot):
     ax.text(0, 1.02, label, transform=ax.transAxes,
             fontsize=12, va='bottom', ha='left', fontweight='bold')
 fig.tight_layout()
-style.savefig(fig, "plots/inversion_results", bbox_inches="tight")
+style.savefig(fig, HERE / "plots" / "inversion_results", bbox_inches="tight")

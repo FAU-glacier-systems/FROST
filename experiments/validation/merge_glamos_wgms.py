@@ -1,5 +1,6 @@
-import argparse
+import os
 import sys
+import argparse
 from pathlib import Path
 
 import numpy as np
@@ -7,20 +8,23 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-import plot_style
+# run from the repository root, which holds the frost package
+sys.path.insert(0, os.getcwd())
+from frost.visualization import plot_style
+
+HERE = Path(__file__).resolve().parent
 
 # ============================================================
 # Configuration
 # ============================================================
 
-WGMS_FILE = Path("tables/wgms_ELA_gradients.csv")
-GLAMOS_FILE = Path("tables/GLAMOS_analysis_results.csv")
+WGMS_FILE = HERE / "tables" / "wgms_ELA_gradients.csv"
+GLAMOS_FILE = HERE / "tables" / "GLAMOS_analysis_results.csv"
 KEY = "rgi_id"
 
-OUTPUT_ELA_COMPARISON = Path("tables/ELA_comparison_wgms_vs_glamos.csv")
-OUTPUT_MB_COMPARISON = Path("tables/MB_comparison_wgms_vs_glamos.csv")
-OUTPUT_COMBINED = Path("tables/combined_ela_gradients.csv")
+OUTPUT_ELA_COMPARISON = HERE / "tables" / "ELA_comparison_wgms_vs_glamos.csv"
+OUTPUT_MB_COMPARISON = HERE / "tables" / "MB_comparison_wgms_vs_glamos.csv"
+OUTPUT_COMBINED = HERE / "tables" / "combined_ela_gradients.csv"
 
 # Set in main() from --dark / --pdf
 STYLE = plot_style.Style()
@@ -348,7 +352,7 @@ def plot_comparisons(
         frameon=False,
     )
     plt.tight_layout()
-    STYLE.savefig(None, "plots/glamos_wgms_comparison", bbox_inches="tight")
+    STYLE.savefig(None, HERE / "plots" / "glamos_wgms_comparison", bbox_inches="tight")
 
 
 # ============================================================

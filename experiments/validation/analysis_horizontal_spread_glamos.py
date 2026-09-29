@@ -1,10 +1,20 @@
+import os
+import sys
+from pathlib import Path
+
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 
+# run from the repository root, which holds the frost package
+sys.path.insert(0, os.getcwd())
+from frost.paths import DATA_RAW
+
+HERE = Path(__file__).resolve().parent
+
 # load + filter
-df = pd.read_csv("../../data/raw/DOI-WGMS-FoG-2025-02b/data/mass_balance_point.csv")
+df = pd.read_csv(DATA_RAW / "DOI-WGMS-FoG-2025-02b" / "data" / "mass_balance_point.csv")
 df = df[df["glacier_name"].str.contains("GROSSER ALETSCH", case=False, na=False)]
 
 # dates
@@ -150,6 +160,7 @@ for ax in [ax1, ax2]:
     ax.spines["left"].set_visible(False)
 
 plt.tight_layout()
-plt.savefig("Plots/combined_year_profiles_positions.png", bbox_inches="tight", dpi=300)
+plt.savefig(HERE / "plots" / "wgms" / "combined_year_profiles_positions.png",
+            bbox_inches="tight", dpi=300)
 print("Saved figure to Plots/combined_year_profiles_positions.png")
 plt.show()

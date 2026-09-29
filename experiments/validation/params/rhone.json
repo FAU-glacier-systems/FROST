@@ -1,0 +1,10 @@
+{
+  "file_path_hugonnet": "data/results/test_default/RGI2000-v7.0-G-11-01706/observations.nc",
+  "surface_file": "data/results/test_default/RGI2000-v7.0-G-11-01706/Preprocess/outputs/output.nc",
+  "RGI6-ID": "RGI60-11.01238",
+  "glacier_name": "Rhonegletscher",
+  "results_file": "data/results/test_default/RGI2000-v7.0-G-11-01706/calibration_results.json",
+  "output_dir": "plots/rhone",
+  "ablation_density": 1,
+  "accumulation_density": 0.6
+}

@@ -2,6 +2,8 @@
 # Copyright (C) 2024-2026 Oskar Herrmann
 # Published under the GNU GPL (Version 3), check the LICENSE file
 
+import os
+import sys
 import argparse
 from pathlib import Path
 
@@ -9,10 +11,13 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
+# run from the repository root, which holds the frost package
+sys.path.insert(0, os.getcwd())
+from frost.visualization import plot_style
+from frost.visualization.plot_style import Style, bg, fg
 from frost.visualization.utils import scatter_plot
 
-import plot_style
-from plot_style import Style, bg, fg
+HERE = Path(__file__).resolve().parent
 
 plt.rcParams["font.family"] = "monospace"
 # Set in main() from --dark / --pdf
@@ -494,9 +499,9 @@ def main():
     parser = argparse.ArgumentParser(
         description="Evaluate Modeled ELA and gradients using already-merged aggregated results.")
     parser.add_argument("--Modeled_results", type=str,
-                        default="tables/aggregated_results.csv")
+                        default=HERE / "tables" / "aggregated_results.csv")
     parser.add_argument("--output_dir", type=str,
-                        default="plots")
+                        default=HERE / "plots")
     parser.add_argument("--top_n", type=int, default=10, help="How many top SLA-ELA differences to print")
     global STYLE
     STYLE = plot_style.setup(parser)

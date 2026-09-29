@@ -1,6 +1,9 @@
 #!/bin/bash
+# Submits one FROST job per glacier of a split file. Run from the
+# repository root:
+#   bash experiments/central_europe/start_multiple.sh \
+#       data/raw/central_europe/Split_Files/RGI_SELECT_PART_1.csv
 
-cd ../../
 # Define the CSV file from the first argument
 CSV_FILE="$1"
 CSV_BASENAME=$(basename "$CSV_FILE" .csv)

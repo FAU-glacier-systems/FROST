@@ -1,8 +1,18 @@
+import os
+import sys
+from pathlib import Path
+
 import pandas as pd
 import matplotlib.pyplot as plt
 
+# run from the repository root, which holds the frost package
+sys.path.insert(0, os.getcwd())
+from frost.paths import DATA_RAW
+
+HERE = Path(__file__).resolve().parent
+
 # load
-df = pd.read_csv("../../data/raw/DOI-WGMS-FoG-2025-02b/data/mass_balance_point.csv")
+df = pd.read_csv(DATA_RAW / "DOI-WGMS-FoG-2025-02b" / "data" / "mass_balance_point.csv")
 
 # filter glacier
 df = df[df["glacier_name"].str.contains("GROSSER ALETSCH", case=False, na=False)]
@@ -32,4 +42,4 @@ plt.xlabel("Longitude")
 plt.ylabel("Latitude")
 plt.title("Measurement locations")
 plt.tight_layout()
-plt.savefig("Plots/stake_positions.pdf")
+plt.savefig(HERE / "plots" / "wgms" / "stake_positions.pdf")

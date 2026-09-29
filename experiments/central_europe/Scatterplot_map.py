@@ -1,5 +1,7 @@
+import sys
 import argparse
 import os
+from pathlib import Path
 import pandas as pd
 import geopandas as gpd
 import numpy as np
@@ -11,7 +13,12 @@ from rasterio.plot import show
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from adjustText import adjust_text
 
-import plot_style
+# run from the repository root, which holds the frost package
+sys.path.insert(0, os.getcwd())
+from frost.paths import DATA_RAW
+from frost.visualization import plot_style
+
+HERE = Path(__file__).resolve().parent
 
 plt.rcParams["font.family"] = "monospace"
 
@@ -410,11 +417,12 @@ def main():
         description="Maps of calibrated ELA, gradients and snowlines across the Alps."))
 
     # File paths
-    dem_path = "../../data/raw/visualization_context/alpsDEM.tif"
-    csv_path = "tables/aggregated_results.csv"
+    context = DATA_RAW / "visualization_context"
+    dem_path = context / "alpsDEM.tif"
+    csv_path = HERE / "tables" / "aggregated_results.csv"
     country_paths = [
-        "../../data/raw/visualization_context/gadm41_CHE_shp/gadm41_CHE_0.shp",
-        "../../data/raw/visualization_context/gadm41_ITA_shp/gadm41_ITA_0.shp"
+        context / "gadm41_CHE_shp" / "gadm41_CHE_0.shp",
+        context / "gadm41_ITA_shp" / "gadm41_ITA_0.shp"
     ]
 
     # Load data
@@ -433,7 +441,7 @@ def main():
     print("Plotting map for 'ela'...")
     plot_map_with_annotations(
         dem_data, extent, gdf,
-        save_path="plots/ALPS_ela_sla_scatter.pdf",
+        save_path=HERE / "plots" / "ALPS_ela_sla_scatter.pdf",
         country_paths=country_paths,
         value_column="ela_sla",  # Column for ELA
         color_map="viridis_r",  # Colormap
@@ -444,7 +452,7 @@ def main():
 
     plot_map_with_annotations(
         dem_data, extent, gdf,
-        save_path="plots/ALPS_ela_Scatter.png",
+        save_path=HERE / "plots" / "ALPS_ela_Scatter.png",
         country_paths=country_paths,
         value_column="ela",  # Column for ELA
         color_map="viridis_r",  # Colormap
@@ -457,7 +465,7 @@ def main():
     print("Plotting map for 'gradabl'...")
     plot_map_with_annotations(
         dem_data, extent, gdf,
-        save_path="plots/ALPS_gradabl_Scatter.pdf",
+        save_path=HERE / "plots" / "ALPS_gradabl_Scatter.pdf",
         country_paths=country_paths,
         value_column="gradabl",  # Column for Gradient Ablation
         color_map="Reds",       # Colormap
@@ -469,7 +477,7 @@ def main():
     print("Plotting map for 'gradacc'...")
     plot_map_with_annotations(
         dem_data, extent, gdf,
-        save_path="plots/ALPS_gradacc_Scatter.pdf",
+        save_path=HERE / "plots" / "ALPS_gradacc_Scatter.pdf",
         country_paths=country_paths,
         value_column="gradacc",  # Column for Gradient Accumulation
         color_map="Blues",       # Colormap
@@ -479,7 +487,7 @@ def main():
 
     plot_map_with_annotations(
         dem_data, extent, gdf,
-        save_path="plots/ALPS_sla_Scatter.pdf",
+        save_path=HERE / "plots" / "ALPS_sla_Scatter.pdf",
         country_paths=country_paths,
         value_column="sla",  # Column for ELA
         color_map="viridis_r",  # Colormap
@@ -490,7 +498,7 @@ def main():
 
     plot_map_with_annotations(
         dem_data, extent, gdf,
-        save_path="plots/ALPS_difslaela_Scatter.pdf",
+        save_path=HERE / "plots" / "ALPS_difslaela_Scatter.pdf",
         country_paths=country_paths,
         value_column="sla_ela_diff",  # Column for ELA
         color_map="RdBu",  # Colormap

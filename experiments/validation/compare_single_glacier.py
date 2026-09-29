@@ -3,6 +3,7 @@
 # Copyright (C) 2024-2026 Oskar Herrmann
 # Published under the GNU GPL (Version 3), check the LICENSE file
 
+import sys
 import argparse
 import pandas as pd
 import numpy as np
@@ -11,7 +12,15 @@ import xarray as xr
 import json
 import matplotlib.gridspec as gridspec
 import os
+from pathlib import Path
+
 from netCDF4 import Dataset
+
+# run from the repository root, which holds the frost package
+sys.path.insert(0, os.getcwd())
+from frost.paths import DATA_RAW, REPO_ROOT
+
+HERE = Path(__file__).resolve().parent
 
 
 
@@ -88,9 +97,14 @@ def create_elevation_bins(ela, gradabl, gradacc, elevation):
 def main(params):
     ### GET GEODETIC SPECIFIC MASS BALANCE ####
     time = np.arange(2000, 2020)
-    hugonnet_nc = xr.open_dataset(params['file_path_hugonnet'])
-    dhdt = np.array(hugonnet_nc['dhdt'])[1]
-    icemask = np.array(hugonnet_nc['icemask'])[0]
+    hugonnet_nc = xr.open_dataset(REPO_ROOT / params['file_path_hugonnet'])
+    # observations.nc holds the dh/dt rate as a 2D map (NaN: no data); older
+    # files stored it per year
+    dhdt = np.array(hugonnet_nc['dhdt'])
+    icemask = np.array(hugonnet_nc['icemask'])
+    if dhdt.ndim == 3:
+        dhdt, icemask = dhdt[1], icemask[0]
+    dhdt = np.nan_to_num(dhdt)
 
     # compute specific mass balance
     dhdt[icemask == 0] = 0
@@ -101,8 +115,9 @@ def main(params):
 
     ### COMPUTE SPECIFIC MASS BALANCE OF ENSEMBLE
 
-    if 'results_file' in params and os.path.exists(params['results_file']):
-        with open(params['results_file'], 'r') as f:
+    results_file = REPO_ROOT / params.get('results_file', '')
+    if 'results_file' in params and results_file.exists():
+        with open(results_file, 'r') as f:
             results = json.load(f)
 
         ensemble = np.array(results['final_ensemble'])
@@ -119,8 +134,7 @@ def main(params):
 
     mbs = []
 
-    output_file = os.path.join("../Final_run", "output.nc")
-    with Dataset(output_file, 'r') as new_ds:
+    with Dataset(REPO_ROOT / params['surface_file'], 'r') as new_ds:
         usurf = np.array(new_ds['usurf'])  # Final surface elevation
 
     if ensemble is not None:
@@ -142,8 +156,8 @@ def main(params):
 
     ### GET GLACIOLOGICAL DATA ###
     file_path_glamos_bin = (
-        '../../data/raw/glamos/massbalance_observation_elevationbins.csv')
-    file_path_glamos = '../../data/raw/glamos/massbalance_observation.csv'
+        DATA_RAW / 'glamos' / 'massbalance_observation_elevationbins.csv')
+    file_path_glamos = DATA_RAW / 'glamos' / 'massbalance_observation.csv'
 
     # Read the CSV file into a pandas DataFrame, skipping the first 6 lines
     df_glamos_bin = pd.read_csv(file_path_glamos_bin, delimiter=';', skiprows=6)
@@ -319,8 +333,10 @@ def main(params):
     a1.text(-0.2, 1.1, "b)", transform=a1.transAxes,
             fontsize=12, va='bottom', ha='left', fontweight='bold')
     plt.tight_layout()
-    plt.savefig(params['output_dir'] + 'specific_mass_balance.pdf', format='pdf')
-    plt.savefig(params['output_dir'] + 'specific_mass_balance.png', format='png',
+    output_dir = HERE / params['output_dir']
+    output_dir.mkdir(parents=True, exist_ok=True)
+    plt.savefig(output_dir / 'specific_mass_balance.pdf', format='pdf')
+    plt.savefig(output_dir / 'specific_mass_balance.png', format='png',
                 dpi=300)
 
 

@@ -1,16 +1,23 @@
+import os
+import sys
 from pathlib import Path
 
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 
+# run from the repository root, which holds the frost package
+sys.path.insert(0, os.getcwd())
+from frost.paths import DATA_RAW
+
+HERE = Path(__file__).resolve().parent
 
 # ============================================================
 # Configuration
 # ============================================================
 
-INPUT_FILE = Path("../../data/raw/DOI-WGMS-FoG-2025-02b/data/mass_balance_band.csv")
-OUTPUT_DIR = Path("Plots")
+INPUT_FILE = DATA_RAW / "DOI-WGMS-FoG-2025-02b" / "data" / "mass_balance_band.csv"
+OUTPUT_DIR = HERE / "plots" / "wgms"
 
 COUNTRIES = ["AT", "IT", "CH", "FR"]
 YEAR_MIN = 2000

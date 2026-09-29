@@ -1,8 +1,14 @@
+import sys
 import pandas as pd
 import os
 
+# run from the repository root, which holds the frost package
+sys.path.insert(0, os.getcwd())
+from frost.paths import DATA_RAW
+
 # Load the CSV file
-df = pd.read_csv("../../data/raw/RGI2000-v7.0-G-11_central_europe/RGI2000-v7.0-G-11_central_europe-attributes.csv")
+df = pd.read_csv(DATA_RAW / "RGI2000-v7.0-G-11_central_europe"
+                 / "RGI2000-v7.0-G-11_central_europe-attributes.csv")
 
 # Filter rows where 'area_km2' is greater than 1
 df_filtered = df[df["area_km2"] > 1]
@@ -11,7 +17,7 @@ df_filtered = df[df["area_km2"] > 1]
 df_filtered = df_filtered.sort_values(by="area_km2", ascending=False)
 
 # Output directory
-output_dir = "../../data/raw/central_europe/Split_Files"
+output_dir = DATA_RAW / "central_europe" / "Split_Files"
 os.makedirs(output_dir, exist_ok=True)  # Create directory if it doesn't exist
 
 # Split DataFrame into chunks of 10 rows

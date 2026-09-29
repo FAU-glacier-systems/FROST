@@ -1,11 +1,18 @@
+import os
+import sys
 import argparse
+from pathlib import Path
 
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.stats import spearmanr
 
-import plot_style
+# run from the repository root, which holds the frost package
+sys.path.insert(0, os.getcwd())
+from frost.visualization import plot_style
+
+HERE = Path(__file__).resolve().parent
 
 labels = {
     "area_km2": "Area\n(km²)",
@@ -76,7 +83,7 @@ def plot_colored_correlation_points(data, factors, targets, style):
     plt.tight_layout()
     plt.subplots_adjust(wspace=0.15, hspace=0.15)  # smaller values = less space
 
-    style.savefig(fig, "plots/correlation")
+    style.savefig(fig, HERE / "plots" / "correlation")
     plt.close(fig)
 
 
@@ -84,7 +91,7 @@ def plot_colored_correlation_points(data, factors, targets, style):
 style = plot_style.setup(argparse.ArgumentParser(
     description="Correlation of calibrated parameters with glacier properties."))
 
-csv_path = "tables/aggregated_results.csv"
+csv_path = HERE / "tables" / "aggregated_results.csv"
 data = pd.read_csv(csv_path)
 
 factors = ["area_km2", "lmax_m", "zmax_m", "EastWest", "SouthNorth",
