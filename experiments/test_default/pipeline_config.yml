@@ -24,6 +24,9 @@ EnKF:
   elev_band_height: 50             # Height of elevation bands
   forward_parallel: true           # Enable parallel forward simulation
   synthetic: false                 # Use real observations, not synthetic test
+  method: esmda                    # ES-MDA: observation error x iterations per iteration
+  monitor_plots: latest            # all: png per iteration, latest: overwrite one png, final: last run only
+  dark_monitor: true               # Monitor plots on black (true) or white
 
   smb_prior_mean:
     ela: 3144                      # Prior mean ELA

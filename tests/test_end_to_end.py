@@ -79,5 +79,13 @@ def test_test_default_rhone():
     assert len(results["final_ensemble"]) == ensemble_size
     assert len(results["final_mean"]) == 3  # ela, abl_grad, acc_grad
     assert all(v == v for v in results["final_mean"]), "NaN in final_mean"
+    assert results["method"] == cfg["EnKF"]["method"]
+    # one entry per iteration plus the forward run of the final ensemble
+    diagnostics = results["diagnostics"]
+    assert len(diagnostics) == cfg["EnKF"]["iterations"] + 1
+    assert diagnostics[-1]["posterior"]
+    assert all(d["misfit"] == d["misfit"] for d in diagnostics), "NaN misfit"
+    for name in ["status.png", "maps_prognostic.png"]:
+        assert _is_fresh(os.path.join(rgi_id_dir, "Monitor", name), start)
     assert os.path.isdir(os.path.join(rgi_id_dir, "Ensemble", "Member_0",
                                       "outputs", "forward"))

@@ -6,7 +6,8 @@
 """
 FROST for one ContinuIX experiment and glacier: ContinuIX input -> IGM
 inversion -> EnKF calibration of the ELA SMB model against the ContinuIX
-dh/dt -> forward runs of the final ensemble -> EXP##_G##_method##.nc.
+dh/dt (ending with a forward run of the final ensemble) ->
+EXP##_G##_method##.nc.
 
 Run from the repository root:
     python experiments/continuix/run_continuix.py --exp EXP01 --glacier S01
@@ -17,43 +18,17 @@ import json
 import os
 import sys
 import time
-from concurrent.futures import ProcessPoolExecutor
 
-import numpy as np
 import yaml
-from netCDF4 import Dataset
 
 sys.path.insert(0, os.getcwd())
 import frost_calibration
-from frost.glacier_model import igm_wrapper
 from frost.preprocess import continuix, igm_inversion
 
 os.environ.setdefault("CUDA_VISIBLE_DEVICES", "")
 os.environ.setdefault("TF_FORCE_GPU_ALLOW_GROWTH", "true")
 
-STEPS = ['prepare', 'inversion', 'calibrate', 'posterior', 'submit']
-
-
-def posterior_forward(rgi_id_dir, emulator):
-    """Forward runs of the final ensemble over the dh/dt period (the EnKF's
-    last forward runs are those before its last update)."""
-    with open(continuix.meta_path(rgi_id_dir)) as f:
-        meta = json.load(f)
-    with open(os.path.join(rgi_id_dir, 'calibration_results.json')) as f:
-        calibration = json.load(f)
-    keys = list(calibration['initial_smb'].keys())
-    with Dataset(os.path.join(rgi_id_dir, 'observations.nc')) as nc:
-        usurf_start = np.array(nc['usurf'][0])
-    with ProcessPoolExecutor() as executor:
-        futures = [executor.submit(
-            igm_wrapper.forward, 'Calibration', False, True, member_id, 'ELA',
-            usurf_start, dict(zip(keys, parameters)), meta['year_start'],
-            meta['year_end'],
-            os.path.join(rgi_id_dir, 'Ensemble', f'Member_{member_id}'),
-            '../../climate_historical.nc', emulator)
-            for member_id, parameters in enumerate(calibration['final_ensemble'])]
-        for future in futures:
-            future.result()
+STEPS = ['prepare', 'inversion', 'calibrate', 'submit']
 
 
 def main():
@@ -102,8 +77,6 @@ def main():
                                smb_model=cfg['smb_model'], **enkf)
 
     timed('calibrate', calibrate)
-    timed('posterior', posterior_forward, rgi_id_dir,
-          os.path.abspath(igm_inversion.emulator_path(rgi_id_dir)))
     timed('submit', continuix.write_submission, rgi_id_dir, submission)
 
     # Computation log for log_GROUP.txt

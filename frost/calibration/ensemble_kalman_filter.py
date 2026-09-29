@@ -185,6 +185,11 @@ class EnsembleKalmanFilter:
             for e in range(self.ensemble_size):
                 self.ensemble_smb_log[key][e].append(self.ensemble_smb[e][key])
 
+    def smb_array(self):
+        """SMB ensemble as (members, parameters)."""
+        return np.array([[member[key] for key in self.initial_smb]
+                         for member in self.ensemble_smb])
+
     def reset_time(self):
         """
         Resets the ensemble surface elevation to its initial state.
@@ -286,13 +291,21 @@ class EnsembleKalmanFilter:
         self.current_year = int(year)
 
     def update(self, new_observation, noise_matrix, noise_samples,
-               modeled_observables):
+               modeled_observables, obs_error_factor=1.0):
+        """
+        Ensemble Kalman update of the SMB parameters.
 
+        Args:
+            obs_error_factor (float) - scales the observation error
+                                       covariance (ES-MDA: alpha_i); the
+                                       noise_samples must be drawn with the
+                                       same factor
+        """
         ensemble_obs_mean = np.mean(modeled_observables, axis=0)
         ensemble_deviations_obs = modeled_observables - ensemble_obs_mean
         ensemble_cov = (
                 np.dot(ensemble_deviations_obs.T, ensemble_deviations_obs) / (
-                self.ensemble_size - 1) + noise_matrix)
+                self.ensemble_size - 1) + obs_error_factor * noise_matrix)
 
         # Convert self.ensemble_smb from list of dict into np.array
         keys = self.initial_smb.keys()
@@ -348,8 +361,11 @@ class EnsembleKalmanFilter:
 
         self.ensemble_smb = inflated_ensemble_smb
 
-    def save_results(self, elevation_step, iterations, obs_uncertainty, synthetic):
+    def save_results(self, elevation_step, iterations, obs_uncertainty,
+                     synthetic, method='enkf', diagnostics=None):
         self.params = dict()
+        self.params['method'] = method
+        self.params['diagnostics'] = diagnostics or []
 
         keys = self.initial_smb.keys()
         ensemble_smb = np.array([

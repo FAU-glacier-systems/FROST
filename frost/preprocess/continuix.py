@@ -414,7 +414,7 @@ def write_submission(rgi_id_dir, path, method_description=''):
             fdiv.append(np.mean(np.array(nc['divflux'][1:]), axis=0))
     if len(fdiv) != len(members):
         raise RuntimeError(f'{len(fdiv)} forward runs for {len(members)} '
-                           'ensemble members; run the posterior forward first')
+                           'ensemble members; rerun the calibration')
     model_file = os.path.join(rgi_id_dir, 'Preprocess', 'outputs', 'output.nc')
     with Dataset(model_file) as nc:
         model = xr.Dataset({'thk': (('y', 'x'), np.array(nc['thk'][:]))},
