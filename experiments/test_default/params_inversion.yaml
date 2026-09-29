@@ -54,7 +54,7 @@ assimilations:
       retrain_iter: 0
     variables:
       - name: thk
-        transform: softplus  # thk = log(1 + exp(theta)) > 0: no active lower bound for L-BFGS
+        transform: identity
         lower_bound: 0.0
         upper_bound: 1000.0
         mask: icemask
