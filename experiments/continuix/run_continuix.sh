@@ -9,7 +9,7 @@
 #SBATCH --partition=a40
 #SBATCH --gres=gpu:a40:1
 #SBATCH --time=02:00:00
-#SBATCH --output=data/results/log/continuix_%A_%a.out
+#SBATCH --output=logs/continuix_%A_%a.out
 
 module load python
 conda activate igm32-frost

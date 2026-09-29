@@ -7,7 +7,7 @@
 #SBATCH --partition=a40
 #SBATCH --gres=gpu:a40:1
 #SBATCH --time=02:00:00
-#SBATCH --output=data/results/log/tau_sweep_%j.out
+#SBATCH --output=logs/tau_sweep_%j.out
 
 module load python
 conda activate igm32-frost

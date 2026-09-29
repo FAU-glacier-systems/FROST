@@ -6,8 +6,8 @@
 #SBATCH --time=00:29:00
 #SBATCH --job-name=frost
 ##SBATCH --gres=gpu:a100:1
-#SBATCH --output=data/results/log/frost_%j.out
-#SBATCH --error=data/results/log/frost_%j.err
+#SBATCH --output=logs/frost_%j.out
+#SBATCH --error=logs/frost_%j.err
 
 export http_proxy=http://proxy:80
 export https_proxy=http://proxy:80

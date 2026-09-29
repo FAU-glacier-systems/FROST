@@ -7,7 +7,7 @@
 #SBATCH --partition=a40
 #SBATCH --gres=gpu:a40:1
 #SBATCH --time=00:30:00
-#SBATCH --output=data/results/log/inv_forward_%j.out
+#SBATCH --output=logs/inv_forward_%j.out
 
 export http_proxy=http://proxy:80
 export https_proxy=http://proxy:80

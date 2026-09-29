@@ -7,7 +7,7 @@
 #SBATCH --partition=a100
 #SBATCH --gres=gpu:a100:1
 #SBATCH --time=01:00:00
-#SBATCH --output=data/results/log/frost_e2e_%j.out
+#SBATCH --output=logs/frost_e2e_%j.out
 
 export http_proxy=http://proxy:80
 export https_proxy=http://proxy:80

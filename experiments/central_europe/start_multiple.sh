@@ -12,9 +12,9 @@ tail -n +2 "$CSV_FILE" | cut -d, -f1 | while read -r RGI_ID; do
     SHORT_ID="${RGI_ID: -8}"
 
     echo "Submitting job for RGI ID: $RGI_ID"
-   sbatch --output="data/results/log/${SHORT_ID}.out"\
+   sbatch --output="logs/${SHORT_ID}.out"\
    --job-name="${SHORT_ID}"\
-   --error="data/results/log/${SHORT_ID}.err" \
+   --error="logs/${SHORT_ID}.err" \
    hpc_sbatch.sh "experiments/central_europe/pipeline_config.yaml" "$RGI_ID"
 
 

@@ -7,7 +7,7 @@
 #SBATCH --partition=a40
 #SBATCH --gres=gpu:a40:1
 #SBATCH --time=01:00:00
-#SBATCH --output=data/results/log/thk_forward_%j.out
+#SBATCH --output=logs/thk_forward_%j.out
 
 module load python
 conda activate igm32-frost

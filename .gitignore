@@ -1,5 +1,6 @@
 # Data & results
 data/
+logs/
 experiments/**/plots/
 experiments/**/Plots/
 experiments/**/*.csv
