@@ -11,6 +11,8 @@ import numpy as np
 from netCDF4 import Dataset
 import netCDF4
 
+from frost.preprocess.thickness_validation import validate_thickness
+
 
 def emulator_path(rgi_id_dir):
     """Iceflow network saved by the inversion, to be used by forward runs."""
@@ -171,6 +173,9 @@ def main(rgi_id_dir, params_inversion_path, min_velocity_p99=10.0):
         output.setncattr('pyproj_srs', pyproj_srs)
 
     os.chdir(original_dir)
+
+    # Independent check against thickness observations, where there are any
+    validate_thickness(rgi_id_dir)
 
 
 if __name__ == '__main__':
