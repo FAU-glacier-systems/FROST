@@ -56,12 +56,16 @@ def latest_inversion_run(outputs_dir):
 
 
 def final_monitor_plots(monitor_dir):
-    """Monitor plots of the last EnKF iteration."""
+    """Monitor plots of the last EnKF iteration: of <name>_<iteration>_<year>.png
+    the highest iteration; plots without an iteration (Monitor plots 'latest'
+    or 'final') are the last ones already."""
     plots = sorted(glob.glob(os.path.join(monitor_dir, '*.png')))
-    if not plots:
-        return []
-    last = max(p.rsplit('_', 2)[-2] for p in plots)
-    return [p for p in plots if p.rsplit('_', 2)[-2] == last]
+    numbered = [p for p in plots
+                if os.path.basename(p).rsplit('_', 2)[-2:][0].isdigit()]
+    if not numbered:
+        return plots
+    last = max(p.rsplit('_', 2)[-2] for p in numbered)
+    return [p for p in numbered if p.rsplit('_', 2)[-2] == last]
 
 
 def selection(results_dir):

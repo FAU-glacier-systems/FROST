@@ -16,7 +16,8 @@ plt.rcParams["font.family"] = "monospace"
 
 class Monitor:
     def __init__(self, EnKF_object, ObsProvider, max_iterations, output_dir,
-                 synthetic, binned_usurf_init, plot_dhdt):
+                 synthetic, binned_usurf_init, plot_dhdt, dark=True,
+                 plots='latest'):
 
         self.rgi_id = EnKF_object.rgi_id
         self.smb_model = EnKF_object.smb_model
@@ -37,6 +38,29 @@ class Monitor:
         self.colorscale = plt.get_cmap('tab20')
         self.binned_usurf_init = binned_usurf_init
         self.plot_dhdt = plot_dhdt
+
+        # plots: 'all' writes one png per iteration, 'latest' overwrites one
+        # png, 'final' plots only the last iteration (max_iterations)
+        if plots not in ('all', 'latest', 'final'):
+            raise ValueError(f'Unknown Monitor plots option {plots}')
+        self.plots = plots
+
+        # dark: black background with white text, else white with black
+        self.dark = dark
+        self.fg = 'white' if dark else 'black'
+        self.bg = 'black' if dark else 'white'
+
+        # Maps show the glacier's bounding box plus a margin of ice-free
+        # cells, in km from its lower-left corner
+        rows, cols = np.nonzero(self.icemask_init)
+        margin = 3
+        y0 = max(rows.min() - margin, 0)
+        y1 = min(rows.max() + margin + 1, self.icemask_init.shape[0])
+        x0 = max(cols.min() - margin, 0)
+        x1 = min(cols.max() + margin + 1, self.icemask_init.shape[1])
+        self.crop = (slice(y0, y1), slice(x0, x1))
+        self.extent_km = [0, (x1 - x0) * self.resolution / 1000,
+                          0, (y1 - y0) * self.resolution / 1000]
 
         self.monitor_dir = os.path.join(output_dir, 'Monitor')
         if not os.path.exists(self.monitor_dir):
@@ -159,6 +183,14 @@ class Monitor:
                     temp_bias=dict(y_label='Temperature Bias ( C )'),
                 )
 
+    def plot_now(self, iteration):
+        return self.plots != 'final' or iteration == self.max_iterations
+
+    def png_name(self, name, iteration, year):
+        if self.plots == 'all':
+            return f"{name}_{iteration:03d}_{year}.png"
+        return f"{name}.png"
+
     def summarise_observables(self, ensemble_observables, new_observables,
                               uncertainty_matrix, noise_samples):
 
@@ -215,10 +247,13 @@ class Monitor:
                        new_observation, uncertainty, iteration, year,
                        ensemble_observables, noise_samples):
 
-        fig, ax = plt.subplots(2, 3, figsize=(12, 6))
-
+        # the log is kept in every mode, so the final plot shows all iterations
         self.summarise_observables(ensemble_observables, new_observation,
                                    uncertainty, noise_samples)
+        if not self.plot_now(iteration):
+            return
+
+        fig, ax = plt.subplots(2, 3, figsize=(12, 6), facecolor=self.bg)
 
         iteration_axis = range(iteration + 1)
         iteration_axis_repeat = np.repeat(iteration_axis, 2)[1:-1]
@@ -227,9 +262,9 @@ class Monitor:
         from matplotlib.ticker import MaxNLocator
 
         def set_axis_style(ax, show_x):
-            ax.set_ylabel(self.plot_style[key]['y_label'], color="white")
+            ax.set_ylabel(self.plot_style[key]['y_label'], color=self.fg)
             if show_x:
-                ax.set_xlabel("Iteration", color="white")
+                ax.set_xlabel("Iteration", color=self.fg)
             ax.set_xlim(-0.2, self.max_iterations + 0.2)
             ax.spines['top'].set_visible(False)
             ax.spines['right'].set_visible(False)
@@ -237,9 +272,10 @@ class Monitor:
             ax.spines['left'].set_visible(False)
             ax.grid(axis="y", color="lightgray", linestyle="-", zorder=0)
             ax.grid(axis="x", color="lightgray", linestyle="-", zorder=0)
-            ax.xaxis.set_tick_params(bottom=False, colors="white")
-            ax.yaxis.set_tick_params(left=False, colors="white")
+            ax.xaxis.set_tick_params(bottom=False, colors=self.fg)
+            ax.yaxis.set_tick_params(left=False, colors=self.fg)
             ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+            ax.set_facecolor(self.bg)
 
         for i, key in enumerate(self.ensemble_observables_log.keys()):
 
@@ -292,7 +328,7 @@ class Monitor:
             frameon=False  # removes background box
         )
 
-        plt.setp(leg.get_texts(), color="white")  # make text white
+        plt.setp(leg.get_texts(), color=self.fg)
         # Plot surface mass balance parameters
         for i, key in enumerate(ensemble_smb_log.keys()):
             key_smb_log = np.array(ensemble_smb_log[key])
@@ -300,7 +336,7 @@ class Monitor:
             for e in range(self.ensemble_size):
                 smb_log_values = key_smb_log[e]
                 # Plot each ensemble member's time series
-                ax[1, i].plot(iteration_axis,
+                ax[1, i].plot(range(len(smb_log_values)),
                               smb_log_values,
                               color='gold', marker='o', markersize=10,
                               markevery=[-1], zorder=2, label='Ensemble Member')
@@ -344,7 +380,7 @@ class Monitor:
             frameon=False
         )
 
-        plt.setp(leg.get_texts(), color="white")
+        plt.setp(leg.get_texts(), color=self.fg)
 
 
         import string
@@ -356,40 +392,20 @@ class Monitor:
         for ax, label in zip(axes, labels_subplot):
             # Add label to lower-left corner (relative coordinates)
             ax.text(-0.3, 0.95, label, transform=ax.transAxes,
-                    fontsize=12, va='bottom', ha='left', fontweight='bold')
+                    fontsize=12, va='bottom', ha='left', fontweight='bold',
+                    color=self.fg)
 
         # FINISH AND SAVE
         fig.tight_layout()
         fig.subplots_adjust(top=0.92, bottom=0.15)
 
         fig.savefig(
-            os.path.join(self.monitor_dir, f"status_{iteration:03d}_{year}.png"),
-            format='png',  transparent=True, dpi=300)
+            os.path.join(self.monitor_dir,
+                         self.png_name('status', iteration, year)),
+            format='png', facecolor=self.bg, dpi=300)
 
         plt.close(fig)
         plt.clf()
-
-    def set_axis_labels(self, ax, x_ticks, y_ticks, show_x=True, show_y=True):
-        if show_x:
-            ax.set_xlabel('km', color='white')
-        if show_y:
-            ax.set_ylabel('km', color='white')
-        ax.set_xticks(x_ticks)
-        ax.set_yticks(y_ticks)
-
-        def formatter(x, _):
-            return str(int(x * self.resolution / 1000))
-
-        ax.xaxis.set_major_formatter(formatter)
-        ax.yaxis.set_major_formatter(formatter)
-        ax.grid(axis="y", color="white", linestyle="--", zorder=0, alpha=.4)
-        ax.grid(axis="x", color="white", linestyle="--", zorder=0, alpha=.4)
-        ax.tick_params(axis='x', colors='white')
-        ax.tick_params(axis='y', colors='white')
-
-        for axis in ['top', 'bottom', 'left', 'right']:
-            ax.spines[axis].set_linewidth(0)
-
 
     def vector_to_map(self, new_observation):
         obs_mapped = np.full_like(self.bin_map, np.nan, dtype=np.float32)
@@ -398,8 +414,7 @@ class Monitor:
         obs_mapped[self.bin_map == 0] = np.nan
         return obs_mapped
 
-    def plot_glacier_property_map(self, ax, data_map, x_ticks, y_ticks,
-                                  crop_padding, title, colorlabel,
+    def plot_glacier_property_map(self, ax, data_map, title, colorlabel,
                                   vmin=-10, vmax=10,
                                   cmap='seismic_r', mask=None):
         """
@@ -411,44 +426,32 @@ class Monitor:
         data_map = data_map.copy()
         data_map[mask == 0] = np.nan
 
-        cropped = data_map[crop_padding:-crop_padding,
-        crop_padding:-crop_padding]
-
-        # Black background
-        ax.set_facecolor("black")
-
         img = ax.imshow(
-            cropped,
+            data_map[self.crop],
             cmap=cmap,
             vmin=vmin,
             vmax=vmax,
             origin="lower",
+            extent=self.extent_km,
             zorder=3,
         )
 
         # Colorbar
         cbar = plt.colorbar(img, ax=ax, orientation="vertical")
-        cbar.set_label(colorlabel, color="white")
-        cbar.ax.tick_params(colors="white")
+        cbar.set_label(colorlabel, color=self.fg)
+        cbar.ax.tick_params(colors=self.fg)
 
-        # Axis labels/ticks
-        self.set_axis_labels(ax, x_ticks, y_ticks,
-                             show_x=True, show_y=False)
-
-        ax.tick_params(axis="both", colors="white")
-
-        ax.xaxis.label.set_color("white")
-        ax.yaxis.label.set_color("white")
-
-        # White spines
+        ax.set_facecolor(self.bg)
+        ax.tick_params(axis="both", colors=self.fg)
+        ax.grid(color=self.fg, linestyle="--", zorder=4, alpha=.3)
         for spine in ax.spines.values():
-            spine.set_color("white")
+            spine.set_linewidth(0)
 
         # Title
         mean_val = np.nanmean(data_map[mask])
         ax.set_title(
             f"{title}\nMean: {mean_val:.2f} m a$^{{-1}}$",
-            color="white",
+            color=self.fg,
         )
 
         return mean_val
@@ -456,6 +459,8 @@ class Monitor:
     def plot_maps_prognostic(self, ensembleKF, obs_dhdt_raster,
                              obs_velsurf_mag_raster, init_surf_bin, new_observation, noise_samples,
                              modeled_surface, uncertainty, iteration, year, write_json=True):
+        if not self.plot_now(iteration):
+            return
         # Length of the observation period, for rates in m/yr
         period = year - ensembleKF.start_year
 
@@ -463,20 +468,21 @@ class Monitor:
         ###################### MAPS #################################################
         nrows = 2
         ncols = 4
-        fig, ax = plt.subplots(nrows, ncols, figsize=(12, 7))
+        # panel height from the glacier's aspect ratio (panel width ~2.2 in
+        # without colorbar and labels)
+        aspect = self.extent_km[3] / self.extent_km[1]
+        panel_height = np.clip(2.2 * aspect, 1.5, 5.0)
+        fig, ax = plt.subplots(nrows, ncols,
+                               figsize=(13, nrows * (panel_height + 1.3)),
+                               facecolor=self.bg)
 
-        # Define x and y ticks for both plots
-        crop_padding = 10
-        x_ticks = np.arange(crop_padding, self.bin_map.shape[1] - crop_padding * 2,
-                            step=self.resolution)
-        y_ticks = np.arange(crop_padding, self.bin_map.shape[0] - crop_padding * 2,
-                            step=self.resolution)
-
-        # crop and display bedrock
-        cropped_bedrock = ensembleKF.bedrock[crop_padding:-crop_padding, crop_padding:-crop_padding]
+        # bedrock as background
+        bedrock = ensembleKF.bedrock[self.crop]
         for row, col in product(range(nrows), range(ncols)):
-            ax[row, col].imshow(cropped_bedrock, cmap='gray',
-                                vmin=1450, vmax=3600, origin='lower')
+            ax[row, col].imshow(bedrock, cmap='gray', origin='lower',
+                                extent=self.extent_km,
+                                vmin=np.percentile(bedrock, 2),
+                                vmax=np.percentile(bedrock, 98))
 
         # mean modelled surface elevation
         surface = np.mean(ensembleKF.ensemble_usurf, axis=0)
@@ -510,9 +516,6 @@ class Monitor:
         # Observed elevation change
         observed_elevation_change = self.plot_glacier_property_map(ax=ax[0, 0],
                                                                    data_map=obs_dhdt_raster,
-                                                                   x_ticks=x_ticks,
-                                                                   y_ticks=y_ticks,
-                                                                   crop_padding=crop_padding,
                                                                    title='Observed\nElevation Change',
                                                                    colorlabel='Elevation Change (m a$^{-1}$)',
                                                                    mask=new_mask)
@@ -523,9 +526,6 @@ class Monitor:
 
         observed_elevation_change_binned = self.plot_glacier_property_map(ax=ax[0, 1],
                                                                           data_map=new_observation_mapped,
-                                                                          x_ticks=x_ticks,
-                                                                          y_ticks=y_ticks,
-                                                                          crop_padding=crop_padding,
                                                                           title='Observed\nElevation Change binned',
                                                                           colorlabel='Elevation Change (m a$^{-1}$)',
                                                                           mask=new_mask)
@@ -535,9 +535,6 @@ class Monitor:
             self.icemask_init == 0] = np.nan  # Mask ice-free areas
         observed_velocity = self.plot_glacier_property_map(ax=ax[0, 2],
                                                            data_map=obs_velsurf_mag_raster,
-                                                           x_ticks=x_ticks,
-                                                           y_ticks=y_ticks,
-                                                           crop_padding=crop_padding,
                                                            title='Observed\nSurface Velocity',
                                                            colorlabel='Surface Velocity (m a$^{-1}$)',
                                                            vmin=0,
@@ -550,9 +547,6 @@ class Monitor:
         modeled_dhdt = (ensemble_usurf - init_usurf) / period
         modelled_elevation_change = self.plot_glacier_property_map(ax=ax[1, 0],
                                                                    data_map=modeled_dhdt,
-                                                                   x_ticks=x_ticks,
-                                                                   y_ticks=y_ticks,
-                                                                   crop_padding=crop_padding,
                                                                    title='Modelled\nElevation Change',
                                                                    colorlabel='Elevation Change (m a$^{-1}$)',
                                                                    mask=new_mask)
@@ -563,9 +557,6 @@ class Monitor:
         ensemble_dhdt_mean_mapped = self.vector_to_map(ensemble_dhdt_mean)
         modelled_elevation_change_binned = self.plot_glacier_property_map(ax=ax[1, 1],
                                                                           data_map=ensemble_dhdt_mean_mapped,
-                                                                          x_ticks=x_ticks,
-                                                                          y_ticks=y_ticks,
-                                                                          crop_padding=crop_padding,
                                                                           title='Modelled\nElevation Change binned',
                                                                           colorlabel='Elevation Change (m a$^{-1}$)',
                                                                           mask=new_mask)
@@ -575,9 +566,6 @@ class Monitor:
         modelled_velocity[self.icemask_init == 0] = np.nan  # Mask ice-free areas
         modelled_velocity_mean = self.plot_glacier_property_map(ax=ax[1, 2],
                                                                 data_map=modelled_velocity,
-                                                                x_ticks=x_ticks,
-                                                                y_ticks=y_ticks,
-                                                                crop_padding=crop_padding,
                                                                 title='Modelled\nSurface Velocity',
                                                                 colorlabel='Surface Velocity (m a$^{-1}$)',
                                                                 vmin=0,
@@ -590,9 +578,6 @@ class Monitor:
 
         modelled_smb = self.plot_glacier_property_map(ax=ax[1, 3],
                                                       data_map=mean_smb_raster,
-                                                      x_ticks=x_ticks,
-                                                      y_ticks=y_ticks,
-                                                      crop_padding=crop_padding,
                                                       title='Modelled\nSurface Mass Balance',
                                                       colorlabel='Surface Mass Balance (m a$^{'
                                                                  '-1}$)', mask=new_mask)
@@ -602,45 +587,14 @@ class Monitor:
         mean_smb_raster[self.icemask_init == 0] = np.nan  # Mask ice-free areas
         modelled_flux_div = self.plot_glacier_property_map(ax=ax[0, 3],
                                                            data_map=-mean_smb_raster,
-                                                           x_ticks=x_ticks,
-                                                           y_ticks=y_ticks,
-                                                           crop_padding=crop_padding,
                                                            title='Modelled\nFlux Divergence',
                                                            colorlabel='Flux Divergence (m a$^{-1}$)')
 
         import string
-        print(self.resolution)
-        def formatter(x, pos):
-            del pos
-            return str(int(x * self.resolution / 1000))
-        # Set figure background
-        fig.patch.set_facecolor("black")
-
-
-        for axi in ax.flatten():
-            # ax[int(i/3), int(i%3)].invert_yaxis()
-            # axi.set_xticks(np.arange(p, dif.shape[1] , step=resolution))  # From 25 to
-            # # 130, step 20                             step=self.resolution)
-            # axi.set_yticks(np.arange(p, dif.shape[0] , step=resolution)  )
-            #
-            axi.yaxis.set_ticks([50, 100, 150, 200])
-            axi.xaxis.set_ticks([50, 100, 150, ])
-            axi.xaxis.set_major_formatter(formatter)
-            axi.yaxis.set_major_formatter(formatter)
-            axi.grid(axis="y", color="white", linestyle="--", zorder=0, alpha=.4)
-            axi.grid(axis="x", color="white", linestyle="--", zorder=0, alpha=.4)
-
-            for axis in ['top', 'bottom', 'left', 'right']:
-                axi.spines[axis].set_linewidth(0)
-            axi.set_xlabel('km', color='white')
-            axi.tick_params(axis='x', colors='white')
-            axi.tick_params(axis='y', colors='white')
-
-        for i in range(4):
-            ax[0, i].set_xlabel('')
-
-        ax[0, 0].set_ylabel('km')
-        ax[1, 0].set_ylabel('km')
+        for axi in ax[1]:
+            axi.set_xlabel('km', color=self.fg)
+        ax[0, 0].set_ylabel('km', color=self.fg)
+        ax[1, 0].set_ylabel('km', color=self.fg)
 
         axes = ax.flatten()  # Flatten for easy iteration
 
@@ -654,19 +608,18 @@ class Monitor:
                 va="bottom",
                 ha="left",
                 fontweight="bold",
-                color="white",
+                color=self.fg,
             )
 
         fig.tight_layout()
-        plt.subplots_adjust(wspace=0.5, left=0.05)
 
         fig.savefig(
             os.path.join(
                 self.monitor_dir,
-                f"maps_prognostic_{iteration:03d}_{year}.png",
+                self.png_name('maps_prognostic', iteration, year),
             ),
             format="png",
-            facecolor=fig.get_facecolor(),  # preserves black background
+            facecolor=self.bg,
             edgecolor="none", dpi=300
         )
 
