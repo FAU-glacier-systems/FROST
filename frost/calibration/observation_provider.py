@@ -223,8 +223,6 @@ class ObservationProvider:
 
             mask = np.logical_and(self.bin_map == bin_id, ~nan_mask)
             err_bin = usurf_err_raster[mask]
-            usurf_bin = usurf_raster[mask]
-            usurf_bin_var = np.var(usurf_bin)  # delat/2
 
             index_x, index_y = np.where(mask)
             loc_x, loc_y = self.y[index_x], self.x[index_y]
@@ -251,11 +249,12 @@ class ObservationProvider:
             else:
                 covariance_matrix = (correlations * pixel_uncertainties)
 
-            # Variance of the bin mean
+            # Variance of the bin mean: the measurement error of the pixels,
+            # spatially correlated (Hugonnet et al. 2021). The spread of the
+            # elevations within the bin is not an error of its mean.
             bin_var = np.sum(covariance_matrix) / (num_pixels ** 2)
-            combined_var = bin_var + usurf_bin_var
 
-            bin_variance.append(combined_var)
+            bin_variance.append(bin_var)
 
         return bin_variance
 

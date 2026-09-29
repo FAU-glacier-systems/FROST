@@ -90,7 +90,9 @@ def main(rgi_id_dir, year_interval, hugonnet_directory, target_resolution):
     usurf_change = [usurf_2000]  # initialise with 2000 state #TODO ASTER ?
     dhdt_change = [np.zeros_like(usurf_2000)]
     dhdt_err_change = [np.zeros_like(usurf_2000)]
-    usurf_err_change = []  # TODO
+    # error of the surface relative to the 2000 surface, which the EnKF
+    # takes as its (exact) starting point
+    usurf_err_change = [np.zeros_like(usurf_2000)]
     thk_change = [thk_2000]
     thk = thk_2000
 
@@ -127,17 +129,11 @@ def main(rgi_id_dir, year_interval, hugonnet_directory, target_resolution):
         dhdt_err = np.where(icemask_2000 == 1, dhdt_err, 0)
         dhdt_err_change.append(dhdt_err)
 
-        # assuming the error is termporal independet
-        # the square root of the sum of variance should be the right err for the
-        # surface
-        # usurf_err_new = dhdt_err * year_interval / 2
-
-        if not usurf_err_change:
-            usurf_err = dhdt_err * np.sqrt(year_interval)
-        else:
-            usurf_err = ((dhdt_err_change[-2] * data_interval / 2
-                          + dhdt_err_change[-1] * data_interval / 2)) / 2
-
+        # dhdt_err is the 1-sigma error of the rate over the period, so the
+        # elevation change over the period has dhdt_err * data_interval;
+        # errors of consecutive periods add as independent
+        usurf_err = np.sqrt(usurf_err_change[-1] ** 2
+                            + (dhdt_err * data_interval) ** 2)
         usurf_err_change.append(usurf_err)
 
     # usurf error of final year
@@ -147,8 +143,6 @@ def main(rgi_id_dir, year_interval, hugonnet_directory, target_resolution):
     print(np.mean(
         np.array(np.maximum(0, usurf_change[0] + dhdt * data_interval) - usurf_change[0])[icemask_2000 == 1]) / 20)
 
-    usurf_err = dhdt_err_change[-1] * data_interval / 2
-    usurf_err_change.append(usurf_err)
 
     # transform to numpy array
     usurf_change = np.array(usurf_change)

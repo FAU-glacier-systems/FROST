@@ -336,8 +336,8 @@ def write_observations(rgi_id_dir):
 
     usurf_start = np.maximum(topg, usurf_dem - dhdt * (meta['year_dem'] - year_start))
     usurf_end = np.maximum(topg, usurf_start + dhdt * period)
-    # as create_observation.py
-    usurf_err = [dhdt_err * np.sqrt(period), dhdt_err * period / 2]
+    # as create_observation.py: error of the change since the start
+    usurf_err = [np.zeros_like(dhdt_err), dhdt_err * period]
 
     with Dataset(os.path.join(rgi_id_dir, 'observations.nc'), 'w') as nc:
         nc.createDimension('time', 2)
