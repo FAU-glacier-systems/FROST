@@ -24,7 +24,7 @@ Run from the repository root:
     python experiments/inversion_forward/run_inversion_forward.py
 or as a GPU job on Alex: sbatch experiments/inversion_forward/run_inversion_forward.sh
 
-Results: data/results/inversion_forward/glaciers/<rgi_id>/Forward/<variant>
+Results: data/results/inversion_forward/<rgi_id>/Forward/<variant>
 and plots/ next to this script.
 """
 
@@ -310,7 +310,7 @@ def main():
     parser.add_argument('--skip_inversion', action='store_true')
     args = parser.parse_args()
 
-    rgi_id_dir = os.path.join('data', 'results', EXPERIMENT_NAME, 'glaciers',
+    rgi_id_dir = os.path.join('data', 'results', EXPERIMENT_NAME,
                               args.rgi_id)
     if not args.skip_download:
         download_data.main(rgi_id=args.rgi_id, rgi_id_dir=rgi_id_dir,

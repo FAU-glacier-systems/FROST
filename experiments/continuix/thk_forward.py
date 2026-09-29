@@ -97,7 +97,7 @@ def compare(glacier, exp):
         u = np.array(nc['uvelsurf'][0])
         v = np.array(nc['vvelsurf'][0])
     # the FROST run with the inverted thickness, if there is one
-    inverted = os.path.join('data', 'results', 'continuix', exp, 'glaciers',
+    inverted = os.path.join('data', 'results', 'continuix', exp,
                             glacier, 'Preprocess', 'outputs', 'output.nc')
     speed_inv = thk_inv = None
     if os.path.exists(inverted):

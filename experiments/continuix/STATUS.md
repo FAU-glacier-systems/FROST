@@ -65,7 +65,7 @@ G04 needed `min_velocity_p99: 1` (slow glacier, 99th percentile 8.7 m/yr).
 4. Run EXP03-20 (`tasks_all.txt`) once 1-2 are settled.
 5. Submission documents: `README_<GROUP>_method01.txt` (method,
    pre-processing, uncertainty), `log_<GROUP>.txt` (compute times from
-   `data/results/continuix/*/glaciers/*/timings.json`), filled
+   `data/results/continuix/*/*/timings.json`), filled
    `SUBMISSION_CHECKLIST.txt`.
 6. Needed from Oskar: group shorthand, contributors with ORCID, whether
    to do the optional EXP02 (raw GeoTIFFs) and G01 (ice cap).

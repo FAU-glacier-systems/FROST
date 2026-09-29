@@ -29,7 +29,7 @@ import subprocess
 import tarfile
 from datetime import datetime
 
-# Per glacier, relative to data/results/<experiment>/glaciers/<rgi_id>
+# Per glacier, relative to data/results/<experiment>/<rgi_id>
 GLACIER_FILES = [
     'calibration_results.json',
     'observations.nc',
@@ -68,13 +68,20 @@ def final_monitor_plots(monitor_dir):
     return [p for p in numbered if p.rsplit('_', 2)[-2] == last]
 
 
+def glacier_dirs(results_dir):
+    """Glacier folders of an experiment: <rgi_id>/, or glaciers/<rgi_id>/ in
+    experiments run before that level was dropped."""
+    return sorted(os.path.dirname(p) for p in
+                  glob.glob(os.path.join(results_dir, '*', 'Preprocess'))
+                  + glob.glob(os.path.join(results_dir, 'glaciers', '*',
+                                           'Preprocess')))
+
+
 def selection(results_dir):
     """(source, path in archive) pairs for all glaciers."""
     pairs = []
-    for glacier_dir in sorted(glob.glob(os.path.join(results_dir, 'glaciers',
-                                                     '*'))):
-        rgi_id = os.path.basename(glacier_dir)
-        target = os.path.join('glaciers', rgi_id)
+    for glacier_dir in glacier_dirs(results_dir):
+        target = os.path.relpath(glacier_dir, results_dir)
         for rel in GLACIER_FILES:
             src = os.path.join(glacier_dir, rel)
             if os.path.exists(src):
@@ -105,8 +112,10 @@ def run(cmd):
 
 
 def provenance(experiment, results_dir, experiment_dir, n_glaciers):
-    calibrations = glob.glob(os.path.join(results_dir, 'glaciers', '*',
-                                          'calibration_results.json'))
+    calibrations = [os.path.join(d, 'calibration_results.json')
+                    for d in glacier_dirs(results_dir)
+                    if os.path.exists(os.path.join(
+                        d, 'calibration_results.json'))]
     times = sorted(os.path.getmtime(p) for p in calibrations)
     first, last = (datetime.fromtimestamp(t).isoformat(timespec='minutes')
                    for t in (times[0], times[-1])) if times else ('?', '?')
@@ -126,8 +135,8 @@ Archived {datetime.now():%Y-%m-%d} from `data/results/{experiment}`
 - FROST tags: {', '.join(tags.splitlines()) or 'none'}
 - FROST commit at archiving: {run(['git', 'log', '-1', '--format=%h %ci'])}
 - IGM: version not recorded by the run; the resolved IGM configs are in
-  `glaciers/*/Preprocess/inversion_run/.hydra/config.yaml` and
-  `glaciers/*/Preprocess/experiment/`
+  `<rgi_id>/Preprocess/inversion_run/.hydra/config.yaml` and
+  `<rgi_id>/Preprocess/experiment/`
 - Python environment at archiving: `environment.yml` (may differ from the
   environment used for the run)
 
@@ -135,7 +144,7 @@ Archived {datetime.now():%Y-%m-%d} from `data/results/{experiment}`
 
 - `experiment/`: `{experiment_dir}` as on disk at archiving, including the
   git-ignored result tables and plots
-- `glaciers/<rgi_id>/`
+- `<rgi_id>/`
   - `calibration_results.json`: EnKF ensemble and final SMB parameters
   - `observations.nc`: observations used by the EnKF
   - `Preprocess/data/input.nc`: model input (OGGM shop)
@@ -167,13 +176,16 @@ def main():
     results_dir = os.path.join('data', 'results', args.experiment)
     pairs = selection(results_dir)
     pairs.append((args.experiment_dir, 'experiment'))
-    n_glaciers = len(glob.glob(os.path.join(results_dir, 'glaciers', '*')))
+    glaciers = [os.path.relpath(d, results_dir)
+                for d in glacier_dirs(results_dir)]
+    n_glaciers = len(glaciers)
 
     sizes = {}
     for src, dst in pairs:
-        # summed over glaciers: path without glaciers/<rgi_id>/, plot and
+        # summed over glaciers: path without <rgi_id>/, plot and
         # inversion-run files grouped by folder
-        key = dst.split(os.sep, 2)[-1]
+        key = next((os.path.relpath(dst, g) for g in glaciers
+                    if dst.startswith(g + os.sep)), dst)
         if key.startswith(('Monitor', 'Preprocess/inversion_run')):
             key = os.path.dirname(key) + '/'
         sizes[key] = sizes.get(key, 0) + size_of(src)

@@ -9,7 +9,7 @@ and tens of minutes of compute, so it is skipped unless FROST_E2E=1 is set:
 
 or as a GPU job on Alex: sbatch tests/run_end_to_end.sh
 
-Results go to data/results/test_default/glaciers/RGI2000-v7.0-G-11-01706,
+Results go to data/results/test_default/RGI2000-v7.0-G-11-01706,
 the same place `python frost_pipeline.py` writes them.
 """
 import json
@@ -39,7 +39,7 @@ def test_test_default_rhone():
     with open(os.path.join(REPO_ROOT, CONFIG_PATH)) as f:
         cfg = yaml.safe_load(f)
     rgi_id_dir = os.path.join(REPO_ROOT, "data", "results",
-                              cfg["experiment_name"], "glaciers", RGI_ID)
+                              cfg["experiment_name"], RGI_ID)
     preprocess_outputs = os.path.join(rgi_id_dir, "Preprocess", "outputs")
     outputs_before = set(os.listdir(preprocess_outputs)) \
         if os.path.isdir(preprocess_outputs) else set()

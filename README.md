@@ -50,10 +50,10 @@ calibrated results.
 4. View the results:
 
 * **Calibration Results**
-  `data/results/<experiment-name>/glaciers/<rgi-id>/calibration_results.json`
+  `data/results/<experiment-name>/<rgi-id>/calibration_results.json`
 
 * **Monitoring Images**
-  `data/results/<experiment-name>/glaciers/<rgi-id>/Monitor/status_<iteration>_<year>.png`
+  `data/results/<experiment-name>/<rgi-id>/Monitor/status_<iteration>_<year>.png`
 
 * **Example**
   ![Status Example](assets/status_006_2020.png)

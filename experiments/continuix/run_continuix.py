@@ -44,7 +44,7 @@ def main():
         cfg = yaml.safe_load(f)
     experiment_dir = os.path.dirname(args.config)
 
-    rgi_id_dir = os.path.join(cfg['results_dir'], args.exp, 'glaciers',
+    rgi_id_dir = os.path.join(cfg['results_dir'], args.exp,
                               args.glacier)
     submission = os.path.join(
         cfg['results_dir'], 'submission', args.exp,

@@ -177,7 +177,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Generates params.json for IGM inversion and runs igm_run.')
     parser.add_argument('--rgi_id_dir', type=str,
-                        default="../../results/test_default/glaciers/RGI2000"
+                        default="../../results/test_default/RGI2000"
                                 "-v7.0-G-11-01706/",
                         help='Path to Glacier dir with OGGM_shop output')
     parser.add_argument('--params_inversion_path', type=str,

@@ -28,7 +28,7 @@ def run_frost_pipeline(cfg):
     params_inversion_path = os.path.join('experiments', cfg['experiment_name'],
                                          'params_inversion.yaml')
     os.makedirs(experiment_path, exist_ok=True)
-    rgi_id_dir = os.path.join(experiment_path, 'glaciers', cfg['rgi_id'])
+    rgi_id_dir = os.path.join(experiment_path, cfg['rgi_id'])
 
     if cfg['pipeline_steps']['download']:
         #####################################
