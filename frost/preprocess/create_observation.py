@@ -1,8 +1,6 @@
 import os
 from netCDF4 import Dataset
 import numpy as np
-import math
-import scipy.interpolate
 import rasterio
 import utm
 from frost.preprocess.download_data import scale_raster
@@ -11,195 +9,97 @@ import shutil
 
 def main(rgi_id_dir, year_interval, hugonnet_directory, target_resolution):
     """
-    Script to bilinearly interpolate NaNs in input field
-    - it creates a netCDF file (observations.nc)
+    Write observations.nc: the Hugonnet et al. (2021) elevation change rate
+    dhdt and its 1-sigma error dhdt_err, reprojected onto the grid of the
+    inversion result, as they are (NaN where there is no data; no gap
+    filling). The ObservationProvider aggregates them to elevation bands.
 
     Authors: Oskar Herrmann
 
     Args:
-           rgi_id_dir(str)    - relative directory of IGM input folder
-                                (expectation is filename 'input_saved.nc'; TO DO)
-           year_interval(int) - time interval of Hugonnet input files (5 or 20 years)
-           hugonnet_firectory (str) - absolute or relative path to Hugonnet dat on local drive
-
-    Returns:
-           none
+           rgi_id_dir(str)          - glacier directory
+           year_interval(int)       - unused; the period comes from the
+                                      Hugonnet folder name
+           hugonnet_directory (str) - Hugonnet folder of one period, e.g.
+                                      .../11_rgi60_2000-01-01_2020-01-01
     """
-    # check if OGGM original input file exists already
-    # Define input and output file names
+    inversion_output = os.path.join(rgi_id_dir, 'Preprocess', 'outputs',
+                                    'output.nc')
+    # 'a': crop_hugonnet_to_glacier corrects the epsg attribute
+    with Dataset(inversion_output, 'a') as inversion_dataset:
+        icemask = np.array(inversion_dataset['icemask'][:]) > 0.5
+        usurf = np.array(inversion_dataset['usurf'][:])
+        topg = usurf - np.array(inversion_dataset['thk'][:])
+        velsurf_mag = np.array(inversion_dataset['velsurfobs_mag'][:])
 
-    print(f"Downloading Hugonnet data with the following parameters:")
-    print(f"  RGI directory: {rgi_id_dir}")
-    print(f"  Year interval: {year_interval}")
-    print("Hugonnet data download completed.")
+        # period from the folder name, e.g. 11_rgi60_2000-01-01_2020-01-01
+        date_range = os.path.basename(
+            os.path.normpath(str(hugonnet_directory))).split('_', 2)[-1]
+        years = [int(date[:4]) for date in date_range.split('_')]
+        print('Hugonnet dh/dt', date_range, 'from', hugonnet_directory)
 
-    # Load file from oggm_shop and retrieve relevant variables
-    inversion_output = os.path.join(rgi_id_dir, 'Preprocess', 'outputs', 'output.nc')
-    inversion_dataset = Dataset(inversion_output, 'a')
-    icemask_2000 = inversion_dataset['icemask'][:]
-    usurf_2000 = inversion_dataset['usurf'][:]
-    thk_2000 = inversion_dataset['thk'][:]
+        dhdt, dhdt_err = crop_hugonnet_to_glacier(
+            date_range=date_range, hugonnet_dir=str(hugonnet_directory),
+            inversion_dataset=inversion_dataset)
+        # rasterio rows run north to south, the model grid south to north
+        dhdt, dhdt_err = dhdt[::-1], dhdt_err[::-1]
 
-    # List folder names depending on time period
-    rgi_region = rgi_id_dir.split('/')[-1].split("-")[3]
+        write_observation_file(
+            os.path.join(rgi_id_dir, 'observations.nc'),
+            x=inversion_dataset['x'][:], y=inversion_dataset['y'][:],
+            years=years, usurf=usurf, topg=topg, icemask=icemask,
+            dhdt=np.where(icemask, dhdt, np.nan),
+            dhdt_err=np.where(icemask, dhdt_err, np.nan),
+            velsurf_mag=velsurf_mag, epsg=inversion_dataset.epsg,
+            pyproj_srs=inversion_dataset.pyproj_srs)
 
-    # Define time difference between obserations
-    # (still constant) TODO: make flexible and link to timeline in observation.nc
-    data_interval = 20
-    if data_interval == 20:
-        folder_names = [rgi_region + '_rgi60_2000-01-01_2020-01-01']
-
-    elif data_interval == 5:
-        folder_names = [rgi_region + '_rgi60_2000-01-01_2005-01-01',
-                        rgi_region + '_rgi60_2005-01-01_2010-01-01',
-                        rgi_region + '_rgi60_2010-01-01_2015-01-01',
-                        rgi_region + '_rgi60_2015-01-01_2020-01-01']
-
-    else:
-        raise ValueError(
-            'Invalid time period: {}. Please choose either 5 or 20.'.format(
-                year_interval))
-
-    # Load dhdts data sets
-    dhdts = []
-    dhdts_err = []
-    for folder_name in folder_names:
-        # Load dhdt
-        date_range = folder_name.split('_', 2)[-1]
-
-        # Set local file path to Hugonnet data, if default is set
-        if hugonnet_directory == '../../Data/Hugonnet/':
-            rgi_region = rgi_id_dir.split('/')[-1].split("-")[3]
-            fname = f'{rgi_region}_rgi60_{date_range}'
-            hugonnet_dir = os.path.join('..', '..', 'Data', 'Hugonnet', fname)
-        else:
-            hugonnet_dir = str(hugonnet_directory)
-
-        ### MERGE TILES AND CROP to oggmshop area ###
-        print('Hugonnet dh/dt filename : ', folder_name)
-        dhdt, dhdt_err = crop_hugonnet_to_glacier(date_range=date_range,
-                                                  hugonnet_dir=hugonnet_dir,
-                                                  inversion_dataset=inversion_dataset)
-
-        dhdt_masked = dhdt[::-1] * icemask_2000
-        dhdts.append(dhdt_masked)
-
-        dhdt_err_masked = dhdt_err[::-1] * icemask_2000
-        dhdts_err.append(dhdt_err_masked)
-
-    usurf_change = [usurf_2000]  # initialise with 2000 state #TODO ASTER ?
-    dhdt_change = [np.zeros_like(usurf_2000)]
-    dhdt_err_change = [np.zeros_like(usurf_2000)]
-    # error of the surface relative to the 2000 surface, which the EnKF
-    # takes as its (exact) starting point
-    usurf_err_change = [np.zeros_like(usurf_2000)]
-    thk_change = [thk_2000]
-    thk = thk_2000
-
-    bedrock = usurf_2000 - thk_2000
-    year_range = np.arange(2000, 2021, data_interval)
-
-    for i, year in enumerate(year_range[1:]):
-        # compute surface change based on dhdt and provide uncertainties
-        # change the dhdt field every year_interval
-
-        dhdt_index = math.floor((year - 2001) / data_interval)
-        dhdt = dhdts[dhdt_index]
-
-        # check if an interpolation is required (only if both NaNs and actually valid values exist)
-        if np.nansum(~np.isnan(dhdt)) > 0 and np.nansum(np.isnan(dhdt)) > 0:
-            dhdt = interpolate_nans(dhdt)
-        dhdt = np.where(icemask_2000 == 1, dhdt, 0)
-        dhdt_change.append(dhdt)
-
-        # either bedrock or last usurf + current dhdt
-        usurf = np.maximum(bedrock, usurf_change[-1] + dhdt * data_interval)
-        thk = np.maximum(0, thk + dhdt * data_interval)
-
-        usurf_change.append(usurf)
-        thk_change.append(thk)
-
-        # compute uncertainty overtime
-        dhdt_err = dhdts_err[dhdt_index]
-
-        # check if an interpolation is required (only if both NaNs and actually valid values exist)
-        if np.nansum(~np.isnan(dhdt_err)) > 0 and np.nansum(np.isnan(dhdt_err)) > 0:
-            dhdt_err = interpolate_nans(dhdt_err)
-
-        dhdt_err = np.where(icemask_2000 == 1, dhdt_err, 0)
-        dhdt_err_change.append(dhdt_err)
-
-        # dhdt_err is the 1-sigma error of the rate over the period, so the
-        # elevation change over the period has dhdt_err * data_interval;
-        # errors of consecutive periods add as independent
-        usurf_err = np.sqrt(usurf_err_change[-1] ** 2
-                            + (dhdt_err * data_interval) ** 2)
-        usurf_err_change.append(usurf_err)
-
-    # usurf error of final year
-    print("specific mb with and without bedrock clipping ")
-
-    print(np.mean(np.array(np.maximum(bedrock, usurf_change[0] + dhdt * data_interval) - usurf_change[0])[icemask_2000 == 1]) / 20)
-    print(np.mean(
-        np.array(np.maximum(0, usurf_change[0] + dhdt * data_interval) - usurf_change[0])[icemask_2000 == 1]) / 20)
+    rescale_observations(rgi_id_dir, target_resolution)
 
 
-    # transform to numpy array
-    usurf_change = np.array(usurf_change)
-    usurf_err_change = np.array(usurf_err_change)
-    dhdt_change = np.array(dhdt_change)
-    dhdt_err_change = np.array(dhdt_err_change)
+def write_observation_file(path, x, y, years, usurf, topg, icemask, dhdt,
+                           dhdt_err, velsurf_mag, epsg, pyproj_srs):
+    """
+    observations.nc as read by the ObservationProvider.
 
-    # compute velocity magnitude
-    velo = inversion_dataset.variables['velsurfobs_mag'][:]
+    Args:
+        years          - start and end of the observation period
+        usurf          - surface at the start of the period (m)
+        dhdt, dhdt_err - elevation change rate over the period and its
+                         1-sigma error (m/yr), NaN where not observed
+    """
+    with Dataset(path, 'w') as nc:
+        nc.createDimension('time', 2)
+        nc.createDimension('x', len(x))
+        nc.createDimension('y', len(y))
+        variables = {
+            'time': (('time',), years, 'year', 'start and end of the period'),
+            'x': (('x',), x, 'm', ''),
+            'y': (('y',), y, 'm', ''),
+            'usurf': (('y', 'x'), usurf, 'm',
+                      'surface elevation at the start of the period'),
+            'topg': (('y', 'x'), topg, 'm', 'bed elevation'),
+            'icemask': (('y', 'x'), icemask, '', 'ice at the start'),
+            'dhdt': (('y', 'x'), dhdt, 'm/yr',
+                     'elevation change rate over the period'),
+            'dhdt_err': (('y', 'x'), dhdt_err, 'm/yr', '1-sigma error of dhdt'),
+            'velsurf_mag': (('y', 'x'), velsurf_mag, 'm/yr',
+                            'observed surface speed'),
+        }
+        for name, (dims, values, units, long_name) in variables.items():
+            dtype = 'f8' if name in ('x', 'y') else 'f4'
+            var = nc.createVariable(name, dtype, dims, fill_value=(
+                np.float32(np.nan) if dims == ('y', 'x') else None))
+            var[:] = np.asarray(values, dtype=np.float64)
+            var.units = units
+            if long_name:
+                var.long_name = long_name
+        nc.setncattr('pyproj_srs', str(pyproj_srs))
+        nc.setncattr('epsg', str(epsg))
 
-    # Create a new netCDF file
-    observation_file = os.path.join(rgi_id_dir, 'observations.nc')
-    with Dataset(observation_file, 'w') as merged_dataset:
-        # Create dimensions
-        merged_dataset.createDimension('time', len(year_range))
-        merged_dataset.createDimension('x', inversion_dataset.dimensions['x'].size)
-        merged_dataset.createDimension('y', inversion_dataset.dimensions['y'].size)
 
-        # Create variables
-        time_var = merged_dataset.createVariable('time', 'f4', ('time',))
-        x_var = merged_dataset.createVariable('x', 'f4', ('x',))
-        y_var = merged_dataset.createVariable('y', 'f4', ('y',))
-        usurf_var = merged_dataset.createVariable('usurf', 'f4', ('time', 'y', 'x'))
-        usurf_err_var = merged_dataset.createVariable('usurf_err', 'f4',
-                                                      ('time', 'y',
-                                                       'x'))
-        topg_var = merged_dataset.createVariable('topg', 'f4', ('y', 'x'))
-        icemask_var = merged_dataset.createVariable('icemask', 'f4',
-                                                    ('time', 'y', 'x'))
-        dhdt_var = merged_dataset.createVariable('dhdt', 'f4', ('time', 'y', 'x'))
-        dhdt_err_var = merged_dataset.createVariable('dhdt_err', 'f4',
-                                                     ('time', 'y', 'x'))
-        velsurf_mag_var = merged_dataset.createVariable('velsurf_mag', 'f4',
-                                                        ('time', 'y', 'x'))
-        thk_var = merged_dataset.createVariable('thk', 'f4',
-                                                        ('time', 'y', 'x'))
 
-        # Assign data to variables
-        time_var[:] = year_range
-        topg_var[:] = bedrock
-        x_var[:] = inversion_dataset.variables['x'][:]
-        y_var[:] = inversion_dataset.variables['y'][:]
-        usurf_var[:] = usurf_change
-        usurf_err_var[:] = usurf_err_change
-        icemask_var[:] = icemask_2000
-        dhdt_var[:] = dhdt_change
-        dhdt_err_var[:] = dhdt_err_change
-        velsurf_mag_var[:] = velo
-        thk_var[:] = thk_change
-
-        # Write globale attribute in OGGMshop netCDF file
-        dst_crs = inversion_dataset.epsg
-        dst_proj = inversion_dataset.pyproj_srs
-        merged_dataset.setncattr('pyproj_srs', str(dst_proj))
-        merged_dataset.setncattr('epsg', str(dst_crs))
-
-    # Rescale all output netCDF to a given target resolution
+def rescale_observations(rgi_id_dir, target_resolution):
+    """Resample observations.nc to target_resolution, if it is a number."""
     # check if target resolution is defined as a float
     try:
         float(target_resolution)
@@ -350,33 +250,6 @@ def crop_hugonnet_to_glacier(date_range, hugonnet_dir, inversion_dataset):
     filtered_err_map = np.where(cropped_err_map == -9999, np.nan, cropped_err_map)
 
     return filtered_map, filtered_err_map
-
-
-def interpolate_nans(grid):
-    """
-    Script to bilinearly interpolate NaNs in input field
-
-    Authors: Oskar Herrmann
-
-    Args:
-           grid(numpy array)              - file list of all relevant tiles for a specific glacier
-
-    Returns:
-           grid_interpolated(numpy array) - same array as input (created by scipy)
-    """
-    # Get x, y coordinates of valid values
-    x, y = np.indices(grid.shape)
-    valid_mask = ~np.isnan(grid)  # Mask of non-NaN values
-
-    # Interpolate NaN values using 'linear' method
-    grid_interpolated = scipy.interpolate.griddata(
-        (x[valid_mask], y[valid_mask]),  # Points with valid values
-        grid[valid_mask],  # Known values
-        (x, y),  # Grid of all points
-        method='linear'  # Linear interpolation
-    )
-
-    return grid_interpolated
 
 
 def tile_merge_reproject(flist, inversion_dataset):

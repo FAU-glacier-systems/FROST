@@ -127,9 +127,8 @@ def main(rgi_id, rgi_id_dir, smb_model, synthetic, ensemble_size, inflation,
                                        elevation_step=int(elev_band_height),
                                        obs_uncertainty=synth_obs_std,
                                        synthetic=synthetic)
-    print("Initializing Usurf 2000")
-    year, usurf_ensemble, binned_usurf, init_surf_bin = obs_provider.initial_usurf(
-        num_samples=ensemble_size)
+    print("Initializing start surface")
+    year, usurf_ensemble = obs_provider.initial_usurf(num_samples=ensemble_size)
 
     # Initialise an ensemble kalman filter object
     print("Initializing Ensemble Kalman Filter")
@@ -154,8 +153,6 @@ def main(rgi_id, rgi_id_dir, smb_model, synthetic, ensemble_size, inflation,
                       output_dir=rgi_id_dir,
                       max_iterations=iterations + 1,
                       synthetic=synthetic,
-                      binned_usurf_init=binned_usurf,
-                      plot_dhdt=False,
                       dark=dark_monitor,
                       plots=monitor_plots)
 
@@ -227,7 +224,6 @@ def main(rgi_id, rgi_id_dir, smb_model, synthetic, ensemble_size, inflation,
         monitor.plot_maps_prognostic(ensembleKF,
                                      obs_dhdt_raster,
                                      obs_velsurf_mag_raster,
-                                     init_surf_bin,
                                      new_observation,
                                      noise_samples,
                                      ensemble_observables,

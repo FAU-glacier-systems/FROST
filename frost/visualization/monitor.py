@@ -16,8 +16,7 @@ plt.rcParams["font.family"] = "monospace"
 
 class Monitor:
     def __init__(self, EnKF_object, ObsProvider, max_iterations, output_dir,
-                 synthetic, binned_usurf_init, plot_dhdt, dark=True,
-                 plots='latest'):
+                 synthetic, dark=True, plots='latest'):
 
         self.rgi_id = EnKF_object.rgi_id
         self.smb_model = EnKF_object.smb_model
@@ -26,6 +25,7 @@ class Monitor:
         self.icemask_init = EnKF_object.icemask_init
         # self.plot_points = ObsProvider.observation_locations
         self.bin_map = ObsProvider.bin_map
+        self.obs_provider = ObsProvider
         self.time_period = ObsProvider.time_period
         self.start_year = self.time_period[0]
         self.resolution = ObsProvider.resolution
@@ -36,8 +36,6 @@ class Monitor:
         self.max_iteration_axis = range(max_iterations + 1)
         self.synthetic = synthetic
         self.colorscale = plt.get_cmap('tab20')
-        self.binned_usurf_init = binned_usurf_init
-        self.plot_dhdt = plot_dhdt
 
         # plots: 'all' writes one png per iteration, 'latest' overwrites one
         # png, 'final' plots only the last iteration (max_iterations)
@@ -97,91 +95,23 @@ class Monitor:
                                        'prcp_fac': 1,
                                        'temp_bias': 1}
 
-        if self.plot_dhdt:
-            if str(self.smb_model) == "ELA":
-                self.plot_style = dict(
-                    mean_usurf=dict(y_label='Mean surface elevation \n in 2019 (m)'),
-                    point1=dict(
-                        y_label='Mean surface elevation change\nof third bin from front ('
-                                'm)'),
-                    point2=dict(
-                        y_label=f'Mean surface elevation change\nof third bin from '
-                                f'top ('
-                                f'm)'),
-                    ela=dict(y_label='Equilibrium Line\nAltitude (m)'),
-                    abl_grad=dict(
-                        y_label='Ablation Gradient\n(m a$^{-1}$ km$^{-1}$)'),
-                    acc_grad=dict(
-                        y_label='Accumulation Gradient\n(m a$^{-1}$ km$^{-1}$)'),
-                )
-            elif str(self.smb_model) == "TI":
-                self.plot_style = dict(
-                    mean_usurf=dict(y_label='Mean surface elevation \n change 2000- '
-                                            '2019 ('
-                                            'm)'),
-                    point1=dict(
-                        y_label='Mean surface elevation change\nof fifth bin from front ('
-                                'm)'),
-                    point2=dict(
-                        y_label=f'Mean surface elevation change\nof fifth bin from '
-                                f'top ('
-                                f'm)'),
-                    melt_f=dict(y_label='Melt Factor OGGM\n( mm w.e. / (C day) )'),
-                    prcp_fac=dict(y_label='Precipitation Factor \n( - )'),
-                    temp_bias=dict(y_label='Temperature Bias ( C )'),
-                )
-
-        else:
-            self.plot_style = dict(
-                mean_usurf=dict(y_label='Mean surface elevation \nin 2019 (m)'),
-                point1=dict(
-                    y_label='Mean surface elevation\nof fifth bin from front ('
-                            'm)'),
-                point2=dict(y_label=f'Mean surface elevation\nof fifth bin from '
-                                    f'top ('
-                                    f'm)'),
-                # start JJF
-                melt_f=dict(y_label='Melt Factor OGGM\n( mm w.e. / (C day) )'),
-                prcp_fac=dict(y_label='Precipitation Factor \n( - )'),
-                temp_bias=dict(y_label='Temperature Bias ( C )'),
-                ela=dict(y_label='Equilibrium Line\nAltitude (m)'),
-                abl_grad=dict(y_label='Ablation Gradient\n(m a$^{-1}$ km$^{-1}$)'),
-                acc_grad=dict(
-                    y_label='Accumulation Gradient\n(m a$^{-1}$ km$^{-1}$)'),
-                # end JJF
-            )
-            if str(self.smb_model) == "ELA":
-                self.plot_style = dict(
-                    mean_usurf=dict(y_label='Mean surface elevation \n change 2000- '
-                                            '2019 ('
-                                            'm)'),
-                    point1=dict(
-                        y_label='Mean surface elevation\nof fifth bin from front ('
-                                'm)'),
-                    point2=dict(y_label=f'Mean surface elevation\nof fifth bin from '
-                                        f'top ('
-                                        f'm)'),
-                    ela=dict(y_label='Equilibrium Line\nAltitude (m)'),
-                    abl_grad=dict(
-                        y_label='Ablation Gradient\n(m a$^{-1}$ km$^{-1}$)'),
-                    acc_grad=dict(
-                        y_label='Accumulation Gradient\n(m a$^{-1}$ km$^{-1}$)'),
-                )
-            elif str(self.smb_model) == "TI":
-                self.plot_style = dict(
-                    mean_usurf=dict(y_label='Mean surface elevation \n 2000- '
-                                            '2019 ('
-                                            'm)'),
-                    point1=dict(
-                        y_label='Mean surface elevation\nof fifth bin from front ('
-                                'm)'),
-                    point2=dict(y_label=f'Mean surface elevation\nof fifth bin from '
-                                        f'top ('
-                                        f'm)'),
-                    melt_f=dict(y_label='Melt Factor OGGM\n( mm w.e. / (C day) )'),
-                    prcp_fac=dict(y_label='Precipitation Factor \n( - )'),
-                    temp_bias=dict(y_label='Temperature Bias ( C )'),
-                )
+        # Observables: band-mean elevation change over the period
+        period = f'{self.time_period[0]}-{self.time_period[-1]}'
+        self.plot_style = dict(
+            mean_usurf=dict(y_label=f'Mean elevation change\n{period} '
+                                    '(m a$^{-1}$)'),
+            point1=dict(y_label='Elevation change of third\nband from '
+                                'bottom (m a$^{-1}$)'),
+            point2=dict(y_label='Elevation change of third\nband from top '
+                                '(m a$^{-1}$)'),
+            ela=dict(y_label='Equilibrium Line\nAltitude (m)'),
+            abl_grad=dict(y_label='Ablation Gradient\n(m a$^{-1}$ km$^{-1}$)'),
+            acc_grad=dict(y_label='Accumulation Gradient\n'
+                                  '(m a$^{-1}$ km$^{-1}$)'),
+            melt_f=dict(y_label='Melt Factor OGGM\n( mm w.e. / (C day) )'),
+            prcp_fac=dict(y_label='Precipitation Factor \n( - )'),
+            temp_bias=dict(y_label='Temperature Bias ( C )'),
+        )
 
     def plot_now(self, iteration):
         return self.plots != 'final' or iteration == self.max_iterations
@@ -193,55 +123,25 @@ class Monitor:
 
     def summarise_observables(self, ensemble_observables, new_observables,
                               uncertainty_matrix, noise_samples):
-
-        # uncertainty = np.sqrt(np.diagonal(uncertainty_matrix))
-        if self.plot_dhdt:
-            time = self.time_period[-1] - self.time_period[0]
-            ensemble_observables = ((ensemble_observables - self.binned_usurf_init) /
-                                    time)
-            noise_samples = (noise_samples -
-                             self.binned_usurf_init) / time
-            new_observables = ((new_observables - np.mean(self.binned_usurf_init,
-                                                          axis=0)) / time)
-
-        uncertainty = np.std(noise_samples, axis=0)
-        ensemble_mean = np.mean(ensemble_observables, axis=1)
-        ensemble_std = np.std(ensemble_observables, axis=1)
-
+        """Log the mean over all bands and two single bands (third from the
+        bottom and from the top) of the observation and every member; the
+        observation uncertainty (1 sigma) follows from its covariance."""
         size = ensemble_observables.shape[1]
-        if size < 5:
-            ensemble_point1 = ensemble_observables[:, 0]
-            ensemble_point2 = ensemble_observables[:, -1]
-            obs_point1 = new_observables[0]
-            obs_point2 = new_observables[-1]
-            var_point1 = uncertainty[0]
-            var_point2 = uncertainty[-1]
-        else:
-            ensemble_point1 = ensemble_observables[:, 2]
-            ensemble_point2 = ensemble_observables[:, -3]
-            obs_point1 = new_observables[2]
-            obs_point2 = new_observables[-3]
-            var_point1 = uncertainty[2]
-            var_point2 = uncertainty[-3]
+        band1, band2 = (0, -1) if size < 5 else (2, -3)
+        band_std = np.sqrt(np.diagonal(uncertainty_matrix))
+        mean_std = np.sqrt(np.sum(uncertainty_matrix)) / size
 
-        obs_mean = np.mean(new_observables)
-        var_mean = np.mean(uncertainty)
-
-        self.observation_log['mean_usurf'].append(obs_mean)
-        self.observation_log['point1'].append(obs_point1)
-        self.observation_log['point2'].append(obs_point2)
-
-        self.observation_std_log['mean_usurf'].append(var_mean)
-        self.observation_std_log['point1'].append(var_point1)
-        self.observation_std_log['point2'].append(var_point2)
-
-        for e in range(len(ensemble_mean)):
-            self.ensemble_observables_log['mean_usurf'][e].append(
-                ensemble_mean[e])
-            self.ensemble_observables_log['point1'][e].append(ensemble_point1[e])
-            self.ensemble_observables_log['point2'][e].append(ensemble_point2[e])
-
-        return var_mean, ensemble_std
+        for key, obs, std, members in [
+                ('mean_usurf', np.mean(new_observables), mean_std,
+                 np.mean(ensemble_observables, axis=1)),
+                ('point1', new_observables[band1], band_std[band1],
+                 ensemble_observables[:, band1]),
+                ('point2', new_observables[band2], band_std[band2],
+                 ensemble_observables[:, band2])]:
+            self.observation_log[key].append(obs)
+            self.observation_std_log[key].append(std)
+            for e, value in enumerate(members):
+                self.ensemble_observables_log[key][e].append(value)
 
     def plot_iteration(self, ensemble_smb_log,
                        new_observation, uncertainty, iteration, year,
@@ -407,12 +307,8 @@ class Monitor:
         plt.close(fig)
         plt.clf()
 
-    def vector_to_map(self, new_observation):
-        obs_mapped = np.full_like(self.bin_map, np.nan, dtype=np.float32)
-        for bin_id, value in enumerate(new_observation, start=1):
-            obs_mapped[self.bin_map == bin_id] = value
-        obs_mapped[self.bin_map == 0] = np.nan
-        return obs_mapped
+    def vector_to_map(self, band_values):
+        return self.obs_provider.vector_to_map(band_values)
 
     def plot_glacier_property_map(self, ax, data_map, title, colorlabel,
                                   vmin=-10, vmax=10,
@@ -457,8 +353,11 @@ class Monitor:
         return mean_val
 
     def plot_maps_prognostic(self, ensembleKF, obs_dhdt_raster,
-                             obs_velsurf_mag_raster, init_surf_bin, new_observation, noise_samples,
-                             modeled_surface, uncertainty, iteration, year, write_json=True):
+                             obs_velsurf_mag_raster, new_observation, noise_samples,
+                             ensemble_observables, uncertainty, iteration, year,
+                             write_json=True):
+        """new_observation, noise_samples and ensemble_observables are
+        band-mean elevation changes (m/yr)."""
         if not self.plot_now(iteration):
             return
         # Length of the observation period, for rates in m/yr
@@ -495,15 +394,15 @@ class Monitor:
             member_dhdt_binned_mean = []
             observation_samples = []
 
-            for elevation_change, mask, binned_surface, noise_sample in zip(member_elevation_change, member_mask,
-                                                                            modeled_surface, noise_samples):
+            for elevation_change, mask, member_bands, noise_sample in zip(
+                    member_elevation_change, member_mask,
+                    ensemble_observables, noise_samples):
                 member_dhdt_mean.append(np.nanmean(elevation_change[mask]))
 
                 # binned dhdt
-                binned_difference = (binned_surface - init_surf_bin) / period
-                mapped_difference = self.vector_to_map(binned_difference)
+                mapped_difference = self.vector_to_map(member_bands)
                 member_dhdt_binned_mean.append(np.nanmean(mapped_difference[mask]))
-                noisy_observation = self.vector_to_map(new_observation + noise_sample - init_surf_bin) / period
+                noisy_observation = self.vector_to_map(new_observation + noise_sample)
                 observation_samples.append(np.nanmean(noisy_observation[mask]))
 
 
@@ -521,8 +420,7 @@ class Monitor:
                                                                    mask=new_mask)
 
         # Observed Elevation Changes binned
-        binned_difference = (new_observation - init_surf_bin) / period
-        new_observation_mapped = self.vector_to_map(binned_difference)
+        new_observation_mapped = self.vector_to_map(new_observation)
 
         observed_elevation_change_binned = self.plot_glacier_property_map(ax=ax[0, 1],
                                                                           data_map=new_observation_mapped,
@@ -552,9 +450,8 @@ class Monitor:
                                                                    mask=new_mask)
 
         # Modelled elevation Change (binned)
-        ensemble_surface_mean = np.mean(modeled_surface, axis=0)
-        ensemble_dhdt_mean = (ensemble_surface_mean - init_surf_bin) / period
-        ensemble_dhdt_mean_mapped = self.vector_to_map(ensemble_dhdt_mean)
+        ensemble_dhdt_mean_mapped = self.vector_to_map(
+            np.mean(ensemble_observables, axis=0))
         modelled_elevation_change_binned = self.plot_glacier_property_map(ax=ax[1, 1],
                                                                           data_map=ensemble_dhdt_mean_mapped,
                                                                           title='Modelled\nElevation Change binned',

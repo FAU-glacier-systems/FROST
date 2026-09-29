@@ -98,9 +98,6 @@ class EnsembleKalmanFilter:
                 init_divflux = np.zeros_like(self.icemask_init)
             init_velsurf_mag = np.array(geology_dataset['velsurf_mag'])
 
-        # average the surface elevation into bins
-        self.bedrock_binned = obs_provider.average_elevation_bin(self.bedrock)
-
         # Initialize placeholders for observable and hidden variables
         self.ensemble_usurf = np.empty((ensemble_size,) + self.icemask_init.shape)
         self.ensemble_smb_raster = np.empty(
@@ -328,8 +325,6 @@ class EnsembleKalmanFilter:
                 noise_samples)):
 
             noisy_observation = new_observation + member_noise
-
-            noisy_observation = np.maximum(noisy_observation, self.bedrock_binned)
 
             member_update = kalman_gain.dot(noisy_observation - member_observable)
 

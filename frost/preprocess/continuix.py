@@ -28,6 +28,8 @@ from rasterio.warp import Resampling, reproject
 from scipy.interpolate import griddata
 from scipy.ndimage import distance_transform_edt
 
+from frost.preprocess.create_observation import write_observation_file
+
 # Ice density used to convert between ice equivalent and water equivalent
 # (as IGM's smb_1D_3D)
 ICE_DENSITY = 910.0
@@ -236,8 +238,9 @@ def prepare_input(data_dir, exp, glacier, rgi_id_dir, resolution=50.0):
 
     icemask = np.nan_to_num(model['icemask']) >= 0.5
     usurf = _fill_nearest(model['usurf'])
-    dhdt = np.where(icemask, _fill(model['dhdt'], icemask), 0.0)
-    dhdt_err = np.where(icemask, _fill(model['dhdt_err'], icemask), 0.0)
+    # observations as provided: NaN where there is no data
+    dhdt = np.where(icemask, model['dhdt'], np.nan)
+    dhdt_err = np.where(icemask, model['dhdt_err'], np.nan)
 
     input_file = os.path.join(rgi_id_dir, 'Preprocess', 'data', 'input.nc')
     os.makedirs(os.path.dirname(input_file), exist_ok=True)
@@ -282,7 +285,7 @@ def prepare_input(data_dir, exp, glacier, rgi_id_dir, resolution=50.0):
         'resolution_model': dx,
         'resampling': resampling.name,
         'ice_area_km2': float(icemask.sum() * dx ** 2 / 1e6),
-        'dhdt_mean': float(dhdt[icemask].mean()),
+        'dhdt_mean': float(np.nanmean(dhdt[icemask])),
         'usurf_median': float(np.median(usurf[icemask])),
         'usurf_min': float(usurf[icemask].min()),
         'usurf_max': float(usurf[icemask].max()),
@@ -309,22 +312,20 @@ def smb_prior(meta, gradients_mean, gradients_std):
 
 def write_observations(rgi_id_dir):
     """
-    observations.nc for the EnKF, in the layout of create_observation.py:
-    surface at the start and end of the dh/dt period, on the grid and with
-    the bed of the inversion result.
+    observations.nc for the EnKF (create_observation.write_observation_file):
+    the ContinuIX DHDT and its error as provided, on the grid and with the
+    bed of the inversion result.
 
-    The start surface is the ContinuIX DEM shifted with dh/dt from the DEM
-    date to the start of the period.
+    The start surface is the ContinuIX DEM shifted with dh/dt (gaps filled
+    for this shift only) from the DEM date to the start of the period.
     """
     with open(meta_path(rgi_id_dir)) as f:
         meta = json.load(f)
-    year_start, year_end = meta['year_start'], meta['year_end']
-    period = year_end - year_start
 
     input_file = os.path.join(rgi_id_dir, 'Preprocess', 'data', 'input.nc')
     with Dataset(input_file) as nc:
-        dhdt = np.array(nc['dhdt'][:], dtype=np.float64)
-        dhdt_err = np.array(nc['dhdt_err'][:], dtype=np.float64)
+        dhdt = np.array(nc['dhdt'][:].filled(np.nan), dtype=np.float64)
+        dhdt_err = np.array(nc['dhdt_err'][:].filled(np.nan), dtype=np.float64)
         epsg, pyproj_srs = nc.epsg, nc.pyproj_srs
     output_file = os.path.join(rgi_id_dir, 'Preprocess', 'outputs', 'output.nc')
     with Dataset(output_file) as nc:
@@ -334,33 +335,16 @@ def write_observations(rgi_id_dir):
         icemask = np.array(nc['icemask'][:]) > 0.5
         velsurfobs_mag = np.array(nc['velsurfobs_mag'][:])
 
-    usurf_start = np.maximum(topg, usurf_dem - dhdt * (meta['year_dem'] - year_start))
-    usurf_end = np.maximum(topg, usurf_start + dhdt * period)
-    # as create_observation.py: error of the change since the start
-    usurf_err = [np.zeros_like(dhdt_err), dhdt_err * period]
+    shift = np.nan_to_num(_fill(dhdt, icemask)) \
+        * (meta['year_dem'] - meta['year_start'])
+    usurf_start = np.maximum(topg, usurf_dem - shift)
 
-    with Dataset(os.path.join(rgi_id_dir, 'observations.nc'), 'w') as nc:
-        nc.createDimension('time', 2)
-        nc.createDimension('x', len(x))
-        nc.createDimension('y', len(y))
-        variables = {
-            'time': (('time',), [year_start, year_end]),
-            'x': (('x',), x),
-            'y': (('y',), y),
-            'topg': (('y', 'x'), topg),
-            'usurf': (('time', 'y', 'x'), [usurf_start, usurf_end]),
-            'usurf_err': (('time', 'y', 'x'), usurf_err),
-            'icemask': (('time', 'y', 'x'), [icemask, icemask]),
-            'dhdt': (('time', 'y', 'x'), [np.zeros_like(dhdt), dhdt]),
-            'dhdt_err': (('time', 'y', 'x'), [np.zeros_like(dhdt), dhdt_err]),
-            'velsurf_mag': (('time', 'y', 'x'), [velsurfobs_mag] * 2),
-            'thk': (('time', 'y', 'x'), [usurf_start - topg, usurf_end - topg]),
-        }
-        for name, (dims, values) in variables.items():
-            dtype = 'f8' if name in ('x', 'y') else 'f4'
-            nc.createVariable(name, dtype, dims)[:] = np.asarray(values)
-        nc.setncattr('epsg', epsg)
-        nc.setncattr('pyproj_srs', pyproj_srs)
+    write_observation_file(
+        os.path.join(rgi_id_dir, 'observations.nc'), x=x, y=y,
+        years=[meta['year_start'], meta['year_end']], usurf=usurf_start,
+        topg=topg, icemask=icemask, dhdt=np.where(icemask, dhdt, np.nan),
+        dhdt_err=np.where(icemask, dhdt_err, np.nan),
+        velsurf_mag=velsurfobs_mag, epsg=epsg, pyproj_srs=pyproj_srs)
 
 
 # ----------------------------------------------------------------------------
