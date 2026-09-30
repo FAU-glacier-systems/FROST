@@ -27,7 +27,7 @@ calibrated results.
    ```bash
    cd FROST
    conda env create -f environment.yml
-   conda activate frost_env
+   conda activate igm32-frost
    ```
 
 ---

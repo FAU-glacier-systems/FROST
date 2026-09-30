@@ -1,18 +1,18 @@
-#!/usr/bin python3
+#!/usr/bin/env python3
 
 # Copyright (C) 2024-2026 Oskar Herrmann
 # Published under the GNU GPL (Version 3), check the LICENSE file
 
 import argparse
 import os.path
-import shutil
 
 import numpy as np
+import yaml
 
 from frost.calibration.ensemble_kalman_filter import EnsembleKalmanFilter
 from frost.calibration.observation_provider import ObservationProvider
 from frost.visualization.monitor import Monitor
-import igm
+
 
 def main(rgi_id, rgi_id_dir, smb_model, synthetic, ensemble_size, inflation,
          smb_prior_mean, smb_prior_std,
@@ -69,56 +69,6 @@ def main(rgi_id, rgi_id_dir, smb_model, synthetic, ensemble_size, inflation,
           f'Initial offset: {init_offset}',
           f'Results directory: {rgi_id_dir}',
           f'Forward parallel: {forward_parallel}')
-
-    # Copy igm_user functions
-    if str(smb_model) == 'TI':
-        script_list = ['clim_1D_3D', 'smb_1D_3D']
-        for afname in script_list:
-            # etraxt igm library path
-            igm_lib_path = os.path.dirname(igm.__file__)
-
-            # local igm library folder
-            dst_dir = os.path.join(igm_lib_path, 'processes')
-
-            # check if user functions are already in local IGM library
-            # then remove them
-            if os.path.exists(os.path.join(dst_dir, afname)):
-                # Remove pre-existing folder
-                shutil.rmtree(os.path.join(dst_dir, afname))
-
-            # Copy user-defined scripts 
-            # Source directory of user defined function
-            src_dir = os.path.join('frost', 'igm_user', 'code', 'processes', afname)
-
-            # Check the operating system and use the respective command
-            if os.name == 'nt':  # Windows
-                cmd = f'copy -r "{src_dir}" "{dst_dir}"'
-            else:  # Unix/Linux
-                cmd = f'cp -r "{src_dir}" "{dst_dir}"'
-
-            # Copy Directory
-            os.system(cmd)
-
-            dst_dir = os.path.join(igm_lib_path, 'conf', 'processes')
-
-            # check if user config files (function sepcific yaml) are already in local IGM library
-            # then remove them
-            if os.path.exists(os.path.join(igm_lib_path, 'conf', 'processes') + '/' + afname + '.yaml'):
-                # Remove pre-existing file
-                os.remove(os.path.join(igm_lib_path, 'conf', 'processes') + '/' + afname + '.yaml')
-
-            # Copy user-defined configuration files (yaml)
-            # Source directory of user defined function
-            src_dir = os.path.join('frost', 'igm_user', 'conf', 'processes') + '/' + afname + '.yaml'
-
-            # Check the operating system and use the respective command
-            if os.name == 'nt':  # Windows
-                cmd = f'copy "{src_dir}" "{dst_dir}"'
-            else:  # Unix/Linux
-                cmd = f'cp "{src_dir}" "{dst_dir}"'
-
-            # Copy Directory
-            os.system(cmd)
 
     # Initialise the Observation provider
     print("Initializing Observation Provider")
@@ -242,27 +192,6 @@ def main(rgi_id, rgi_id_dir, smb_model, synthetic, ensemble_size, inflation,
                             method=method,
                             diagnostics=diagnostics)
 
-    # Remove igm_user functions from igm library path
-    if str(smb_model) == 'TI':
-        for afname in script_list:
-
-            # local igm library folder
-            dst_dir = os.path.join(igm_lib_path, 'processes')
-
-            # check if user functions are already in local IGM library
-            # then remove them
-            if os.path.exists(os.path.join(dst_dir, afname)):
-                # Remove pre-existing folder
-                shutil.rmtree(os.path.join(dst_dir, afname))
-
-            dst_dir = os.path.join(igm_lib_path, 'conf', 'processes')
-
-            # check if user config files (function sepcific yaml) are already in local IGM library
-            # then remove them
-            if os.path.exists(os.path.join(igm_lib_path, 'conf', 'processes') + '/' + afname + '.yaml'):
-                # Remove pre-existing file
-                os.remove(os.path.join(igm_lib_path, 'conf', 'processes') + '/' + afname + '.yaml')
-
     print('Done')
 
 
@@ -275,66 +204,25 @@ def normalised_misfit(observation, ensemble_observables, noise_matrix):
 
 
 if __name__ == '__main__':
-    # Parse command-line arguments
+    # Calibration step alone, with the settings of a pipeline config; the
+    # download, inversion and observation outputs (create_observation) must
+    # already be in the glacier folder
     parser = argparse.ArgumentParser(
-        description='Run glacier calibration experiments.')
-
-    # Add arguments for parameters
-    parser.add_argument('--experiment_name', type=str,
-                        help='name of the experiment', required=True)
-
+        description='Run the EnKF calibration for one glacier.')
+    parser.add_argument('--config', type=str,
+                        default='experiments/test_default/pipeline_config.yml',
+                        help='Path to the pipeline YAML config file')
     parser.add_argument('--rgi_id', type=str,
-                        default="RGI2000-v7.0-G-11-01706",
-                        help='RGI ID of the glacier for the model.')
-
-    parser.add_argument("--synthetic", type=str, default="false",
-                        help="Change to synthetic observations.")
-
-    parser.add_argument("--forward_parallel", type=str, default="false",
-                        help="Enable forward parallel processing")
-
-    parser.add_argument('--ensemble_size', type=int, default=64,
-                        help='number of ensemble members for the model.')
-
-    parser.add_argument('--inflation', type=float, default=1.0,
-                        help='Inflation rate for the model.')
-
-    parser.add_argument('--iterations', type=int, default=6,
-                        help='Number of iterations')
-
-    parser.add_argument('--elevation_step', type=int, default=50,
-                        help='Elevation step for observations.')
-
-    parser.add_argument("--obs_uncertainty", type=int, default="1",
-                        help="Factor for the synthetic observation uncertainty")
-
-    parser.add_argument('--seed', type=int, default=12345,
-                        help='Random seed for the model.')
-
-    parser.add_argument('--init_offset', type=int, default=0,
-                        help='Random seed for the model.')
-
-    parser.add_argument('--smb_model', type=str,
-                        default="ELA",
-                        help='Flag to decide for SMB model (ELA, TI, ...).')
-
-    # Parse arguments
+                        help='RGI ID to override the config file')
     args = parser.parse_args()
-    forward_parallel = False if args.forward_parallel == "false" else True
-    synthetic = False if args.synthetic == "false" or args.synthetic == "False" \
-        else True
 
-    # Call the main function with the parsed arguments
-    main(rgi_id=args.rgi_id,
-         experiment_name=args.experiment_name,
-         smb_model=args.smb_model,
-         synthetic=synthetic,
-         ensemble_size=args.ensemble_size,
-         inflation=args.inflation,
-         iterations=args.iterations,
-         seed=args.seed,
-         forward_parallel=forward_parallel,
-         elev_band_height=args.elevation_step,
-         synth_obs_std=args.obs_uncertainty,
-         init_offset=args.init_offset
-         )
+    with open(args.config, 'r') as f:
+        cfg = yaml.safe_load(f)
+    if args.rgi_id is not None:
+        cfg['rgi_id'] = args.rgi_id
+
+    main(rgi_id=cfg['rgi_id'],
+         rgi_id_dir=os.path.join('data', 'results', cfg['experiment_name'],
+                                 cfg['rgi_id']),
+         smb_model=cfg['smb_model'],
+         **cfg['EnKF'])

@@ -20,6 +20,25 @@ os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
 os.environ["XLA_FLAGS"] = "--xla_force_host_platform_device_count=1"
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"  # 0 = all, 1 = info, 2 = warning, 3 = error
 
+FROST_USER_DIR = os.path.join(os.path.dirname(os.path.dirname(
+    os.path.abspath(__file__))), 'igm_user')
+
+
+def install_user_processes(workdir, processes):
+    """Copy FROST's IGM user processes into <workdir>/user, where igm_run
+    picks them up, instead of into the installed igm package (which is
+    shared by all jobs using the environment)."""
+    for process in processes:
+        shutil.copytree(
+            os.path.join(FROST_USER_DIR, 'code', 'processes', process),
+            os.path.join(workdir, 'user', 'code', 'processes', process),
+            dirs_exist_ok=True)
+        os.makedirs(os.path.join(workdir, 'user', 'conf', 'processes'),
+                    exist_ok=True)
+        shutil.copy(
+            os.path.join(FROST_USER_DIR, 'conf', 'processes', process + '.yaml'),
+            os.path.join(workdir, 'user', 'conf', 'processes'))
+
 
 def forward(exp, output1D, output2D_3D, member_id, smb_model, usurf, smb,
             year_start, year_end, workdir, climate_file,
@@ -116,6 +135,7 @@ def forward(exp, output1D, output2D_3D, member_id, smb_model, usurf, smb,
     }
 
     if str(smb_model) == 'TI':
+        install_user_processes(workdir, ['clim_1D_3D', 'smb_1D_3D'])
 
         igm_params['defaults'] = [{"override /inputs": ["local"]}]
         igm_params['defaults'] += [{'override /processes': ["clim_1D_3D", "smb_1D_3D", "iceflow", "time", "thk"]}]

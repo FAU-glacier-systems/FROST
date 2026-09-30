@@ -1,4 +1,4 @@
-name: frost_env
+name: igm32-frost
 channels:
   - conda-forge
 dependencies:
@@ -11,4 +11,4 @@ dependencies:
     - -e .[dev]
     # igm is a git source, not a normal PyPI release, so it can't live in
     # setup.py's install_requires - pinned to the tag FROST is built against.
-    - git+https://github.com/instructed-glacier-model/igm@v3.0.1
+    - git+https://github.com/instructed-glacier-model/igm@v3.2.0
