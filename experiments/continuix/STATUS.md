@@ -111,8 +111,7 @@ EXP01 mask of the glacier, as they perturb the data, not the extent.
 EXP05 adds thickness noise of +-16 % of the mean also past S01's
 terminus, which put the ice-free end back into the mask (SMB -1.34).
 Rerun with the EXP01 mask (job 4475605): EXP05 S01 SMB -0.18, EXP08 G05
-unchanged; **EXP08 G01 still running at wrap-up: check
-`logs/continuix_4475605_2.out` and its submission file.**
+and G01 unchanged (-2.09, -0.86).
 
 Glacier-mean SMB minus EXP01 (m/yr):
 
@@ -251,15 +250,14 @@ G04 needed `min_velocity_p99: 1` (slow glacier, 99th percentile 8.7 m/yr).
 EXP01 is done. Known limitations for the README: G03 upper half thins
 ~1.2 m/yr too fast; G01 per-basin pattern (one ELA); S01 velocities -29 %.
 
-1. Check EXP08 G01 from the mask rerun (job 4475605, task 2).
-2. Submission documents (next): `README_<GROUP>_method01.txt` (method,
+1. Submission documents (next): `README_<GROUP>_method01.txt` (method,
    pre-processing, uncertainty, the known limitations above),
    `log_<GROUP>.txt` (compute times from
    `data/results/continuix/*/*/timings.json`), filled
    `SUBMISSION_CHECKLIST.txt`; `write_submission` writes an empty
    `description` attribute: pass the method text.
-3. Needed from Oskar: group shorthand, contributors with ORCID.
-4. Optional, if time: EXP02 (raw data); GLOB EXP16-20 for all real
+2. Needed from Oskar: group shorthand, contributors with ORCID.
+3. Optional, if time: EXP02 (raw data); GLOB EXP16-20 for all real
    glaciers; ELA with a horizontal trend for G01 (5 parameters).
 
 ## Notes
