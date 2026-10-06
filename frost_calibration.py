@@ -18,7 +18,8 @@ def main(rgi_id, rgi_id_dir, smb_model, synthetic, ensemble_size, inflation,
          smb_prior_mean, smb_prior_std,
          iterations, seed, init_offset, elev_band_height, forward_parallel,
          synth_obs_std=None, smb_reference_mean=None, smb_reference_std=None,
-         dark_monitor=True, monitor_plots='latest', method='esmda'):
+         dark_monitor=True, monitor_plots='latest', method='esmda',
+         model_error=0.0):
     """
     main function to run the calibration, handles the interaction between
     observation, ensemble and visualization. It saves the results in the experiment
@@ -49,6 +50,9 @@ def main(rgi_id, rgi_id_dir, smb_model, synthetic, ensemble_size, inflation,
                                    'enkf': every iteration assimilates the
                                    observations with their full error
                                    (posterior too narrow by ~sqrt(iterations))
+           model_error(float)    - 1-sigma model error of the band-mean
+                                   dh/dt (m/yr), added to the observation
+                                   error of every band
 
     Returns:
            none
@@ -65,6 +69,7 @@ def main(rgi_id, rgi_id_dir, smb_model, synthetic, ensemble_size, inflation,
           f'Seed: {seed}',
           f'Elevation step: {elev_band_height}',
           f'Observation uncertainty: {synth_obs_std}',
+          f'Model error: {model_error}',
           f'Synthetic: {synthetic}',
           f'Initial offset: {init_offset}',
           f'Results directory: {rgi_id_dir}',
@@ -76,7 +81,8 @@ def main(rgi_id, rgi_id_dir, smb_model, synthetic, ensemble_size, inflation,
                                        rgi_id_dir=rgi_id_dir,
                                        elevation_step=int(elev_band_height),
                                        obs_uncertainty=synth_obs_std,
-                                       synthetic=synthetic)
+                                       synthetic=synthetic,
+                                       model_error=model_error)
     print("Initializing start surface")
     year, usurf_ensemble = obs_provider.initial_usurf(num_samples=ensemble_size)
 

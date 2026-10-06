@@ -20,6 +20,10 @@ EnKF:
   elev_band_height: 50
   forward_parallel: true
   synthetic: false
+  # 1-sigma model error of the band-mean dh/dt (m/yr), added to every band:
+  # ContinuIX gives no usable dh/dt uncertainty, and the measurement error
+  # alone averages down to cm/yr per band, so the 3-parameter SMB overfits
+  model_error: 0.5
 
   # ELA prior: median ice elevation, a third of the elevation range as std
   # (continuix.smb_prior)
@@ -29,3 +33,18 @@ EnKF:
   smb_prior_std:
     abl_grad: 9.04
     acc_grad: 3.39
+
+# Per-glacier settings, merged over the ones above
+glaciers:
+  S01:
+    # the half-pipe margins thin to a few metres within 250 m; at 50 m they
+    # are lost and the model stops there (obs 36 m/yr, model 3 m/yr)
+    resolution: 25
+  # model_error = 0.5 * sqrt(chi2/n) of the 0.5 m/yr run (6 Oct): G03 6.5,
+  # G05 8.6; the others are 0.15-2.3
+  G03:
+    EnKF:
+      model_error: 1.3
+  G05:
+    EnKF:
+      model_error: 1.5

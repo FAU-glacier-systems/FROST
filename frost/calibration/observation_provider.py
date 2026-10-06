@@ -36,8 +36,9 @@ class ObservationProvider:
     with data; bands are 'elevation_step' wide in the start surface, and
     bands without data are left out. Its error covariance follows from the
     pixel errors and their spatial correlation by averaging:
-        C = A S A^T,  S_pq = dhdt_err_p * dhdt_err_q * rho(d_pq)
-    with A the band-averaging matrix. The model counterpart is the band mean
+        C = A S A^T + model_error^2 I,  S_pq = dhdt_err_p * dhdt_err_q * rho(d_pq)
+    with A the band-averaging matrix. The model error is added per band, so
+    averaging over many pixels does not shrink it. The model counterpart is the band mean
     of (usurf_end - usurf_start) / period over the same pixels.
 
     Authors: Oskar Herrmann
@@ -47,10 +48,12 @@ class ObservationProvider:
         elevation_step (int)      - band width (m)
         obs_uncertainty (float)   - synthetic runs: factor on dhdt_err
         synthetic (bool)          - synthetic observations
+        model_error (float)       - 1-sigma model error of the band-mean
+                                    dh/dt (m/yr)
     """
 
     def __init__(self, rgi_id_dir, rgi_id, elevation_step, obs_uncertainty,
-                 synthetic):
+                 synthetic, model_error=0.0):
         observation_file = os.path.join(rgi_id_dir, 'observations.nc')
         with Dataset(observation_file, 'r') as ds:
             self.usurf = np.array(ds['usurf'][:], dtype=np.float64)
@@ -100,7 +103,9 @@ class ObservationProvider:
         self.pixel_xy = np.column_stack((self.x[cols], self.y[rows]))
 
         self.observation = self.band_mean(self.dhdt)
-        self.covariance = self.band_covariance(self.dhdt_err[self.valid])
+        self.model_error = model_error
+        self.covariance = (self.band_covariance(self.dhdt_err[self.valid])
+                           + model_error ** 2 * np.eye(self.num_bins))
 
     def band_mean(self, field):
         """Mean of a field over the valid pixels of every band."""

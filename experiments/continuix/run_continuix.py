@@ -31,6 +31,17 @@ os.environ.setdefault("TF_FORCE_GPU_ALLOW_GROWTH", "true")
 STEPS = ['prepare', 'inversion', 'calibrate', 'submit']
 
 
+def merge(base, override):
+    """base with the values of override, nested dicts merged."""
+    merged = dict(base)
+    for key, value in override.items():
+        if isinstance(value, dict) and isinstance(base.get(key), dict):
+            merged[key] = merge(base[key], value)
+        else:
+            merged[key] = value
+    return merged
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
     parser.add_argument('--exp', required=True, help='e.g. EXP01')
@@ -42,6 +53,7 @@ def main():
     steps = args.steps.split(',')
     with open(args.config) as f:
         cfg = yaml.safe_load(f)
+    cfg = merge(cfg, cfg.pop('glaciers', {}).get(args.glacier, {}))
     experiment_dir = os.path.dirname(args.config)
 
     rgi_id_dir = os.path.join(cfg['results_dir'], args.exp,

@@ -137,6 +137,15 @@ def _uncertainty(ds, name, default):
     return np.full(ds[name].shape, value)
 
 
+def _icemask(ds):
+    """Ice mask on the ContinuIX grid: ICEMASK cells (every cell with a year,
+    ContinuIX readme) that have thickness, velocity or dh/dt data. S01's
+    ICEMASK covers the whole domain, but the ice ends 1 km before it."""
+    def has(name):
+        return np.isfinite(ds[name].values) & (ds[name].values != 0)
+    return has('ICEMASK') & (has('THK') | has('VX') | has('VY') | has('DHDT'))
+
+
 def _gaps_to_nan(field, icemask):
     """ContinuIX fills missing values with 0; inside the ice these are gaps."""
     field = np.asarray(field, dtype=np.float64).copy()
@@ -193,8 +202,7 @@ def prepare_input(data_dir, exp, glacier, rgi_id_dir, resolution=50.0):
     dx_data = float(abs(x[1] - x[0]))
     dx = max(float(resolution), dx_data)
 
-    # Binary mask: every cell with a year (ContinuIX readme)
-    icemask_data = np.isfinite(ds['ICEMASK'].values) & (ds['ICEMASK'].values != 0)
+    icemask_data = _icemask(ds)
 
     # Observation period from the DHDT timestamp; the DEM is shifted to its
     # start with DHDT
@@ -377,7 +385,7 @@ def write_submission(rgi_id_dir, path, method_description=''):
         calibration = json.load(f)
     ds = open_experiment(meta['data_dir'], meta['experiment'], meta['glacier'])
     crs = _crs(ds)
-    icemask = np.isfinite(ds['ICEMASK'].values) & (ds['ICEMASK'].values != 0)
+    icemask = _icemask(ds)
 
     # SMB on the original grid
     keys = list(calibration['initial_smb'].keys())

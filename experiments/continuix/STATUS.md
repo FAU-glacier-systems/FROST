@@ -1,8 +1,9 @@
-# ContinuIX: status (2026-09-28)
+# ContinuIX: status (2026-10-06)
 
 FROST contribution to ContinuIX WP2/WP3
 (https://github.com/ContinuIX/ContinuIX-1), SMB-gradient approach.
-Submission deadline: **1 October 2026**.
+Submission deadline: **end of October 2026** (extended from 1 October);
+goal: finish in the week of 5 October.
 
 ## Setup
 
@@ -31,7 +32,110 @@ sliding, the provided THK gives velocities off by factor 0.8-4
 (`thk_forward.py`); inverting tau_ref fixes that (G03 speed RMS 43 -> 6.6
 m/yr, G05 50 -> 12 m/yr).
 
-## EXP01 results
+## EXP01 rerun with ES-MDA (2026-10-05)
+
+Array job 4460440, current pipeline (ES-MDA, band-mean dh/dt, IGM 3.2.0,
+lam 1e11 fixed). The 28 Sep EnKF results are kept in
+`data/results/continuix/EXP01_enkf_0928` (and `submission/EXP01_enkf_0928`).
+The inversion output is byte-identical to the 28 Sep run.
+
+| Glacier | Obs. dh/dt | Model dh/dt (spread) | chi2/n | Parameters |
+|---|---|---|---|---|
+| G02 | +1.56 | +0.31 (0.06) | 65 | ELA 5180, abl 11.6, acc 2.0 |
+| G03 | -0.86 | -2.53 (0.01) | 1197 | ELA 3471, abl 3.9, acc 32: broken |
+| G04 | -1.28 | -1.30 (0.12) | 11 | ELA 4489, abl 5.7, acc 0.4: good fit |
+| G05 | -1.95 | -0.50 (0.04) | 279 | ELA 2683, abl 17.1, acc 1.8 |
+| G06 | -0.94 | -0.83 (0.07) | 93 | ELA 3161, abl 7.0, acc 3.2 |
+| S01 | 0.00 | -0.27 (0.04) | 20 | ELA 2264 (true 2350), abl 12.1, acc 4.4 |
+| S02 | -0.42 | +56 | 2e8 | ELA 13757, negative gradients: diverged |
+
+Worse than the EnKF run except G04; all ensembles collapse (posterior
+std 0.3-5 % of the prior), so UNCT_SMB would be meaningless. Causes:
+
+1. The band covariance in `observation_provider.py` holds only the dh/dt
+   measurement error (G03: 0.07 m/yr per pixel from the file attribute,
+   others default 0.2), averaged over each band to a few cm/yr. No model
+   error term, so ES-MDA overfits a 3-parameter SMB.
+2. S02 `UNCT_DHDT` goes down to 1.4e-5 m/yr (197 pixels): near-infinite
+   weight on one band.
+3. No bounds on the SMB parameters (negative gradients, ELA above the
+   summit).
+
+ContinuIX gives no per-pixel dh/dt uncertainty for G01-G06, only an
+`uncertainty` attribute (G03 0.07 m/yr; G02 "+- 2 m"; others unknown or
+guessed). Only S01 (0.2) and S02 have a `UNCT_DHDT` field.
+
+Fix (2026-10-06): `model_error: 0.5` (m/yr) in `config.yml`, added as
+model_error^2 I to the band covariance (`ObservationProvider`), so every
+band now has about 0.5 m/yr (S02 up to 1.1). Not done yet: dhdt_err floor
+(irrelevant now) and bounds on the SMB parameters. The 5 Oct ES-MDA
+results are kept in `EXP01_esmda_1005` (and `submission/`). Rerun EXP01
+(calibrate, submit) and evaluate with `evaluate_exp01.py`.
+
+## EXP01 with model_error 0.5 (2026-10-06)
+
+Kept in `EXP01_sigma05_1006` (and `submission/`). Posterior forward runs:
+
+| Glacier | Obs. dh/dt | Model dh/dt (spread) | chi2/n | Band RMS | post/prior std |
+|---|---|---|---|---|---|
+| G02 | +1.56 | +1.46 (0.19) | 1.6 | 0.65 | 14-47 % |
+| G03 | -0.86 | -1.54 (0.10) | 6.5 | 1.39 | 3-27 % |
+| G04 | -1.28 | -1.18 (0.19) | 0.15 | 0.22 | 18-41 % |
+| G05 | -1.95 | -2.20 (0.07) | 8.6 | 1.03 | 3-11 % |
+| G06 | -0.94 | -1.18 (0.16) | 2.3 | 0.67 | 6-46 % |
+| S01 | 0.00 | -0.05 (0.13) | 0.69 | 0.39 | 8-33 % |
+| S02 | -0.42 | -0.45 (0.16) | 0.55 | 0.28 | 9-14 % |
+
+S01 parameters: ELA 2260 +- 41 (true 2350), abl 13.4 +- 2.6 (10), acc
+6.1 +- 1.1 (10, capped at 5 m/yr). G03, G05, G06: the upper half thins
+too fast (-0.4 to -1.3 m/yr band misfit), the lower half fits.
+
+Inversion check (same day): the misfit is not limited by lam. tau_ref is
+smooth (0.05-0.09 decades at ~100 m), never at its bounds. G06 is within
+its velocity noise (UNCT_VX ~14 m/yr); S01 lost its thin margins at 50 m
+(18 % of cells < 10 m ice, 54 % of the misfit) and its ICEMASK covers 1 km
+of ice-free domain past the terminus (also the cause of the -1.65 m/yr
+SMB in the submission). The inversion weights all velocities with std 1
+m/yr; IGM 3.2 field_inversion only takes a scalar std.
+
+## EXP01 current (2026-10-06): accepted status
+
+`data/results/continuix/EXP01` (and `submission/EXP01`). On top of the
+run above (config `glaciers:` overrides, `continuix._icemask`):
+- ice mask = ICEMASK cells with THK, velocity or dh/dt data (removes 33 %
+  of S01, <= 0.3 % elsewhere), in input and submission;
+- S01 on a 25 m grid (all steps);
+- G03 model_error 1.3, G05 1.5 (0.5 * sqrt(chi2/n); calibrate, submit).
+
+| Glacier | Obs. dh/dt | Model dh/dt (spread) | chi2/n | post/prior std |
+|---|---|---|---|---|
+| G03 | -0.86 | -1.41 (0.27) | 0.96 | 11-52 % |
+| G05 | -1.95 | -2.00 (0.19) | 1.06 | 8-29 % |
+| S01 | 0.00 | -0.11 (0.17) | 1.45 | 9-26 % |
+
+G02, G04, G06, S02 as in the table above. chi2/n now 0.15-2.3 overall.
+G03 upper half still thins ~1.2 m/yr too fast (structural).
+S01: submission SMB mean -0.27 m/yr (was -2.34 on the full ICEMASK);
+ELA 2290 +- 40 (true 2350), abl 12.1 +- 1.7 (10), acc 6.4 +- 0.9. The
+velocity fit did not improve at 25 m (-29 %, r 0.64): with lam 1e11 on
+the finer grid tau_ref is nearly constant (0.015 decades); lam would have
+to scale with dx^4 (~/16) to allow variations across the width.
+
+Later: velocity uncertainty in the inversion misfit (IGM patch, new
+L-curve); light smoothing of THK for the flux divergence; lam scaled
+with the grid spacing.
+
+Inversion (velocity fit, unchanged): good on S02, G03, G05; OK G02; weak
+G04 (speeds near noise); poor G06 (-31 % speed, r 0.61) and S01 (-29 %,
+cost only to 0.93). tau_ref never at its bounds; lowering lam would not
+help (see the inversion check below).
+Decision so far: keep the provided THK (needed for the THK experiments),
+invert tau_ref only.
+
+S01 truth (ContinuIX-1/Synthetic_Glacier/domain_config.py): ELA 2350 m,
+10 m/yr per km both sides, accumulation capped at 5 m/yr.
+
+## EXP01 results (EnKF, 2026-09-28)
 
 Glacier means in m/yr ice equivalent.
 
@@ -57,9 +161,8 @@ G04 needed `min_velocity_p99: 1` (slow glacier, 99th percentile 8.7 m/yr).
    within each 50 m band (~14 m, 1 sigma), as large as the whole signal
    of a 9-year period.
 2. **S01**: model dh/dt fits, but the SMB written on the 1 m grid averages
-   -1.65 m/yr. The SMB is evaluated on thin margin cells that the 50 m
-   model barely resolves, so SMB and the interpolated FDIV don't match
-   there.
+   -1.65 m/yr. Cause: ICEMASK includes 1 km of ice-free domain past the
+   terminus; fixed by `_icemask` (check in the next run).
 3. **G02, G04**: reach about half (G02 thickening) and two thirds (G04)
    of the observed dh/dt.
 4. Run EXP03-20 (`tasks_all.txt`) once 1-2 are settled.
