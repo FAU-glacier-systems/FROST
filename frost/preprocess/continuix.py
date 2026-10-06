@@ -139,11 +139,26 @@ def _uncertainty(ds, name, default):
 
 def _icemask(ds):
     """Ice mask on the ContinuIX grid: ICEMASK cells (every cell with a year,
-    ContinuIX readme) that have thickness, velocity or dh/dt data. S01's
-    ICEMASK covers the whole domain, but the ice ends 1 km before it."""
+    ContinuIX readme) that have thickness, velocity or dh/dt data. ContinuIX
+    fills missing values with 0, so no single field marks ice-free cells;
+    a cell without any of the three is. S01's ICEMASK covers the whole
+    domain, but the ice ends 1 km before it."""
     def has(name):
         return np.isfinite(ds[name].values) & (ds[name].values != 0)
     return has('ICEMASK') & (has('THK') | has('VX') | has('VY') | has('DHDT'))
+
+
+def experiment_icemask(data_dir, exp, glacier, ds):
+    """Ice mask for one experiment: the EXP01 mask of the glacier where the
+    experiment is on the EXP01 grid (the perturbation experiments change
+    the data, not the extent; EXP05 adds thickness noise also past S01's
+    terminus), else its own."""
+    if exp != 'EXP01':
+        reference = open_experiment(data_dir, 'EXP01', glacier)
+        if np.array_equal(reference['x'].values, ds['x'].values) \
+                and np.array_equal(reference['y'].values, ds['y'].values):
+            return _icemask(reference)
+    return _icemask(ds)
 
 
 def _gaps_to_nan(field, icemask):
@@ -202,7 +217,7 @@ def prepare_input(data_dir, exp, glacier, rgi_id_dir, resolution=50.0):
     dx_data = float(abs(x[1] - x[0]))
     dx = max(float(resolution), dx_data)
 
-    icemask_data = _icemask(ds)
+    icemask_data = experiment_icemask(data_dir, exp, glacier, ds)
 
     # Observation period from the DHDT timestamp; the DEM is shifted to its
     # start with DHDT
@@ -385,7 +400,8 @@ def write_submission(rgi_id_dir, path, method_description=''):
         calibration = json.load(f)
     ds = open_experiment(meta['data_dir'], meta['experiment'], meta['glacier'])
     crs = _crs(ds)
-    icemask = _icemask(ds)
+    icemask = experiment_icemask(meta['data_dir'], meta['experiment'],
+                                 meta['glacier'], ds)
 
     # SMB on the original grid
     keys = list(calibration['initial_smb'].keys())

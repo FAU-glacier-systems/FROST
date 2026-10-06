@@ -1,4 +1,4 @@
-# ContinuIX: status (2026-10-06)
+# ContinuIX: status (2026-10-06, end of day)
 
 FROST contribution to ContinuIX WP2/WP3
 (https://github.com/ContinuIX/ContinuIX-1), SMB-gradient approach.
@@ -22,8 +22,9 @@ goal: finish in the week of 5 October.
   5. `submit`: `EXP##_G##_method01.nc` on the original grid with SMB,
      UNCT_SMB (ensemble spread), FDIV, UNCT_FDIV, DENSITY (910 kg m-3).
 - Run: `sbatch --array=1-N experiments/continuix/run_continuix.sh <tasks>`
-  (`tasks_exp01.txt`: EXP01 incl. G01; `tasks_all.txt`: 123 tasks, EXP01,
-  EXP03-20, without G01). About 10-15 min per glacier on one a40, G01
+  (`tasks_exp01.txt`: EXP01; `tasks_exp03-15.txt`: the mandatory glaciers
+  G01, G05, S01, S02 of EXP03-15; `tasks_smoke.txt`: one glacier per
+  EXP03-20; `tasks_all.txt`: old list incl. optional glaciers, no G01). About 10-15 min per glacier on one a40, G01
   about 37 min.
 
 Why the provided THK: with the SIA thickness the THK experiments
@@ -98,6 +99,56 @@ of ice-free domain past the terminus (also the cause of the -1.65 m/yr
 SMB in the submission). The inversion weights all velocities with std 1
 m/yr; IGM 3.2 field_inversion only takes a scalar std.
 
+## EXP03-15, mandatory glaciers (2026-10-06)
+
+All 52 tasks (G01, G05, S01, S02) in `data/results/continuix/EXP03..15`
+and `submission/`. Every file covers exactly the ice mask.
+
+Ice mask (`continuix.experiment_icemask`): ICEMASK cells with thickness,
+velocity or dh/dt data (ContinuIX fills gaps with 0, so no single field
+marks ice-free cells); experiments on the EXP01 grid (EXP03-13) use the
+EXP01 mask of the glacier, as they perturb the data, not the extent.
+EXP05 adds thickness noise of +-16 % of the mean also past S01's
+terminus, which put the ice-free end back into the mask (SMB -1.34).
+Rerun with the EXP01 mask (job 4475605): EXP05 S01 SMB -0.18, EXP08 G05
+unchanged; **EXP08 G01 still running at wrap-up: check
+`logs/continuix_4475605_2.out` and its submission file.**
+
+Glacier-mean SMB minus EXP01 (m/yr):
+
+| | G01 | G05 | S01 | S02 |
+|---|---|---|---|---|
+| EXP01 | -0.87 | -2.08 | -0.26 | -0.23 |
+| EXP03 THK +-30 % local | +0.04 | +0.04 | +0.28 | -0.16 |
+| EXP04 THK +-30 %, 2x corr. | +0.02 | 0.00 | +0.22 | +0.06 |
+| EXP05 THK +-16 % of mean | +0.02 | -0.01 | +0.08 | -0.06 |
+| EXP06 THK x 1.3 | +0.01 | -0.19 | +0.07 | -0.04 |
+| EXP07 THK x 0.7 | +0.04 | +0.07 | +0.07 | -0.05 |
+| EXP08-12 VEL random | <= 0.01 | <= 0.02 | <= 0.03 | <= 0.04 |
+| EXP13 VEL bias ramp | +0.01 | -0.01 | -0.03 | +0.03 |
+| EXP14 RES 3x coarser | -0.02 | -0.04 | 0.00 | -0.02 (300 m) |
+| EXP15 RES 100 m | -0.04 | -0.01 (100 m) | -0.35 (100 m) | 0.00 |
+
+dh/dt fits within +-0.13 m/yr (G05 EXP06 -0.24), chi2/n 0.2-2.3. The
+thickness experiments move the parameters (G05 EXP03/04 ELA +190/+170 m,
+S02 EXP03 +250 m, G01 EXP06 acc +5.3), not the glacier-mean SMB, which
+the dh/dt pins down (glacier-mean FDIV ~ 0). Velocity noise is smoothed
+out by the tau_ref regularisation. S01 at 100 m (EXP15) has 219 cells,
+its margins average poorly (-0.35). S01 EXP03/04 (+0.28/+0.22) come from
+a lower ablation gradient, same mask as EXP01.
+
+GLOB (EXP16-20) set aside; smoke test (one glacier each) ran: Hugonnet
+dh/dt 2000-2020 with UNCT_DHDT 1.5-3.7 m/yr per pixel barely constrains
+the SMB (posterior 60-100 % of the prior, UNCT_SMB 0.8-1.8 m/yr). EXP16
+G02 had a member with ELA above the summit (ice gone after 20 years):
+legitimate, no parameter bounds (they would tie FROST to this SMB model).
+
+EXP02 (raw GeoTIFFs, shapefiles, GPR-only thickness for G02, G03, G05)
+is optional by the participation rules (README "Who can participate");
+needs its own preprocessing and a thickness inversion, ~1-2 days.
+Open question to the organisers: WP3 asks for "at least 4 real-world
+cases", the experiment table names 2 real + 2 synthetic.
+
 ## EXP01 final (2026-10-06)
 
 `data/results/continuix/EXP01` (and `submission/EXP01`): full rerun of all
@@ -152,13 +203,22 @@ G02, G04, G06, S02 as in the table above. chi2/n now 0.15-2.3 overall.
 G03 upper half still thins ~1.2 m/yr too fast (structural).
 S01: submission SMB mean -0.27 m/yr (was -2.34 on the full ICEMASK);
 ELA 2290 +- 40 (true 2350), abl 12.1 +- 1.7 (10), acc 6.4 +- 0.9. The
-velocity fit did not improve at 25 m (-29 %, r 0.64): with lam 1e11 on
-the finer grid tau_ref is nearly constant (0.015 decades); lam would have
-to scale with dx^4 (~/16) to allow variations across the width.
+velocity fit did not improve at 25 m (-29 %, r 0.64). tau_ref is about as
+flat as at 50 m (p5-p95 0.15 vs 0.23 decades). lam is the same for all
+glaciers (1e11) and does not depend on the grid: IGM's squared_laplacian
+uses the Laplacian in physical units (/dx^2), averaged over the ice area,
+so the same lam means the same smoothness in metres on any grid.
 
-Later: velocity uncertainty in the inversion misfit (IGM patch, new
-L-curve); light smoothing of THK for the flux divergence; lam scaled
-with the grid spacing.
+Decision (2026-10-06): velocity misfit std 1 m/yr and lam 1e11 for all
+glaciers; the ContinuIX velocity uncertainty is not used. The provided
+"uncertainties" of G01, G02, G05, G06 are standard deviations over the
+period (G05 median 44 m/yr at 27 m/yr speed), not errors of the mean
+field. Tested on G02-G06 with the median as std (inversion only): it
+acts as a per-glacier lam, smoothing tau_ref and worsening the velocity
+fit on four of five glaciers (G06 r 0.62 -> 0.23, G05 RMS 12 -> 17 m/yr);
+only G04 (std 0.3) improved slightly.
+
+Later: light smoothing of THK for the flux divergence.
 
 Inversion (velocity fit, unchanged): good on S02, G03, G05; OK G02; weak
 G04 (speeds near noise); poor G06 (-31 % speed, r 0.61) and S01 (-29 %,
@@ -191,17 +251,16 @@ G04 needed `min_velocity_p99: 1` (slow glacier, 99th percentile 8.7 m/yr).
 EXP01 is done. Known limitations for the README: G03 upper half thins
 ~1.2 m/yr too fast; G01 per-basin pattern (one ELA); S01 velocities -29 %.
 
-1. Run EXP03-20 (`tasks_all.txt`).
-2. Optional: ELA with a horizontal trend for G01 (new SMB model, 5
-   parameters).
-3. `write_submission` writes an empty `description` attribute: pass the
-   method text (with the README).
-4. Submission documents: `README_<GROUP>_method01.txt` (method,
-   pre-processing, uncertainty), `log_<GROUP>.txt` (compute times from
+1. Check EXP08 G01 from the mask rerun (job 4475605, task 2).
+2. Submission documents (next): `README_<GROUP>_method01.txt` (method,
+   pre-processing, uncertainty, the known limitations above),
+   `log_<GROUP>.txt` (compute times from
    `data/results/continuix/*/*/timings.json`), filled
-   `SUBMISSION_CHECKLIST.txt`.
-5. Needed from Oskar: group shorthand, contributors with ORCID, whether
-   to do the optional EXP02 (raw GeoTIFFs).
+   `SUBMISSION_CHECKLIST.txt`; `write_submission` writes an empty
+   `description` attribute: pass the method text.
+3. Needed from Oskar: group shorthand, contributors with ORCID.
+4. Optional, if time: EXP02 (raw data); GLOB EXP16-20 for all real
+   glaciers; ELA with a horizontal trend for G01 (5 parameters).
 
 ## Notes
 
