@@ -392,7 +392,9 @@ def write_submission(rgi_id_dir, path, method_description=''):
     members = [dict(zip(keys, m)) for m in calibration['final_ensemble']]
     dhdt = np.nan_to_num(_fill(_gaps_to_nan(ds['DHDT'].values, icemask), icemask))
     year_mid = (meta['year_start'] + meta['year_end']) / 2
-    usurf_mid = ds['DEM'].values + dhdt * (year_mid - meta['year_dem'])
+    # DEM gaps on the ice (G02, G04, G06) would leave the SMB empty there
+    dem = _fill_nearest(ds['DEM'].values.astype(np.float64))
+    usurf_mid = dem + dhdt * (year_mid - meta['year_dem'])
     smb = np.array([ela_smb(usurf_mid, m['ela'], m['abl_grad'], m['acc_grad'])
                     for m in members])
 
@@ -431,7 +433,7 @@ def write_submission(rgi_id_dir, path, method_description=''):
                       'm i.e./yr'),
         'THK': (thk, 'ice thickness (modified: IGM inversion of the surface '
                      'velocity, not the provided THK)', 'm i.e.'),
-        'BED': (masked(ds['DEM'].values - thk),
+        'BED': (masked(dem - thk),
                 'basal topography (modified: DEM - THK)', 'm a.s.l.'),
         'DENSITY': (masked(np.full(icemask.shape, ICE_DENSITY)),
                     'density used for ice equivalent', 'kg m-3'),

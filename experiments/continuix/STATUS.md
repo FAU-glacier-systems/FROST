@@ -9,8 +9,7 @@ goal: finish in the week of 5 October.
 
 - Data: Zenodo 10.5281/zenodo.21401808, unzipped in `data/raw/continuix`
   (EXP01-EXP20).
-- Glaciers: all single glaciers (G02-G06, S01, S02). The ice cap G01 is
-  skipped for now.
+- Glaciers: G01 (ice cap, 100 m grid), G02-G06, S01 (25 m), S02.
 - Pipeline per experiment and glacier (`run_continuix.py`):
   1. `prepare`: ContinuIX netCDF -> `input.nc` on a 50 m grid (coarser
      ContinuIX grids kept; block average; zeros inside the ice are gaps).
@@ -23,8 +22,9 @@ goal: finish in the week of 5 October.
   5. `submit`: `EXP##_G##_method01.nc` on the original grid with SMB,
      UNCT_SMB (ensemble spread), FDIV, UNCT_FDIV, DENSITY (910 kg m-3).
 - Run: `sbatch --array=1-N experiments/continuix/run_continuix.sh <tasks>`
-  (`tasks_exp01.txt`: EXP01; `tasks_all.txt`: 123 tasks, EXP01, EXP03-20).
-  About 10-15 min per glacier on one a40.
+  (`tasks_exp01.txt`: EXP01 incl. G01; `tasks_all.txt`: 123 tasks, EXP01,
+  EXP03-20, without G01). About 10-15 min per glacier on one a40, G01
+  about 37 min.
 
 Why the provided THK: with the SIA thickness the THK experiments
 (EXP03-07, EXP17-19) would all be identical to EXP01. With the default
@@ -98,7 +98,42 @@ of ice-free domain past the terminus (also the cause of the -1.65 m/yr
 SMB in the submission). The inversion weights all velocities with std 1
 m/yr; IGM 3.2 field_inversion only takes a scalar std.
 
-## EXP01 current (2026-10-06): accepted status
+## EXP01 final (2026-10-06)
+
+`data/results/continuix/EXP01` (and `submission/EXP01`): full rerun of all
+glaciers with the new mask and the DEM gap filling in `write_submission`
+(G02, G04, G06 had NaN SMB under DEM gaps). Every submission file has no
+NaN inside the ice mask and no values outside it.
+
+| Glacier | Obs. dh/dt | Model dh/dt | chi2/n | SMB (UNCT) |
+|---|---|---|---|---|
+| G01 | -0.71 | -0.75 | 0.67 | -0.87 (0.23) |
+| G02 | +1.56 | +1.46 | 1.58 | +1.46 (0.25) |
+| G03 | -0.86 | -1.55 | 0.99 | -1.26 (0.41) |
+| G04 | -1.28 | -1.18 | 0.15 | -1.21 (0.28) |
+| G05 | -1.95 | -2.00 | 1.06 | -2.08 (0.39) |
+| G06 | -0.94 | -1.19 | 2.30 | -1.22 (0.21) |
+| S01 | 0.00 | -0.11 | 1.45 | -0.26 (0.30) |
+| S02 | -0.42 | -0.45 | 0.55 | -0.23 (0.26) |
+
+Only G03 moved against the run below (-1.41 -> -1.55, within its spread
+0.31): its input now uses the new mask too. The run below is kept in
+`EXP01_accepted_1006`.
+
+G01 (Langjokull, 832 km2, 11 basins), 100 m, 3-parameter ELA SMB:
+inversion 5 min, calibration 30 min (17 min setup, mostly the pixel-pair
+band covariance of 83k pixels; then ~2 min per iteration). ELA 1334 +- 31,
+abl 9.2 +- 1.0, acc 8.3 +- 1.0. Velocity -10 %, RMS 7 m/yr, r 0.96. The
+elevation profile fits within ~0.1 m/yr from 600 to 1400 m; at the dome
+the model thickens at 1500 m (+0.55) and thins at 1700 m (-0.80).
+Per basin (model - obs.): west and north-west too positive (8: +1.09,
+11: +0.37, 9: +0.22), south and east too negative (10: -0.50, 7: -0.47,
+5: -0.44). One ELA cannot hold this; an ELA with a horizontal trend
+(ELA0 + a x + b y, 5 parameters) would. Basin-mean dh/dt is close to the
+basin-mean SMB (the flux divergence only moves ice across the divides),
+so this is SMB, not flow.
+
+## EXP01 accepted (2026-10-06)
 
 `data/results/continuix/EXP01` (and `submission/EXP01`). On top of the
 run above (config `glaciers:` overrides, `continuix._icemask`):
@@ -153,25 +188,20 @@ G04 needed `min_velocity_p99: 1` (slow glacier, 99th percentile 8.7 m/yr).
 
 ## Open
 
-1. **G03**: calibrated model thins at -2.03 m/yr vs -0.85 observed, with
-   a narrow ensemble. Compare per elevation band whether the SMB shape
-   (too little accumulation high up) or the ice flow is the cause.
-   Suspect: the observation error in
-   `observation_provider.compute_bin_variance` adds the elevation spread
-   within each 50 m band (~14 m, 1 sigma), as large as the whole signal
-   of a 9-year period.
-2. **S01**: model dh/dt fits, but the SMB written on the 1 m grid averages
-   -1.65 m/yr. Cause: ICEMASK includes 1 km of ice-free domain past the
-   terminus; fixed by `_icemask` (check in the next run).
-3. **G02, G04**: reach about half (G02 thickening) and two thirds (G04)
-   of the observed dh/dt.
-4. Run EXP03-20 (`tasks_all.txt`) once 1-2 are settled.
-5. Submission documents: `README_<GROUP>_method01.txt` (method,
+EXP01 is done. Known limitations for the README: G03 upper half thins
+~1.2 m/yr too fast; G01 per-basin pattern (one ELA); S01 velocities -29 %.
+
+1. Run EXP03-20 (`tasks_all.txt`).
+2. Optional: ELA with a horizontal trend for G01 (new SMB model, 5
+   parameters).
+3. `write_submission` writes an empty `description` attribute: pass the
+   method text (with the README).
+4. Submission documents: `README_<GROUP>_method01.txt` (method,
    pre-processing, uncertainty), `log_<GROUP>.txt` (compute times from
    `data/results/continuix/*/*/timings.json`), filled
    `SUBMISSION_CHECKLIST.txt`.
-6. Needed from Oskar: group shorthand, contributors with ORCID, whether
-   to do the optional EXP02 (raw GeoTIFFs) and G01 (ice cap).
+5. Needed from Oskar: group shorthand, contributors with ORCID, whether
+   to do the optional EXP02 (raw GeoTIFFs).
 
 ## Notes
 

@@ -20,4 +20,5 @@ if [ -n "$SLURM_ARRAY_TASK_ID" ]; then
 fi
 echo "$@"
 nvidia-smi -L
-python experiments/continuix/run_continuix.py "$@"
+# -u: print lines reach the log as they happen, not when the buffer fills
+python -u experiments/continuix/run_continuix.py "$@"

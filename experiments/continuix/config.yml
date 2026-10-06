@@ -36,6 +36,11 @@ EnKF:
 
 # Per-glacier settings, merged over the ones above
 glaciers:
+  G01:
+    # ice cap of 832 km2: about 83k ice cells at 100 m (G05: 32k at 50 m);
+    # the calibration setup (band covariance) takes ~17 min, then ~2 min
+    # per iteration
+    resolution: 100
   S01:
     # the half-pipe margins thin to a few metres within 250 m; at 50 m they
     # are lost and the model stops there (obs 36 m/yr, model 3 m/yr)
