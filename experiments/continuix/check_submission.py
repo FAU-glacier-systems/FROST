@@ -17,12 +17,14 @@ import argparse
 import glob
 import os
 import re
+import sys
 import warnings
 
 import numpy as np
 import xarray as xr
 import yaml
 
+sys.path.insert(0, os.getcwd())
 from frost.preprocess import continuix
 
 warnings.filterwarnings('ignore')
