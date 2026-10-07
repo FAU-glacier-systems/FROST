@@ -19,6 +19,43 @@ def emulator_path(rgi_id_dir):
     return os.path.join(rgi_id_dir, 'Preprocess', 'outputs', 'emulator.keras')
 
 
+def thickness_at_2000(input_file, product_year):
+    """Shift the thickness product of input.nc (the OGGM-shop thk, e.g.
+    Millan et al. 2022) from its reference year back to 2000 with the
+    observed dh/dt: thk_2000 = thk - dhdt * (product_year - 2000). Gaps of
+    the product inside the ice mask take the nearest value. Writes the result
+    to thk (start of the inversion) and thkprior (reference for a thickness
+    misfit); the unshifted product is kept as thk_product."""
+    from scipy.ndimage import distance_transform_edt
+
+    with Dataset(input_file, 'r+') as ds:
+        if 'thk_product' not in ds.variables:
+            product = ds.createVariable('thk_product', 'f4', ('y', 'x'))
+            product[:] = ds['thk'][:]
+        thk = np.array(ds['thk_product'][:].filled(np.nan)
+                       if np.ma.isMaskedArray(ds['thk_product'][:])
+                       else ds['thk_product'][:], dtype=float)
+        icemask = np.array(ds['icemask'][:]) > 0.5
+        dhdt = np.array(ds['dhdt'][:], dtype=float) if 'dhdt' in ds.variables \
+            else np.zeros_like(thk)
+
+        valid = np.isfinite(thk) & (thk > 0)
+        _, (iy, ix) = distance_transform_edt(~valid, return_indices=True)
+        thk = np.where(icemask & ~valid, thk[iy, ix], thk)
+        dhdt = np.where(np.isfinite(dhdt), dhdt, 0.0)
+        thk_2000 = np.where(icemask,
+                            np.maximum(thk - dhdt * (product_year - 2000), 0.0),
+                            0.0)
+
+        ds['thk'][:] = thk_2000
+        if 'thkprior' not in ds.variables:
+            ds.createVariable('thkprior', 'f4', ('y', 'x'))
+        ds['thkprior'][:] = np.where(icemask, thk_2000, np.nan)
+        ds['thkprior'].setncattr(
+            'description', f'thickness product of {product_year} shifted to '
+                           '2000 with the observed dh/dt')
+
+
 def main(rgi_id_dir, params_inversion_path, min_velocity_p99=10.0):
     """
     Generates params.json for IGM inversion and runs igm_run.
@@ -77,6 +114,11 @@ def main(rgi_id_dir, params_inversion_path, min_velocity_p99=10.0):
     # Load base parameters from params_inversion.yaml
     with open(params_inversion_path, 'r') as file:
         inv_params = yaml.safe_load(file)
+
+    # FROST options, not passed to IGM
+    frost_options = inv_params.pop('frost', None) or {}
+    if frost_options.get('thk_start') == 'product_2000':
+        thickness_at_2000(input_file, frost_options['thk_product_year'])
 
     # Drop the velsurf misfit term if no usable velocity observations are available
     if not flag_velsurfobs:
