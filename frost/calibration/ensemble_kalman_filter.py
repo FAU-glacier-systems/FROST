@@ -46,7 +46,7 @@ class EnsembleKalmanFilter:
     def __init__(self, rgi_id, rgi_id_dir, smb_model, ensemble_size, inflation,
                  seed, start_year, smb_prior_mean, smb_prior_std,
                  smb_reference_mean, smb_reference_std, usurf_ensemble, obs_provider,
-                 init_offset=0):
+                 init_offset=0, max_velbar=0.0):
         """
         Initializes the Ensemble Kalman Filter by loading required data and setting up
         the initial ensemble.
@@ -74,6 +74,8 @@ class EnsembleKalmanFilter:
         self.seed = seed
         self.start_year = start_year
         self.current_year = start_year
+        # cap of the depth-averaged speed in the forward runs (m/yr, 0: none)
+        self.max_velbar = max_velbar
 
         # Create ensemble directory if not existing
         ensemble_dir = os.path.join(self.rgi_id_dir, 'Ensemble')
@@ -242,6 +244,7 @@ class EnsembleKalmanFilter:
                         os.path.join(self.rgi_id_dir, "Ensemble", f"Member_{member_id}"),
                         os.path.join(self.rgi_id_dir, "climate_historical.nc"),
                         self.emulator_path,
+                        self.max_velbar,
                     )
                     for member_id, (usurf, smb) in enumerate(zip(self.ensemble_usurf, self.ensemble_smb))
                 ]
@@ -272,6 +275,7 @@ class EnsembleKalmanFilter:
                         os.path.join(self.rgi_id_dir, "Ensemble", f"Member_{member_id}"),
                         os.path.join(self.rgi_id_dir, "climate_historical.nc"),
                         self.emulator_path,
+                        self.max_velbar,
                     )
                 new_usurf_ensemble[member_id] = new_usurf
                 new_smb_raster_ensemble[member_id] = new_smb_raster

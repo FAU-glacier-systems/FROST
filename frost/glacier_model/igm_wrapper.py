@@ -42,7 +42,7 @@ def install_user_processes(workdir, processes):
 
 def forward(exp, output1D, output2D_3D, member_id, smb_model, usurf, smb,
             year_start, year_end, workdir, climate_file,
-            emulator_path="dahunet_mini.keras"):
+            emulator_path="dahunet_mini.keras", max_velbar=0.0):
     '''
     Runs a single forward model simulation for an ensemble member.
 
@@ -65,6 +65,9 @@ def forward(exp, output1D, output2D_3D, member_id, smb_model, usurf, smb,
         emulator_path (str)   - Iceflow network; pass the one saved by the
                                 inversion (igm_inversion.emulator_path) to
                                 avoid an initialisation shock
+        max_velbar (float)    - Cap of the depth-averaged speed (m/yr), 0 for
+                                none; keeps single cells at a retreating ice
+                                cliff from forcing tiny time steps
 
     Returns:
         member_id (int)         - Ensemble member ID
@@ -110,6 +113,7 @@ def forward(exp, output1D, output2D_3D, member_id, smb_model, usurf, smb,
                 # Frozen emulator, as igm-examples aletsch
                 # common/iceflow_offline.yaml. tau_ref comes from input.nc.
                 "method": "unified",
+                "force_max_velbar": float(max_velbar),
                 "numerics": {
                     "Nz": 2,
                     "basis_horizontal": "q1",

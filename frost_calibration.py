@@ -19,7 +19,7 @@ def main(rgi_id, rgi_id_dir, smb_model, synthetic, ensemble_size, inflation,
          iterations, seed, init_offset, elev_band_height, forward_parallel,
          synth_obs_std=None, smb_reference_mean=None, smb_reference_std=None,
          dark_monitor=True, monitor_plots='latest', method='esmda',
-         model_error=0.0):
+         model_error=0.0, max_velbar=0.0):
     """
     main function to run the calibration, handles the interaction between
     observation, ensemble and visualization. It saves the results in the experiment
@@ -53,6 +53,8 @@ def main(rgi_id, rgi_id_dir, smb_model, synthetic, ensemble_size, inflation,
            model_error(float)    - 1-sigma model error of the band-mean
                                    dh/dt (m/yr), added to the observation
                                    error of every band
+           max_velbar(float)     - cap of the depth-averaged speed in the
+                                   forward runs (m/yr), 0 for none
 
     Returns:
            none
@@ -101,7 +103,8 @@ def main(rgi_id, rgi_id_dir, smb_model, synthetic, ensemble_size, inflation,
                                       smb_prior_std=smb_prior_std,
                                       smb_reference_mean=smb_reference_mean,
                                       smb_reference_std=smb_reference_std,
-                                      obs_provider=obs_provider)
+                                      obs_provider=obs_provider,
+                                      max_velbar=max_velbar)
 
     # Initialise a monitor for visualising the process
     monitor = Monitor(EnKF_object=ensembleKF,
