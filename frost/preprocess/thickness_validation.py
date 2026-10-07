@@ -5,8 +5,12 @@
 
 """
 Comparison of the inverted ice thickness with thickness observations
-(thkobs in input.nc, GlaThiDa from OGGM shop). The inversion does not use
-them, so they validate it independently.
+(GlaThiDa from OGGM shop). The inversion does not use them, so they validate
+it independently. Every survey is moved to the date of the inverted state
+(2000, the start of the calibration) with the observed dh/dt of its cell,
+thk_2000 = thk_survey - dhdt * (survey_year - 2000), and averaged per cell.
+Without the GlaThiDa table (glathida_data.csv) the gridded thkobs of
+input.nc is used as it is.
 
 Writes, next to the inversion result in Preprocess/outputs:
     thickness_validation.json  bias, RMS and a table per elevation band
@@ -18,6 +22,7 @@ import json
 import os
 
 import numpy as np
+import pandas as pd
 from netCDF4 import Dataset
 
 # Elevation bands of equal ice area
@@ -31,6 +36,28 @@ def read_field(dataset, name):
     return values
 
 
+def thkobs_at_year(glathida_file, x, y, dhdt, year):
+    """GlaThiDa thickness moved to year with the cell's dh/dt and averaged
+    per grid cell, and the survey years of the cells (NaN without data)."""
+    points = pd.read_csv(glathida_file)
+    points = points[points.thickness > 0].copy()
+    survey_year = pd.to_datetime(points.date, errors='coerce').dt.year
+    points['year'] = survey_year.fillna(year)
+    points['ix'] = np.round((points.x_proj - x[0]) / (x[1] - x[0])).astype(int)
+    points['iy'] = np.round((points.y_proj - y[0]) / (y[1] - y[0])).astype(int)
+    points = points[(points.ix >= 0) & (points.ix < len(x))
+                    & (points.iy >= 0) & (points.iy < len(y))]
+    points['thk_year'] = (points.thickness - dhdt[points.iy, points.ix]
+                          * (points.year - year))
+    cells = points.groupby(['iy', 'ix'])[['thk_year', 'year']].mean()
+    thkobs = np.full(dhdt.shape, np.nan)
+    years = np.full(dhdt.shape, np.nan)
+    iy, ix = (cells.index.get_level_values(k).to_numpy() for k in ('iy', 'ix'))
+    thkobs[iy, ix] = cells.thk_year.to_numpy()
+    years[iy, ix] = cells.year.to_numpy()
+    return thkobs, years
+
+
 def elevation_bands(usurf, ice, observed):
     """Mean observed, inverted and input thickness per band."""
     edges = np.percentile(usurf[ice], np.linspace(0, 100, NUM_BANDS + 1))
@@ -42,23 +69,33 @@ def elevation_bands(usurf, ice, observed):
     return bands
 
 
-def validate_thickness(rgi_id_dir):
-    """Compare the inverted thickness with thkobs; returns the statistics,
-    or None if input.nc has no thickness observations on the ice."""
+def validate_thickness(rgi_id_dir, year=2000):
+    """Compare the inverted thickness (the state of year) with the thickness
+    observations; returns the statistics, or None if there are none on the
+    ice."""
     input_file = os.path.join(rgi_id_dir, 'Preprocess', 'data', 'input.nc')
     outputs_dir = os.path.join(rgi_id_dir, 'Preprocess', 'outputs')
+    glathida_file = os.path.join(rgi_id_dir, 'Preprocess', 'data',
+                                 os.path.basename(os.path.normpath(rgi_id_dir)),
+                                 'glathida_data.csv')
     with Dataset(input_file) as nc:
-        if 'thkobs' not in nc.variables:
-            print('Thickness validation: no thkobs in input.nc')
-            return None
-        thkobs = read_field(nc, 'thkobs')
+        thkobs = read_field(nc, 'thkobs') if 'thkobs' in nc.variables else None
         thk_input = read_field(nc, 'thk') if 'thk' in nc.variables else None
+        dhdt = read_field(nc, 'dhdt') if 'dhdt' in nc.variables else None
     with Dataset(os.path.join(outputs_dir, 'output.nc')) as nc:
         thk = read_field(nc, 'thk')
         usurf = read_field(nc, 'usurf')
         ice = read_field(nc, 'icemask') > 0.5
         x = np.array(nc['x'][:])
         y = np.array(nc['y'][:])
+
+    survey_years = None
+    if os.path.exists(glathida_file) and dhdt is not None:
+        thkobs, survey_years = thkobs_at_year(
+            glathida_file, x, y, np.nan_to_num(dhdt), year)
+    elif thkobs is None:
+        print('Thickness validation: no thickness observations')
+        return None
 
     observed = ice & np.isfinite(thkobs) & (thkobs > 0)
     if not observed.any():
@@ -74,6 +111,9 @@ def validate_thickness(rgi_id_dir):
         'bias': float(diff.mean()),
         'rms': float(np.sqrt(np.mean(diff ** 2))),
         'mae': float(np.mean(np.abs(diff))),
+        'year': year if survey_years is not None else None,
+        'survey_year_median': (float(np.median(survey_years[observed]))
+                               if survey_years is not None else None),
         'bands': [],
     }
     for band in elevation_bands(usurf, ice, observed):
@@ -122,7 +162,9 @@ def plot(path, x, y, thk, thkobs, ice, observed, stats):
 
     fig, axes = plt.subplots(1, 4, figsize=(17, 4.5))
     panels = [
-        (np.where(observed, thkobs, np.nan), 'Observed thickness (GlaThiDa)',
+        (np.where(observed, thkobs, np.nan),
+         'Observed thickness (GlaThiDa'
+         + (f", moved to {stats['year']})" if stats['year'] else ')'),
          'Blues', 0, vmax, 'm'),
         (np.where(ice, thk, np.nan), 'Inverted thickness', 'Blues', 0, vmax, 'm'),
         (diff, 'Inverted - observed', 'RdBu', -dmax, dmax, 'm'),
