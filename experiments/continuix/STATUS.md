@@ -323,11 +323,21 @@ from the GPR profiles is an estimate.
    Johannes Fürst acknowledged as FROST co-developer.
 2. Decided (2026-10-07): group GROUP_FAU2; Johannes is acknowledged, not
    a contributor. Then upload `GROUP_FAU2/` to the ContinuIX SharePoint.
-3. GLOB EXP16-20 for the 6 real glaciers (mandatory by the experiment
-   table): `tasks_glob.txt` (30 runs; the glob_* files already hold the
-   protocol's combination, unchanged fields are the site data). 20-year
-   forward runs: G01 ~70 min, submit with --time=03:00:00. Then add
-   `tasks_glob.txt` to `TASK_LISTS` and describe GLOB in the README.
+3. GLOB EXP16-20 done (job 4488466, 30 runs, EXP19 G01 92 min calibrate:
+   Maffezzoli ice fast, IGM time step 0.01 yr). In GROUP_FAU2 (97 files,
+   32.7 GPU hours); `check_submission.py` output in
+   `data/results/continuix/check_GROUP_FAU2.txt`. Hugonnet UNCT_DHDT 1.2-4.3
+   m/yr per pixel: posterior 65-108 % of the prior, UNCT_SMB 0.4-1.3 (G02
+   1.4-3.6). Glacier-mean SMB - FDIV off the observed dh/dt by > 0.5 m/yr
+   in 12 of 30: G02 EXP17-20 (-1.9..-3.0 vs -0.49; ELA 5600 +- 350 near the
+   summit, members lose the ~36 m of ice), G05 EXP17/19/20 (-2.1..-2.4 vs
+   -1.29), G06 EXP17/20, G01 EXP19 (-3.2 vs -0.94, Maffezzoli THK 265 vs
+   198 m). Cause: with the Hugonnet variogram ~18 % of the pixel variance
+   is correlated beyond 5 km, so a glacier-wide offset has ~0.9 m/yr
+   uncertainty (G05) and costs about 1 sigma. Documented in the README.
+   Open decision: accept, or constrain the glacier mean more tightly
+   (e.g. less long-range correlation or a glacier-wide error) and rerun
+   the 30 GLOB runs (~11 GPU hours).
 4. Optional, if time: ELA with a horizontal trend for G01 (5 parameters).
 
 ## Notes

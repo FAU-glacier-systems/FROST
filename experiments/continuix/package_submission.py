@@ -23,7 +23,8 @@ import yaml
 from netCDF4 import Dataset
 
 EXPERIMENT_DIR = 'experiments/continuix'
-TASK_LISTS = ['tasks_exp01.txt', 'tasks_exp02.txt', 'tasks_exp03-15.txt']
+TASK_LISTS = ['tasks_exp01.txt', 'tasks_exp02.txt', 'tasks_exp03-15.txt',
+              'tasks_glob.txt']
 CONTINUIX_FILES = ['README_submission_template.txt',
                    'FILE_NAMING_INSTRUCTIONS.txt']
 # 'raw' only for EXP02
