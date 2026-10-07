@@ -1,10 +1,7 @@
 # @package _global_
-# IGM field_inversion for alps_TI_projections: the ice thickness is fixed to
-# the Millan et al. (2022) product, shifted from 2017 to 2000 with the
-# observed dh/dt (frost: thk_start), and only the sliding field tau_ref is
-# fitted to the surface velocities, with the pretrained dahunet_mini network
-# (no fine-tuning). GlaThiDa is not used; it validates the thickness.
-# Compared with other strategies in inversion_variants/ (slide_only.yaml).
+# Inversion variant joint: Start from the Millan et al. (2022) product shifted to 2000; thickness
+# and tau_ref fitted to velocity, thickness held to the product (30 m).
+# GlaThiDa stays out of the fit (independent check).
 hydra:
   run:
     dir: outputs/inversion
@@ -51,6 +48,11 @@ assimilations:
     optimization:
       retrain_iter: 0
     variables:
+    - name: thk
+      transform: identity
+      lower_bound: 0.0
+      upper_bound: 1000.0
+      mask: icemask
     - name: tau_ref
       transform: log10
       lower_bound: 0.01
@@ -67,7 +69,18 @@ assimilations:
         - uvelsurfobs
         - vvelsurfobs
         std: 1.0
+      - name: thk
+        kind: gaussian
+        components:
+        - thk
+        obs:
+        - thkprior
+        std: 30.0
       regularization:
+      - name: thk
+        penalty: squared_laplacian
+        lam: 1000000.0
+        ref: usurf
       - name: tau_ref
         penalty: squared_laplacian
         lam: 10000000000.0
