@@ -144,7 +144,20 @@ S02 with the IGM-shape THK). In `GROUP_FAU2/` (67 files, 21.9 GPU hours).
 
 Velocity fit as EXP01 except G04 (r 0.40 vs 0.76) and G06 (0.40 vs
 0.62): gappy raw velocities. G03 fits worse than in EXP01 (noted in the
-README); not investigated further.
+README).
+
+G03 analysis (2026-10-07): within a 100 m band the observed dh/dt varies
+by only 0.2-0.5 m/yr, so the misfit is along the elevation profile, not
+between basins. The SMB the data need (obs dh/dt + model FDIV) is flat at
+~-4 m/yr from 2300 to 2600 m and then rises by ~11 m/yr per km to +1.9 at
+3100 m: no ELA with two gradients fits both, the upper half thins too
+fast. Above 3100 m the model slid 33 % too fast (lam 1e11). Test with
+tau_ref lam 1e10 for G03 (EXP01, EXP02): upper velocities 1.33 -> 1.09,
+r 0.97 -> 0.99, but the dh/dt fit did not improve (EXP01 band RMS 1.38 ->
+1.41, mean -1.55 -> -1.63; EXP02 2.94 -> 2.52, mean -2.32 -> -2.45): the
+worst bands (2800-3100 m) already had the right velocities, their FDIV did
+not change. Reverted to lam 1e11 (same for all glaciers). Remaining
+option: a more flexible SMB profile (more parameters, all glaciers).
 
 ## EXP03-15, mandatory glaciers (2026-10-06)
 
