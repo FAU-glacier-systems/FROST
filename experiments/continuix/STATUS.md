@@ -1,4 +1,4 @@
-# ContinuIX: status (2026-10-07)
+# ContinuIX: status (2026-10-07, EXP02 done)
 
 FROST contribution to ContinuIX WP2/WP3
 (https://github.com/ContinuIX/ContinuIX-1), SMB-gradient approach.
@@ -99,7 +99,7 @@ of ice-free domain past the terminus (also the cause of the -1.65 m/yr
 SMB in the submission). The inversion weights all velocities with std 1
 m/yr; IGM 3.2 field_inversion only takes a scalar std.
 
-## EXP02 raw data (2026-10-07, running)
+## EXP02 raw data (2026-10-07, done)
 
 Decided to include EXP02 (G01-G06, S02; there is no S01).
 `frost/preprocess/continuix_raw.py` (step `raw` of `run_continuix.py`)
@@ -129,11 +129,22 @@ are in the EXP01 CRS, nothing is reprojected.
   fast (mean 1716 m/yr), calibration diverged (ELA 14700 m).
 - ICEMASK: outline at the start of the dh/dt period, used as is
   (attribute `icemask_source`).
-Jobs: 4485043 (G01, G06 fine), 4485208 (G02-G05, S02; G04 fine, the
-others with the sqrt-distance THK). With the sqrt-distance THK the
-glacier-mean SMB of G02, G03, G05 was within 0.25 m/yr of EXP01; S02
-diverged. Rerun G02, G03, G05, S02 (tasks 2, 3, 5, 7) with the IGM-shape
-THK, then rebuild the package (`tasks_exp02.txt` is in `TASK_LISTS`).
+Final jobs: 4485043 (G01, G06), 4485208 (G04), 4486238 (G02, G03, G05,
+S02 with the IGM-shape THK). In `GROUP_FAU/` (67 files, 21.9 GPU hours).
+
+| Glacier | Obs. dh/dt | Model (EXP01) | Band RMS (EXP01) | SMB (EXP01) | ELA (EXP01) |
+|---|---|---|---|---|---|
+| G01 | -0.76 | -0.92 (-0.75) | 0.43 (0.29) | -1.05 (-0.87) | 1378 (1334) |
+| G02 | +1.61 | +1.36 (+1.46) | 0.69 (0.65) | +1.41 (+1.46) | 5111 (5083) |
+| G03 | -0.87 | -2.32 (-1.55) | 2.94 (1.38) | -2.03 (-1.26) | 3204 (3116) |
+| G04 | -1.29 | -1.16 (-1.18) | 0.24 (0.22) | -1.21 (-1.21) | 4463 (4465) |
+| G05 | -1.94 | -2.00 (-2.00) | 1.12 (1.04) | -1.99 (-2.08) | 3359 (3123) |
+| G06 | -0.95 | -1.25 (-1.19) | 0.64 (0.67) | -1.26 (-1.22) | 3223 (3215) |
+| S02 | -0.42 | -0.57 (-0.45) | 0.86 (0.28) | -0.39 (-0.23) | 3249 (2829) |
+
+Velocity fit as EXP01 except G04 (r 0.40 vs 0.76) and G06 (0.40 vs
+0.62): gappy raw velocities. G03 fits worse than in EXP01 (noted in the
+README); not investigated further.
 
 ## EXP03-15, mandatory glaciers (2026-10-06)
 
@@ -283,22 +294,25 @@ G04 needed `min_velocity_p99: 1` (slow glacier, 99th percentile 8.7 m/yr).
 
 ## Open
 
-EXP01 is done. Known limitations for the README: G03 upper half thins
-~1.2 m/yr too fast; G01 per-basin pattern (one ELA); S01 velocities -29 %.
+All mandatory experiments and EXP02 are done. Known limitations (in the
+README): G03 upper half thins ~1.2 m/yr too fast (worse in EXP02); G01
+per-basin pattern (one ELA); S01 velocities -29 %; EXP02 thickness away
+from the GPR profiles is an estimate.
 
-1. Submission package built (2026-10-07): `package_submission.py`
-   writes `data/results/continuix/GROUP_FAU/` (60 result files of
-   `tasks_exp01.txt` and `tasks_exp03-15.txt` with the `description`
-   attribute, `log_GROUP_FAU.txt` from `timings.json`, README, filled
-   checklist, ContinuIX instruction files). README and checklist are in
-   `experiments/continuix/submission/`. Group FAU, contributor Oskar
-   Herrmann (ORCID 0000-0002-0319-9065), JRG Glacier Systems & Natural
-   Hazards, Institute of Geography, FAU. 19.8 GPU hours.
-2. Before upload, Oskar to check: README text (PERMISSIONS "confirm",
-   acknowledgements), group shorthand. Then upload `GROUP_FAU/` to the
+1. Submission package (2026-10-07): `package_submission.py` writes
+   `data/results/continuix/GROUP_FAU/` (67 result files of
+   `tasks_exp01.txt`, `tasks_exp02.txt`, `tasks_exp03-15.txt` with the
+   `description` attribute, `log_GROUP_FAU.txt` from `timings.json`,
+   README, filled checklist, ContinuIX instruction files; 21.9 GPU
+   hours). README and checklist are in `experiments/continuix/submission/`.
+   Group FAU, contributor Oskar Herrmann (ORCID 0000-0002-0319-9065), JRG
+   Glacier Systems & Natural Hazards, Institute of Geography, FAU;
+   Johannes Fürst acknowledged as FROST co-developer.
+2. Before upload, Oskar to decide: Johannes also as contributor (needs his
+   ORCID)? Group shorthand GROUP_FAU OK? Then upload `GROUP_FAU/` to the
    ContinuIX SharePoint.
-3. Optional, if time: EXP02 (raw data); GLOB EXP16-20 for all real
-   glaciers; ELA with a horizontal trend for G01 (5 parameters).
+3. Optional, if time: GLOB EXP16-20 for all real glaciers; ELA with a
+   horizontal trend for G01 (5 parameters).
 
 ## Notes
 
