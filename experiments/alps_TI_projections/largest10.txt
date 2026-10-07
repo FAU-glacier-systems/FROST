@@ -1,0 +1,10 @@
+RGI2000-v7.0-G-11-02596 Grosser_Aletschgletscher
+RGI2000-v7.0-G-11-01225 Gornergletscher
+RGI2000-v7.0-G-11-02611 Fieschergletscher_VS
+RGI2000-v7.0-G-11-00757 Mer_de_Glace
+RGI2000-v7.0-G-11-02645 Unteraargletscher
+RGI2000-v7.0-G-11-02530 Oberaletsch_Gletscher
+RGI2000-v7.0-G-11-01581 Fieschergletscher_BE
+RGI2000-v7.0-G-11-03664 Pasterze
+RGI2000-v7.0-G-11-03239 Gepatsch_Ferner
+RGI2000-v7.0-G-11-00823 Glacier_de_Corbassiere

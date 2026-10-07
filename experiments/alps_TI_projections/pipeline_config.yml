@@ -1,0 +1,43 @@
+experiment_name: "alps_TI_projections"   # Name of the experiment
+rgi_id: "RGI2000-v7.0-G-11-01706"        # Rhone; override with --rgi_id
+smb_model: "TI"                          # OGGM temperature-index SMB
+
+pipeline_steps:
+  download: true                   # Enable downloading input data (keeps climate_historical.nc)
+  inversion: true                  # Enable inversion step
+  calibrate: true                  # Enable EnKF calibration step
+
+download:
+  oggm_shop: true                  # Use OGGM-shop data
+  hugonnet: true                   # Download Hugonnet et al. dh/dt data
+  year_interval: 20                # Temporal span for Hugonnet data
+  target_resolution: None          # Leave unset to use native resolution
+  # Custom path to Hugonnet data
+  hugonnet_directory: 'data/raw/hugonnet/11_rgi60_2000-01-01_2020-01-01'
+
+EnKF:
+  seed: 6                          # Random seed for reproducibility
+  inflation: 1                     # Ensemble inflation factor
+  ensemble_size: 36                # Number of ensemble members
+  iterations: 6                    # Number of EnKF iterations
+  init_offset: 0                   # No offset from the prior mean
+  elev_band_height: 50             # Height of elevation bands
+  forward_parallel: true           # Enable parallel forward simulation
+  synthetic: false                 # Use real observations, not synthetic test
+  method: esmda                    # ES-MDA: observation error x iterations per iteration
+  monitor_plots: latest            # all: png per iteration, latest: overwrite one png, final: last run only
+  dark_monitor: true               # Monitor plots on black (true) or white
+  max_velbar: 1000                 # Cap of the depth-averaged speed (m/yr) in the forward runs
+
+  # Prior mean from OGGM's own calibration of each glacier (mb_calib.json,
+  # GSWP3_W5E5); smb_prior_mean is only used with prior_from_oggm: false
+  prior_from_oggm: true
+  smb_prior_mean:
+    melt_f: 5.0                    # Melt factor [ mm w.e. / (degree C day) ]
+    prcp_fac: 1.42                 # Precipitation factor [ - ]
+    temp_bias: 0.92                # Temperature bias [ degree C ]
+
+  smb_prior_std:
+    melt_f: 2.5
+    prcp_fac: 0.5
+    temp_bias: 1.0
