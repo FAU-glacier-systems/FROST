@@ -338,11 +338,9 @@ from the GPR profiles is an estimate.
    Open decision: accept, or constrain the glacier mean more tightly
    (e.g. less long-range correlation or a glacier-wide error) and rerun
    the 30 GLOB runs (~11 GPU hours).
-4. EXP03-15 for the optional real glaciers G02, G03, G04, G06
-   (`tasks_exp03-15_optional.txt`, 52 runs, ~11 GPU hours): the
-   participation rules ask for "all experiments for at least 4 real-world
-   cases", the experiment table makes only G01, G05 mandatory. With them
-   all six real glaciers are covered. Then add the list to `TASK_LISTS`.
+4. EXP03-15 for the optional real glaciers G02, G03, G04, G06 done (job
+   4491276, 52 runs, no failures); in `TASK_LISTS`. Rebuild and check the
+   package on a compute node: `package_and_check.sh` (149 files).
 5. Optional, if time: ELA with a horizontal trend for G01 (5 parameters).
 
 ## Notes

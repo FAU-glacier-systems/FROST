@@ -8,7 +8,7 @@ CONTINUIX SUBMISSION CHECKLIST:
 [x] 3. Experiment results (nc). Results of each experiment, submitted as a single NetCDF file for each glacier and experiment. Follow formatting instructions described at `https://github.com/ContinuIX/ContinuIX-1`
        -> EXP01: G01-G06, S01, S02 (8 files)
        -> EXP02: G01-G06, S02 (7 files)
-       -> EXP03-EXP15: G01, G05, S01, S02 (52 files)
+       -> EXP03-EXP15: G01-G06, S01, S02 (104 files)
        -> EXP16-EXP20: G01-G06 (30 files)
        Fields: SMB, UNCT_SMB, FDIV, UNCT_FDIV, DENSITY (m i.e. yr-1; kg m-3) on the provided grid and CRS
        (EXP02: on the EXP01 grid, plus THK and BED for G02, G03, G05, S02).
