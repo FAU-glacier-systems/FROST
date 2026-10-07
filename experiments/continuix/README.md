@@ -28,7 +28,7 @@ sbatch --array=1-$(wc -l < experiments/continuix/tasks_exp01.txt) \
 
 - `data/results/continuix/EXP##/<glacier>/`: FROST results per glacier
 - `data/results/continuix/submission/EXP##/`: submission files
-- `data/results/continuix/GROUP_FAU/`: upload folder (`package_submission.py`)
+- `data/results/continuix/GROUP_FAU2/`: upload folder (`package_submission.py`)
 - `data/results/continuix/thk_forward/`, `tau_sweep/`: diagnostics
 
 ## Files
@@ -40,7 +40,7 @@ sbatch --array=1-$(wc -l < experiments/continuix/tasks_exp01.txt) \
 | `params_inversion_tau.yaml` | Inversion of the sliding `tau_ref` with the provided thickness (used) |
 | `params_inversion.yaml` | Thickness inversion from an SIA start (alternative) |
 | `run_continuix.py`, `run_continuix.sh` | Pipeline for one experiment and glacier; Slurm job |
-| `package_submission.py`, `submission/` | Upload folder `GROUP_FAU/`: result files, log, README, checklist |
+| `package_submission.py`, `submission/` | Upload folder `GROUP_FAU2/`: result files, log, README, checklist |
 | `tasks_*.txt` | Task lists for job arrays (`test`, `exp01`, `all`) |
 | `thk_forward.py`, `.sh` | Forward run with the provided thickness vs observed velocities |
 | `tau_sweep.py`, `.sh` | L-curve of the `tau_ref` regularisation (G03, G05) |

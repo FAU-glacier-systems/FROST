@@ -130,7 +130,7 @@ are in the EXP01 CRS, nothing is reprojected.
 - ICEMASK: outline at the start of the dh/dt period, used as is
   (attribute `icemask_source`).
 Final jobs: 4485043 (G01, G06), 4485208 (G04), 4486238 (G02, G03, G05,
-S02 with the IGM-shape THK). In `GROUP_FAU/` (67 files, 21.9 GPU hours).
+S02 with the IGM-shape THK). In `GROUP_FAU2/` (67 files, 21.9 GPU hours).
 
 | Glacier | Obs. dh/dt | Model (EXP01) | Band RMS (EXP01) | SMB (EXP01) | ELA (EXP01) |
 |---|---|---|---|---|---|
@@ -300,17 +300,16 @@ per-basin pattern (one ELA); S01 velocities -29 %; EXP02 thickness away
 from the GPR profiles is an estimate.
 
 1. Submission package (2026-10-07): `package_submission.py` writes
-   `data/results/continuix/GROUP_FAU/` (67 result files of
+   `data/results/continuix/GROUP_FAU2/` (67 result files of
    `tasks_exp01.txt`, `tasks_exp02.txt`, `tasks_exp03-15.txt` with the
-   `description` attribute, `log_GROUP_FAU.txt` from `timings.json`,
+   `description` attribute, `log_GROUP_FAU2.txt` from `timings.json`,
    README, filled checklist, ContinuIX instruction files; 21.9 GPU
    hours). README and checklist are in `experiments/continuix/submission/`.
-   Group FAU, contributor Oskar Herrmann (ORCID 0000-0002-0319-9065), JRG
+   Group FAU2, contributor Oskar Herrmann (ORCID 0000-0002-0319-9065), JRG
    Glacier Systems & Natural Hazards, Institute of Geography, FAU;
    Johannes Fürst acknowledged as FROST co-developer.
-2. Before upload, Oskar to decide: Johannes also as contributor (needs his
-   ORCID)? Group shorthand GROUP_FAU OK? Then upload `GROUP_FAU/` to the
-   ContinuIX SharePoint.
+2. Decided (2026-10-07): group GROUP_FAU2; Johannes is acknowledged, not
+   a contributor. Then upload `GROUP_FAU2/` to the ContinuIX SharePoint.
 3. Optional, if time: GLOB EXP16-20 for all real glaciers; ELA with a
    horizontal trend for G01 (5 parameters).
 

@@ -39,7 +39,7 @@ DESCRIPTION = (
     'ensemble mean of the calibrated SMB model on the surface at the middle '
     'of the period; FDIV: time-mean flux divergence of the calibrated '
     'ensemble forward runs; UNCT_*: ensemble standard deviation. Ice '
-    'equivalent with 910 kg m-3. See README_GROUP_FAU_method01.txt.')
+    'equivalent with 910 kg m-3. See README_GROUP_FAU2_method01.txt.')
 
 LOG_HEADER = """\
 ContinuIX computation log, GROUP_{group}, method01 (FROST)
@@ -67,7 +67,7 @@ area on the model grid; period: dh/dt period (synthetic glaciers: 2000-2010).
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
-    parser.add_argument('--group', default='FAU')
+    parser.add_argument('--group', default='FAU2')
     parser.add_argument('--continuix_repo', default='../ContinuIX-1',
                         help='clone of github.com/ContinuIX/ContinuIX-1')
     args = parser.parse_args()
