@@ -323,8 +323,12 @@ from the GPR profiles is an estimate.
    Johannes Fürst acknowledged as FROST co-developer.
 2. Decided (2026-10-07): group GROUP_FAU2; Johannes is acknowledged, not
    a contributor. Then upload `GROUP_FAU2/` to the ContinuIX SharePoint.
-3. Optional, if time: GLOB EXP16-20 for all real glaciers; ELA with a
-   horizontal trend for G01 (5 parameters).
+3. GLOB EXP16-20 for the 6 real glaciers (mandatory by the experiment
+   table): `tasks_glob.txt` (30 runs; the glob_* files already hold the
+   protocol's combination, unchanged fields are the site data). 20-year
+   forward runs: G01 ~70 min, submit with --time=03:00:00. Then add
+   `tasks_glob.txt` to `TASK_LISTS` and describe GLOB in the README.
+4. Optional, if time: ELA with a horizontal trend for G01 (5 parameters).
 
 ## Notes
 
