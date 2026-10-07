@@ -80,22 +80,9 @@ def main():
               args.glacier, data_dir)
     timed('prepare', continuix.prepare_input, data_dir, args.exp,
           args.glacier, rgi_id_dir, resolution=cfg['resolution'])
-    params_inversion = os.path.join(experiment_dir, cfg['params_inversion'])
-    if 'tau_ref_lam' in cfg:
-        # per-glacier regularisation of tau_ref: a copy of the parameters
-        with open(params_inversion) as f:
-            params = yaml.safe_load(f)
-        for term in params['assimilations']['field_inversion']['objective'][
-                'regularization']:
-            if term['name'] == 'tau_ref':
-                term['lam'] = float(cfg['tau_ref_lam'])
-        params_inversion = os.path.join(rgi_id_dir, 'params_inversion.yaml')
-        os.makedirs(rgi_id_dir, exist_ok=True)
-        with open(params_inversion, 'w') as f:
-            f.write('# @package _global_\n')
-            yaml.dump(params, f, sort_keys=False)
     timed('inversion', igm_inversion.main, rgi_id_dir=rgi_id_dir,
-          params_inversion_path=params_inversion,
+          params_inversion_path=os.path.join(experiment_dir,
+                                             cfg['params_inversion']),
           min_velocity_p99=cfg['min_velocity_p99'])
 
     def calibrate():
