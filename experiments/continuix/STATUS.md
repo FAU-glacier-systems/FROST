@@ -99,7 +99,7 @@ of ice-free domain past the terminus (also the cause of the -1.65 m/yr
 SMB in the submission). The inversion weights all velocities with std 1
 m/yr; IGM 3.2 field_inversion only takes a scalar std.
 
-## EXP02 raw data (2026-10-07, set up, not run yet)
+## EXP02 raw data (2026-10-07, running)
 
 Decided to include EXP02 (G01-G06, S02; there is no S01).
 `frost/preprocess/continuix_raw.py` (step `raw` of `run_continuix.py`)
@@ -108,19 +108,30 @@ the glacier (`exp02_dir`); the submission is on that grid too. Raw files
 are in the EXP01 CRS, nothing is reprojected.
 - DHDT: full period; G01 2013-2020 and 2020-2023 weighted 7 : 2.92;
   median resampling where the raw grid is finer (2-4 m outliers).
+  Glacier means match EXP01 (G02 +1.62/+1.56, G03 -0.88/-0.86,
+  G04 -1.30/-1.28).
 - DEM: G02 DEM_2013 (DEM_2006 is 0 off the glacier), else the start DEM.
-- VX/VY: mean of the years; V-FLAGGED 0 (unreliable) removed (G04, G06;
-  G04's flag file has no CRS, it is on the VX grid).
+- VX/VY: mean of the years; G06 V-FLAGGED 0 (unreliable) removed. G04's
+  V-FLAGGED is 1 exactly where the gappy VX is already missing (opposite
+  convention), not used.
 - THK: raster for G01 (2013; tagged "Geoid height" but is thickness,
-  r 0.999 with EXP01), G04, G06 -> as EXP01 (THK fixed, tau_ref inverted).
-  GPR points only for G02, G03, G05 (101k points), S02 -> THKOBS, mean per
-  cell; thickness and tau_ref inverted together
-  (`params_inversion_thkobs.yaml`: thk misfit std 10 m, lam as before).
+  r 0.999 with EXP01), G04, G06. GPR points only for G02, G03, G05 (101k
+  points), S02 (62 cells on the trunk): points averaged per cell
+  (THKOBS), THK = interpolated ratio THKOBS / sqrt(distance to outline)
+  times sqrt(distance) (nearest ratio outside the profiles). Then all
+  glaciers as EXP01 (THK fixed, tau_ref inverted).
+  Against the EXP01 thickness: G02 r 0.70 (+43 %), G03 0.76 (+35 %), G05
+  0.92 (+9 %), S02 0.27 (+160 %: basins far from the trunk profiles).
+  Perfect-plastic shape (1/slope) fits G03 better (r 0.89) but S02 worse
+  (x4-7). Tried first: joint inversion of thk and tau_ref with a thkobs
+  misfit (std 10 m) from the SIA start; it hardly moved (G03 at the GPR
+  cells 82 -> 94 m in 500 iterations, obs 285 m), dropped.
 - ICEMASK: outline at the start of the dh/dt period, used as is
   (attribute `icemask_source`).
-Login-node test G03: dh/dt -0.87 (EXP01 -0.86), 310 cells with GPR at 50 m.
-Run: `tasks_exp02.txt`. Then add it to `TASK_LISTS` in
-`package_submission.py` and describe EXP02 in the README.
+Job 4485043: G01, G06 fine (raster THK). G02 (empty shapefile records)
+and G04 (flag) crashed; G03, G05, S02 ran with the joint inversion.
+Rerun G02-G05, S02 (tasks 2-5, 7). Then add `tasks_exp02.txt` to
+`TASK_LISTS` in `package_submission.py` and describe EXP02 in the README.
 
 ## EXP03-15, mandatory glaciers (2026-10-06)
 

@@ -13,12 +13,15 @@ glacier, so that continuix.prepare_input reads it like any other experiment.
   pixels of the 2-4 m products do not bias a cell.
 - DEM: the most complete DEM; prepare_input shifts it with DHDT to the
   start of the period.
-- VX, VY: mean over the available years, pixels flagged unreliable
+- VX, VY: mean over the available years; G06's pixels flagged unreliable
   (V-FLAGGED 0) removed.
 - THK: the thickness raster where there is one (G01, G04, G06). Where the
   thickness is only measured along GPR profiles (G02, G03, G05, S02), the
-  points are averaged per cell into THKOBS and THK is left out: the
-  thickness is then inverted.
+  points are averaged per cell into THKOBS, and THK is interpolated from
+  them with a valley shape, zero at the outline (_interpolate_thickness).
+  (A joint
+  inversion of thickness and sliding from the SIA start hardly moved
+  towards the points: G03 -192 m at the GPR cells after 500 iterations.)
 - ICEMASK: the outline at the start of the dh/dt period (attribute
   icemask_source = 'ICEMASK': used as it is, see continuix.experiment_icemask).
 
@@ -40,6 +43,8 @@ import rasterio.features
 import xarray as xr
 from pyogrio.raw import read
 from rasterio.warp import Resampling, reproject
+from scipy.interpolate import griddata
+from scipy.ndimage import distance_transform_edt
 from shapely import from_wkb
 
 from frost.preprocess.continuix import _crs, _transform, open_experiment
@@ -80,10 +85,10 @@ RAW = {
         dhdt_timestamp='2021-2025',
         dem='EXP02_G04_DEM_2021_2m.tif', dem_timestamp='2021',
         thk='EXP02_G04_THK_2021_25m.tif',
+        # V-FLAGGED is 1 exactly where these are already missing (the
+        # opposite of G06's flag), so it is not used
         vel=[('EXP02_G04_VX_2022-2023_gappy.tif',
               'EXP02_G04_VY_2022-2023_gappy.tif')],
-        # no CRS in the file; same grid as the velocities
-        vel_flag='EXP02_G04_V-FLAGGED.tif',
         outline='EXP02_G04_outline_2021.shp'),
     'G05': dict(
         dhdt=[('EXP02_G05_DHDT_20170901-20230823.tif', 1.0)],
@@ -110,8 +115,7 @@ def _target(grid):
     return np.full((grid.sizes['y'], grid.sizes['x']), np.nan), _transform(grid)
 
 
-def _warp(path, grid, crs, src_crs=None, src_transform=None,
-          resampling=None):
+def _warp(path, grid, crs, resampling=None):
     """GeoTIFF band 1 on the EXP01 grid: median of the raw pixels per cell
     where the raw grid is finer, bilinear otherwise. Returns ascending y."""
     dst, dst_transform = _target(grid)
@@ -123,8 +127,8 @@ def _warp(path, grid, crs, src_crs=None, src_transform=None,
             coarsen = abs(src.res[0]) < abs(dst_transform.a)
             resampling = Resampling.med if coarsen else Resampling.bilinear
         reproject(source=values, destination=dst,
-                  src_transform=src_transform or src.transform,
-                  src_crs=src_crs or src.crs, src_nodata=np.nan,
+                  src_transform=src.transform, src_crs=src.crs,
+                  src_nodata=np.nan,
                   dst_transform=dst_transform, dst_crs=crs,
                   dst_nodata=np.nan, resampling=resampling)
     return dst[::-1]
@@ -135,9 +139,12 @@ def _points_to_grid(path, field, grid):
     meta, _, geometry, fields = read(path)
     values = np.asarray(fields[list(meta['fields']).index(field)],
                         dtype=np.float64)
+    # G02 has 187 empty records (no geometry, no thickness)
     points = from_wkb(geometry)
-    x = np.array([p.x for p in points])
-    y = np.array([p.y for p in points])
+    x = np.array([np.nan if p is None else p.x for p in points])
+    y = np.array([np.nan if p is None else p.y for p in points])
+    values[~np.isfinite(x)] = np.nan
+    x, y = np.nan_to_num(x), np.nan_to_num(y)
     xs, ys = grid['x'].values, grid['y'].values
     dx, dy = xs[1] - xs[0], ys[1] - ys[0]
     col = np.round((x - xs[0]) / dx).astype(int)
@@ -160,6 +167,24 @@ def _outline_mask(path, grid):
         [(g, 1) for g in from_wkb(geometry)], out_shape=dst.shape,
         transform=dst_transform, fill=0, dtype='uint8')
     return mask[::-1].astype(bool)
+
+
+def _interpolate_thickness(thkobs, icemask):
+    """THK from the point cells: thickness over sqrt(distance to the outline)
+    interpolated linearly between the points (nearest outside them) and
+    multiplied back, so THK matches the points, goes to zero at the outline
+    and keeps a valley-shaped cross profile between the profiles."""
+    shape = np.sqrt(distance_transform_edt(icemask))
+    known = icemask & np.isfinite(thkobs) & (shape > 0)
+    ratio = thkobs[known] / shape[known]
+    targets = np.argwhere(icemask)
+    points = np.argwhere(known)
+    values = griddata(points, ratio, targets, method='linear')
+    nearest = griddata(points, ratio, targets, method='nearest')
+    thk = np.zeros(icemask.shape)
+    thk[icemask] = np.where(np.isfinite(values), values, nearest) \
+        * shape[icemask]
+    return thk
 
 
 def build(raw_dir, data_dir, glacier, out_dir):
@@ -198,15 +223,8 @@ def build(raw_dir, data_dir, glacier, out_dir):
     # Velocity: mean of the years, flagged pixels removed
     flag = None
     if 'vel_flag' in spec:
-        # G04's flag file has no CRS: it is on the grid of the velocities
-        with rasterio.open(os.path.join(folder, spec['vel'][0][0])) as vx:
-            vel_crs, vel_transform = vx.crs, vx.transform
-        flag_path = os.path.join(folder, spec['vel_flag'])
-        with rasterio.open(flag_path) as f:
-            has_crs = f.crs is not None
-        flag = _warp(flag_path, grid, crs,
-                     src_crs=None if has_crs else vel_crs,
-                     src_transform=None if has_crs else vel_transform,
+        # 0 unreliable, 1 reliable (G06 file description)
+        flag = _warp(os.path.join(folder, spec['vel_flag']), grid, crs,
                      resampling=Resampling.nearest)
     for i, name in enumerate(['VX', 'VY']):
         stack = np.array([_warp(os.path.join(folder, pair[i]), grid, crs)
@@ -222,6 +240,8 @@ def build(raw_dir, data_dir, glacier, out_dir):
                         + (f', {spec["vel_flag"]} == 0 removed'
                            if flag is not None else ''))
 
+    icemask = _outline_mask(os.path.join(folder, spec['outline']), grid)
+    add('ICEMASK', icemask, description=spec['outline'])
     if 'thk' in spec:
         add('THK', _warp(os.path.join(folder, spec['thk']), grid, crs),
             units='m i.e.', description=spec['thk'])
@@ -232,9 +252,9 @@ def build(raw_dir, data_dir, glacier, out_dir):
         add('THKOBS', thkobs, units='m i.e.',
             description=f'{shapefile} ({count} points, field {field}), '
                         'mean per cell')
-
-    add('ICEMASK', _outline_mask(os.path.join(folder, spec['outline']), grid),
-        description=spec['outline'])
+        add('THK', _interpolate_thickness(thkobs, icemask), units='m i.e.',
+            description='THKOBS interpolated (ratio to sqrt of the distance to '
+                        'the outline), 0 at the outline')
     out['spatial_ref'] = reference['spatial_ref']
     for name in out.data_vars:
         if name != 'spatial_ref':
@@ -252,12 +272,21 @@ def build(raw_dir, data_dir, glacier, out_dir):
 
 
 def _build_s02(raw_dir, path):
-    """S02: one netCDF on the EXP01 grid; THK only along profiles."""
+    """S02: one netCDF on the EXP01 grid; THK only along profiles, so
+    interpolated as for the real glaciers."""
     ds = xr.open_dataset(os.path.join(raw_dir, EXP, 'S02',
                                       'EXP02_S02_all.nc')).load()
     ds = ds.rename({'THK': 'THKOBS'}).drop_vars(['BED', 'UNCT_THK'])
+    icemask = ds['ICEMASK'].values
+    icemask = np.isfinite(icemask) & (icemask > 0)
+    ds['THK'] = (ds['THKOBS'].dims,
+                 _interpolate_thickness(ds['THKOBS'].values, icemask))
+    ds['THK'].attrs = {'units': 'm i.e.', 'grid_mapping': 'spatial_ref',
+                       'description': 'THKOBS interpolated (ratio to sqrt '
+                                      'of the distance to the outline)'}
     ds.attrs['icemask_source'] = 'ICEMASK'
-    ds.attrs['source'] = 'EXP02_S02_all.nc, THK renamed to THKOBS'
+    ds.attrs['source'] = ('EXP02_S02_all.nc, THK (profiles only) renamed to '
+                          'THKOBS and interpolated to THK')
     ds.to_netcdf(path)
     _summary(ds, 'S02')
 

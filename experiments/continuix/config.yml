@@ -10,9 +10,6 @@ smb_model: "ELA"
 # provided THK fixed, sliding (tau_ref) inverted; params_inversion.yaml
 # inverts the thickness from an SIA start instead
 params_inversion: "params_inversion_tau.yaml"
-# EXP02 G02, G03, G05, S02: thickness only along GPR profiles, so thickness
-# and tau_ref are inverted together
-params_inversion_thkobs: "params_inversion_thkobs.yaml"
 # velocities are always provided; slow glaciers (G04: 99th percentile
 # 8.7 m/yr) must not be treated as missing data
 min_velocity_p99: 1.0

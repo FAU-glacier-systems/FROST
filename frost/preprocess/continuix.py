@@ -210,9 +210,8 @@ def prepare_input(data_dir, exp, glacier, rgi_id_dir, resolution=50.0):
     coarse experiments (EXP15, S02) keep their resolution. Fine data are
     block averaged; the ice mask is the cells that are at least half ice.
     THK is the start (or, with params_inversion_tau.yaml, fixed) thickness
-    of the inversion. Where only point thicknesses exist (EXP02 THKOBS),
-    they go to thkobs and the thickness is inverted (meta thk_source
-    'points').
+    of the inversion. Point thicknesses (EXP02 THKOBS) go to thkobs, which
+    the inversion is checked against.
 
     Returns:
         dict  - metadata written to continuix.json
@@ -238,9 +237,7 @@ def prepare_input(data_dir, exp, glacier, rgi_id_dir, resolution=50.0):
 
     fields = {
         'usurf': ds['DEM'].values.astype(np.float64),
-        # EXP02 with GPR points only: no THK, IGM starts from the SIA
-        'thk': (_gaps_to_nan(ds['THK'].values, icemask_data) if 'THK' in ds
-                else np.zeros(icemask_data.shape)),
+        'thk': _gaps_to_nan(ds['THK'].values, icemask_data),
         'thkobs': (ds['THKOBS'].values.astype(np.float64) if 'THKOBS' in ds
                    else np.full(icemask_data.shape, np.nan)),
         'icemask': icemask_data.astype(np.float64),
@@ -320,7 +317,6 @@ def prepare_input(data_dir, exp, glacier, rgi_id_dir, resolution=50.0):
         'resolution_data': dx_data,
         'resolution_model': dx,
         'resampling': resampling.name,
-        'thk_source': 'points' if 'THKOBS' in ds else 'raster',
         'ice_area_km2': float(icemask.sum() * dx ** 2 / 1e6),
         'dhdt_mean': float(np.nanmean(dhdt[icemask])),
         'usurf_median': float(np.median(usurf[icemask])),
@@ -462,10 +458,7 @@ def write_submission(rgi_id_dir, path, method_description=''):
                       'uncertainty of FDIV (1 sigma of the calibrated ensemble)',
                       'm i.e./yr'),
         'THK': (thk, 'ice thickness (modified: IGM inversion of the surface '
-                     'velocity' + (' and the thickness points'
-                                   if meta.get('thk_source') == 'points'
-                                   else ', not the provided THK') + ')',
-                'm i.e.'),
+                     'velocity, not the provided THK)', 'm i.e.'),
         'BED': (masked(dem - thk),
                 'basal topography (modified: DEM - THK)', 'm a.s.l.'),
         'DENSITY': (masked(np.full(icemask.shape, ICE_DENSITY)),

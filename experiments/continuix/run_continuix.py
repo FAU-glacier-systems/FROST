@@ -80,19 +80,10 @@ def main():
               args.glacier, data_dir)
     timed('prepare', continuix.prepare_input, data_dir, args.exp,
           args.glacier, rgi_id_dir, resolution=cfg['resolution'])
-
-    def inversion():
-        # thickness only along GPR profiles (EXP02): inverted as well
-        with open(continuix.meta_path(rgi_id_dir)) as f:
-            points = json.load(f).get('thk_source') == 'points'
-        params = cfg['params_inversion_thkobs' if points
-                     else 'params_inversion']
-        igm_inversion.main(rgi_id_dir=rgi_id_dir,
-                           params_inversion_path=os.path.join(experiment_dir,
-                                                              params),
-                           min_velocity_p99=cfg['min_velocity_p99'])
-
-    timed('inversion', inversion)
+    timed('inversion', igm_inversion.main, rgi_id_dir=rgi_id_dir,
+          params_inversion_path=os.path.join(experiment_dir,
+                                             cfg['params_inversion']),
+          min_velocity_p99=cfg['min_velocity_p99'])
 
     def calibrate():
         continuix.write_observations(rgi_id_dir)
