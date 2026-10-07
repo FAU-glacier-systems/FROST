@@ -11,6 +11,7 @@ import netCDF4
 from netCDF4 import Dataset
 from scipy.ndimage import zoom
 import shutil
+import subprocess
 import yaml
 import rioxarray
 
@@ -346,17 +347,23 @@ def download_OGGM_shop(rgi_id, rgi_id_dir, flag_OGGM_climate):
         "processes": {}
     }
 
-    # Write YAML
-    with open(os.path.join('experiment', 'params_oggm_shop.yaml'), 'w') as f:
-        f.write("# @package _global_\n")
-        yaml.dump(params, f, sort_keys=False)
+    def run_oggm_shop():
+        with open(os.path.join('experiment', 'params_oggm_shop.yaml'), 'w') as f:
+            f.write("# @package _global_\n")
+            yaml.dump(params, f, sort_keys=False)
+        # In a subprocess: hydra exits the process when igm_run fails
+        return subprocess.run(["igm_run", "+experiment=params_oggm_shop"]).returncode
 
-    # Run the igm_run command
-    import sys
-    from igm.igm_run import main as igm_main
-    sys.argv = ["igm_run", "+experiment=params_oggm_shop"]
-    igm_main()
-    # subprocess.run(["igm_run", "+experiment=params"], check=True)
+    if run_oggm_shop() != 0:
+        # OGGM writes no glathida_data.csv for a glacier without GlaThiDa
+        # points, but IGM reads it whenever incl_glathida is set
+        glathida_file = os.path.join('data', rgi_id, 'glathida_data.csv')
+        if os.path.exists(glathida_file):
+            raise RuntimeError(f'OGGM shop failed for {rgi_id}')
+        print(f'No GlaThiDa points for {rgi_id}; OGGM shop without GlaThiDa')
+        params['inputs']['oggm_shop']['incl_glathida'] = False
+        if run_oggm_shop() != 0:
+            raise RuntimeError(f'OGGM shop failed for {rgi_id}')
     # TODO remove unnecessary files
 
     if flag_OGGM_climate:
