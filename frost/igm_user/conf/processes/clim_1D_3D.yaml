@@ -1,6 +1,7 @@
 clim_1D_3D:
   update_freq: 1
   file: file.txt
+  climate_file: ../../../../climate_historical.nc
   clim_trend_array:
     - ["time", "delta_temp", "prec_scal"]
     - [1900, 0.0, 1.0]

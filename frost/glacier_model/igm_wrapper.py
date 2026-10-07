@@ -155,7 +155,9 @@ def forward(exp, output1D, output2D_3D, member_id, smb_model, usurf, smb,
             'prcp_gradient'] = 0.00035  # https://hess.copernicus.org/articles/24/5355/2020/
         igm_params['processes']['clim_1D_3D']['temp_default_gradient'] = -0.0065
         igm_params['processes']['clim_1D_3D']['update_freq'] = 1
-        igm_params['processes']['clim_1D_3D']['file'] = climate_file
+        igm_params['processes']['clim_1D_3D']['climate_file'] = os.path.abspath(climate_file)
+        # IGM >= 3.2 does not merge user/conf defaults, so set every key
+        igm_params['processes']['clim_1D_3D']['seed_par'] = 123
 
         igm_params['processes']["smb_1D_3D"] = {
             "temp_all_solid": 0.0

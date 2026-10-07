@@ -240,7 +240,7 @@ class EnsembleKalmanFilter:
                         year_start,
                         year_end,
                         os.path.join(self.rgi_id_dir, "Ensemble", f"Member_{member_id}"),
-                        "../../climate_historical.nc",
+                        os.path.join(self.rgi_id_dir, "climate_historical.nc"),
                         self.emulator_path,
                     )
                     for member_id, (usurf, smb) in enumerate(zip(self.ensemble_usurf, self.ensemble_smb))
@@ -270,7 +270,7 @@ class EnsembleKalmanFilter:
                         year_start,
                         year_end,
                         os.path.join(self.rgi_id_dir, "Ensemble", f"Member_{member_id}"),
-                        "../../climate_historical.nc",
+                        os.path.join(self.rgi_id_dir, "climate_historical.nc"),
                         self.emulator_path,
                     )
                 new_usurf_ensemble[member_id] = new_usurf

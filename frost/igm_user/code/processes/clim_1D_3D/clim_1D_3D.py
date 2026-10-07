@@ -97,8 +97,10 @@ def initialize(cfg, state):
     #print(os.getcwd())
 
     #ds = xr.open_dataset(os.path.join(path_RGI, "climate_historical.nc"))
-    # relative to the run dir <workdir>/outputs/forward (igm_wrapper)
-    ds = xr.open_dataset(os.path.join("../", "../", "../", "../", "climate_historical.nc"))
+    # OGGM-format monthly climate (climate_historical.nc or a projection
+    # forcing); relative paths are relative to the run dir
+    # <workdir>/outputs/forward (igm_wrapper)
+    ds = xr.open_dataset(cfg.processes.clim_1D_3D.climate_file)
 # end JJF
     
     time = ds["time"].values.astype("float32").squeeze()       # unit: year
@@ -176,8 +178,8 @@ def update(cfg, state):
         else:
             i0, i1 = np.round(cfg.processes.clim_1D_3D.ref_period - state.yr_0)
             II = np.random.randint(i0, i1)
-            delta_temp = interp1d_tf(state.climpar[:, 0], state.climpar[:, 1], state.t)
-            prec_scal = interp1d_tf(state.climpar[:, 0], state.climpar[:, 2], state.t)
+            delta_temp = interp1d_tf(state.clim_trend_array[:, 0], state.clim_trend_array[:, 1], state.t)
+            prec_scal = interp1d_tf(state.clim_trend_array[:, 0], state.clim_trend_array[:, 2], state.t)
 
         PREC = tf.expand_dims(
             tf.expand_dims(np.squeeze(state.prec[II, :]), axis=-1), axis=-1
