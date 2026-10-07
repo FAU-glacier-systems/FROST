@@ -51,6 +51,9 @@ glaciers:
   # model_error = 0.5 * sqrt(chi2/n) of the 0.5 m/yr run (6 Oct): G03 6.5,
   # G05 8.6; the others are 0.15-2.3
   G03:
+    # the accumulation basins (> 3100 m) slide 33 % too fast with lam 1e11
+    # (1.10 with 1e10, tau_sweep.py), exporting too much ice
+    tau_ref_lam: 1.0e+10
     EnKF:
       model_error: 1.3
   G05:
