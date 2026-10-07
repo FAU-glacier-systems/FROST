@@ -1,4 +1,4 @@
-# ContinuIX: status (2026-10-06, end of day)
+# ContinuIX: status (2026-10-07)
 
 FROST contribution to ContinuIX WP2/WP3
 (https://github.com/ContinuIX/ContinuIX-1), SMB-gradient approach.
@@ -250,13 +250,17 @@ G04 needed `min_velocity_p99: 1` (slow glacier, 99th percentile 8.7 m/yr).
 EXP01 is done. Known limitations for the README: G03 upper half thins
 ~1.2 m/yr too fast; G01 per-basin pattern (one ELA); S01 velocities -29 %.
 
-1. Submission documents (next): `README_<GROUP>_method01.txt` (method,
-   pre-processing, uncertainty, the known limitations above),
-   `log_<GROUP>.txt` (compute times from
-   `data/results/continuix/*/*/timings.json`), filled
-   `SUBMISSION_CHECKLIST.txt`; `write_submission` writes an empty
-   `description` attribute: pass the method text.
-2. Needed from Oskar: group shorthand, contributors with ORCID.
+1. Submission package built (2026-10-07): `package_submission.py`
+   writes `data/results/continuix/GROUP_FAU/` (60 result files of
+   `tasks_exp01.txt` and `tasks_exp03-15.txt` with the `description`
+   attribute, `log_GROUP_FAU.txt` from `timings.json`, README, filled
+   checklist, ContinuIX instruction files). README and checklist are in
+   `experiments/continuix/submission/`. Group FAU, contributor Oskar
+   Herrmann (ORCID 0000-0002-0319-9065), JRG Glacier Systems & Natural
+   Hazards, Institute of Geography, FAU. 19.8 GPU hours.
+2. Before upload, Oskar to check: README text (PERMISSIONS "confirm",
+   acknowledgements), group shorthand. Then upload `GROUP_FAU/` to the
+   ContinuIX SharePoint.
 3. Optional, if time: EXP02 (raw data); GLOB EXP16-20 for all real
    glaciers; ELA with a horizontal trend for G01 (5 parameters).
 
