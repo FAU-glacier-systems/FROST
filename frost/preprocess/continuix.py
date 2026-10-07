@@ -152,7 +152,11 @@ def experiment_icemask(data_dir, exp, glacier, ds):
     """Ice mask for one experiment: the EXP01 mask of the glacier where the
     experiment is on the EXP01 grid (the perturbation experiments change
     the data, not the extent; EXP05 adds thickness noise also past S01's
-    terminus), else its own."""
+    terminus), else its own. EXP02 (continuix_raw) brings its own outline
+    as ICEMASK, marked by the attribute icemask_source."""
+    if ds.attrs.get('icemask_source') == 'ICEMASK':
+        icemask = ds['ICEMASK'].values
+        return np.isfinite(icemask) & (icemask > 0)
     if exp != 'EXP01':
         reference = open_experiment(data_dir, 'EXP01', glacier)
         if np.array_equal(reference['x'].values, ds['x'].values) \
@@ -205,8 +209,10 @@ def prepare_input(data_dir, exp, glacier, rgi_id_dir, resolution=50.0):
     The model grid spacing is max(resolution, ContinuIX spacing), so
     coarse experiments (EXP15, S02) keep their resolution. Fine data are
     block averaged; the ice mask is the cells that are at least half ice.
-    The provided THK and BED are not used: the inversion starts from IGM's
-    SIA thickness, as in test_default.
+    THK is the start (or, with params_inversion_tau.yaml, fixed) thickness
+    of the inversion. Where only point thicknesses exist (EXP02 THKOBS),
+    they go to thkobs and the thickness is inverted (meta thk_source
+    'points').
 
     Returns:
         dict  - metadata written to continuix.json
@@ -232,7 +238,11 @@ def prepare_input(data_dir, exp, glacier, rgi_id_dir, resolution=50.0):
 
     fields = {
         'usurf': ds['DEM'].values.astype(np.float64),
-        'thk': _gaps_to_nan(ds['THK'].values, icemask_data),
+        # EXP02 with GPR points only: no THK, IGM starts from the SIA
+        'thk': (_gaps_to_nan(ds['THK'].values, icemask_data) if 'THK' in ds
+                else np.zeros(icemask_data.shape)),
+        'thkobs': (ds['THKOBS'].values.astype(np.float64) if 'THKOBS' in ds
+                   else np.full(icemask_data.shape, np.nan)),
         'icemask': icemask_data.astype(np.float64),
         'uvelsurfobs': ds['VX'].values.astype(np.float64),
         'vvelsurfobs': ds['VY'].values.astype(np.float64),
@@ -258,6 +268,9 @@ def prepare_input(data_dir, exp, glacier, rgi_id_dir, resolution=50.0):
     source = xr.Dataset({k: (('y', 'x'), v) for k, v in fields.items()},
                         coords={'x': x, 'y': y})
     model = {k: _regrid(source, k, crs, grid, crs, resampling) for k in fields}
+    # isolated points: mean of the points per model cell, never interpolated
+    model['thkobs'] = _regrid(source, 'thkobs', crs, grid, crs,
+                              Resampling.average)
 
     icemask = np.nan_to_num(model['icemask']) >= 0.5
     usurf = _fill_nearest(model['usurf'])
@@ -282,8 +295,8 @@ def prepare_input(data_dir, exp, glacier, rgi_id_dir, resolution=50.0):
             'icemask': icemask,
             'uvelsurfobs': model['uvelsurfobs'],
             'vvelsurfobs': model['vvelsurfobs'],
-            # keep ContinuIX THK out of the inversion
-            'thkobs': np.full((ny, nx), np.nan),
+            # point thicknesses (EXP02); ContinuIX THK stays out of the misfit
+            'thkobs': np.where(icemask, model['thkobs'], np.nan),
             'usurfobs': usurf,
             'icemaskobs': icemask,
             'dhdt': dhdt,
@@ -307,6 +320,7 @@ def prepare_input(data_dir, exp, glacier, rgi_id_dir, resolution=50.0):
         'resolution_data': dx_data,
         'resolution_model': dx,
         'resampling': resampling.name,
+        'thk_source': 'points' if 'THKOBS' in ds else 'raster',
         'ice_area_km2': float(icemask.sum() * dx ** 2 / 1e6),
         'dhdt_mean': float(np.nanmean(dhdt[icemask])),
         'usurf_median': float(np.median(usurf[icemask])),
@@ -448,7 +462,10 @@ def write_submission(rgi_id_dir, path, method_description=''):
                       'uncertainty of FDIV (1 sigma of the calibrated ensemble)',
                       'm i.e./yr'),
         'THK': (thk, 'ice thickness (modified: IGM inversion of the surface '
-                     'velocity, not the provided THK)', 'm i.e.'),
+                     'velocity' + (' and the thickness points'
+                                   if meta.get('thk_source') == 'points'
+                                   else ', not the provided THK') + ')',
+                'm i.e.'),
         'BED': (masked(dem - thk),
                 'basal topography (modified: DEM - THK)', 'm a.s.l.'),
         'DENSITY': (masked(np.full(icemask.shape, ICE_DENSITY)),

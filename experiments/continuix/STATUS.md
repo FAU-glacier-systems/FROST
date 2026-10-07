@@ -99,6 +99,29 @@ of ice-free domain past the terminus (also the cause of the -1.65 m/yr
 SMB in the submission). The inversion weights all velocities with std 1
 m/yr; IGM 3.2 field_inversion only takes a scalar std.
 
+## EXP02 raw data (2026-10-07, set up, not run yet)
+
+Decided to include EXP02 (G01-G06, S02; there is no S01).
+`frost/preprocess/continuix_raw.py` (step `raw` of `run_continuix.py`)
+turns the GeoTIFFs and shapefiles into `EXP02_<G>.nc` on the EXP01 grid of
+the glacier (`exp02_dir`); the submission is on that grid too. Raw files
+are in the EXP01 CRS, nothing is reprojected.
+- DHDT: full period; G01 2013-2020 and 2020-2023 weighted 7 : 2.92;
+  median resampling where the raw grid is finer (2-4 m outliers).
+- DEM: G02 DEM_2013 (DEM_2006 is 0 off the glacier), else the start DEM.
+- VX/VY: mean of the years; V-FLAGGED 0 (unreliable) removed (G04, G06;
+  G04's flag file has no CRS, it is on the VX grid).
+- THK: raster for G01 (2013; tagged "Geoid height" but is thickness,
+  r 0.999 with EXP01), G04, G06 -> as EXP01 (THK fixed, tau_ref inverted).
+  GPR points only for G02, G03, G05 (101k points), S02 -> THKOBS, mean per
+  cell; thickness and tau_ref inverted together
+  (`params_inversion_thkobs.yaml`: thk misfit std 10 m, lam as before).
+- ICEMASK: outline at the start of the dh/dt period, used as is
+  (attribute `icemask_source`).
+Login-node test G03: dh/dt -0.87 (EXP01 -0.86), 310 cells with GPR at 50 m.
+Run: `tasks_exp02.txt`. Then add it to `TASK_LISTS` in
+`package_submission.py` and describe EXP02 in the README.
+
 ## EXP03-15, mandatory glaciers (2026-10-06)
 
 All 52 tasks (G01, G05, S01, S02) in `data/results/continuix/EXP03..15`

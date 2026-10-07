@@ -4,7 +4,8 @@
 # Published under the GNU GPL (Version 3), check the LICENSE file
 
 """
-FROST for one ContinuIX experiment and glacier: ContinuIX input -> IGM
+FROST for one ContinuIX experiment and glacier: (EXP02: raw GeoTIFFs and
+shapefiles -> netCDF on the EXP01 grid ->) ContinuIX input -> IGM
 inversion -> EnKF calibration of the ELA SMB model against the ContinuIX
 dh/dt (ending with a forward run of the final ensemble) ->
 EXP##_G##_method##.nc.
@@ -23,12 +24,12 @@ import yaml
 
 sys.path.insert(0, os.getcwd())
 import frost_calibration
-from frost.preprocess import continuix, igm_inversion
+from frost.preprocess import continuix, continuix_raw, igm_inversion
 
 os.environ.setdefault("CUDA_VISIBLE_DEVICES", "")
 os.environ.setdefault("TF_FORCE_GPU_ALLOW_GROWTH", "true")
 
-STEPS = ['prepare', 'inversion', 'calibrate', 'submit']
+STEPS = ['raw', 'prepare', 'inversion', 'calibrate', 'submit']
 
 
 def merge(base, override):
@@ -71,12 +72,27 @@ def main():
         timings[step] = time.time() - t0
         print(f'--- {step}: {timings[step]:.0f} s')
 
-    timed('prepare', continuix.prepare_input, cfg['data_dir'], args.exp,
+    # EXP02 comes as GeoTIFFs and shapefiles: built into a netCDF first
+    data_dir = cfg['data_dir']
+    if args.exp == continuix_raw.EXP:
+        data_dir = cfg['exp02_dir']
+        timed('raw', continuix_raw.build, cfg['data_dir'], cfg['data_dir'],
+              args.glacier, data_dir)
+    timed('prepare', continuix.prepare_input, data_dir, args.exp,
           args.glacier, rgi_id_dir, resolution=cfg['resolution'])
-    timed('inversion', igm_inversion.main, rgi_id_dir=rgi_id_dir,
-          params_inversion_path=os.path.join(experiment_dir,
-                                             cfg['params_inversion']),
-          min_velocity_p99=cfg['min_velocity_p99'])
+
+    def inversion():
+        # thickness only along GPR profiles (EXP02): inverted as well
+        with open(continuix.meta_path(rgi_id_dir)) as f:
+            points = json.load(f).get('thk_source') == 'points'
+        params = cfg['params_inversion_thkobs' if points
+                     else 'params_inversion']
+        igm_inversion.main(rgi_id_dir=rgi_id_dir,
+                           params_inversion_path=os.path.join(experiment_dir,
+                                                              params),
+                           min_velocity_p99=cfg['min_velocity_p99'])
+
+    timed('inversion', inversion)
 
     def calibrate():
         continuix.write_observations(rgi_id_dir)
