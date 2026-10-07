@@ -1,4 +1,4 @@
-# ContinuIX: status (2026-10-07, EXP02 done)
+# ContinuIX: status (2026-10-07, end of day: all runs done)
 
 FROST contribution to ContinuIX WP2/WP3
 (https://github.com/ContinuIX/ContinuIX-1), SMB-gradient approach.
@@ -339,8 +339,15 @@ from the GPR profiles is an estimate.
    (e.g. less long-range correlation or a glacier-wide error) and rerun
    the 30 GLOB runs (~11 GPU hours).
 4. EXP03-15 for the optional real glaciers G02, G03, G04, G06 done (job
-   4491276, 52 runs, no failures); in `TASK_LISTS`. Rebuild and check the
-   package on a compute node: `package_and_check.sh` (149 files).
+   4491276, 52 runs, no failures). GROUP_FAU2 rebuilt on a compute node
+   (`package_and_check.sh`, job 4491988): 149 files, 42.9 GPU hours. All
+   pass the format checks; the 34 findings in `check_GROUP_FAU2.txt` are
+   the known ones: G03 budget (EXP01-15, ~-0.6 m/yr; EXP02 -1.4), S01 at
+   100 m, GLOB weak constraint (12 runs), local FDIV extremes.
+   Next session: GLOB decision (accept recommended), then upload
+   GROUP_FAU2 to the ContinuIX SharePoint. Summary PDF:
+   `data/results/continuix/summary/ContinuIX_FROST_summary.pdf` (before
+   the optional glaciers).
 5. Optional, if time: ELA with a horizontal trend for G01 (5 parameters).
 
 ## Notes
