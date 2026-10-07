@@ -1,3 +1,4 @@
+import json
 import os.path
 import shutil
 
@@ -15,6 +16,16 @@ os.environ.setdefault("TF_FORCE_GPU_ALLOW_GROWTH", "true")
 os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"  # Optional for JAX
 os.environ[
     "XLA_FLAGS"] = "--xla_force_host_platform_device_count=1"  # Makes JAX use only CPU
+
+
+def oggm_prior(rgi_id_dir, rgi_id):
+    """TI prior mean from OGGM's own calibration of the glacier (written by
+    the OGGM-shop download)."""
+    with open(os.path.join(rgi_id_dir, 'Preprocess', 'data', rgi_id,
+                           'mb_calib.json')) as f:
+        mb_calib = json.load(f)
+    return {key: float(mb_calib[key])
+            for key in ('melt_f', 'prcp_fac', 'temp_bias')}
 
 
 def run_frost_pipeline(cfg):
@@ -68,11 +79,15 @@ def run_frost_pipeline(cfg):
         #         (ELAs, melt params., ...) #
         #                                   #
         #####################################
+        enkf = dict(cfg['EnKF'])
+        if enkf.pop('prior_from_oggm', False):
+            enkf['smb_prior_mean'] = oggm_prior(rgi_id_dir, cfg['rgi_id'])
+            print(f"Prior mean from OGGM mb_calib.json: {enkf['smb_prior_mean']}")
         frost_calibration.main(
             rgi_id=cfg['rgi_id'],
             rgi_id_dir=rgi_id_dir,
             smb_model=cfg['smb_model'],
-            **cfg['EnKF']
+            **enkf
         )
 
     print("Pipeline finished.")

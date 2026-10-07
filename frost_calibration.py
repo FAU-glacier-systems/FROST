@@ -227,8 +227,11 @@ if __name__ == '__main__':
     if args.rgi_id is not None:
         cfg['rgi_id'] = args.rgi_id
 
-    main(rgi_id=cfg['rgi_id'],
-         rgi_id_dir=os.path.join('data', 'results', cfg['experiment_name'],
-                                 cfg['rgi_id']),
-         smb_model=cfg['smb_model'],
-         **cfg['EnKF'])
+    rgi_id_dir = os.path.join('data', 'results', cfg['experiment_name'],
+                              cfg['rgi_id'])
+    enkf = dict(cfg['EnKF'])
+    if enkf.pop('prior_from_oggm', False):
+        from frost_pipeline import oggm_prior
+        enkf['smb_prior_mean'] = oggm_prior(rgi_id_dir, cfg['rgi_id'])
+    main(rgi_id=cfg['rgi_id'], rgi_id_dir=rgi_id_dir,
+         smb_model=cfg['smb_model'], **enkf)
