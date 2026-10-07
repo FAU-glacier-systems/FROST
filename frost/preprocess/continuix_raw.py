@@ -17,11 +17,12 @@ glacier, so that continuix.prepare_input reads it like any other experiment.
   (V-FLAGGED 0) removed.
 - THK: the thickness raster where there is one (G01, G04, G06). Where the
   thickness is only measured along GPR profiles (G02, G03, G05, S02), the
-  points are averaged per cell into THKOBS, and THK is interpolated from
-  them with a valley shape, zero at the outline (_interpolate_thickness).
-  (A joint
-  inversion of thickness and sliding from the SIA start hardly moved
-  towards the points: G03 -192 m at the GPR cells after 500 iterations.)
+  points are averaged per cell into THKOBS, and THK is IGM's start
+  thickness scaled to them (_interpolate_thickness). Against the EXP01
+  THK: r 0.69-0.94. (Tried first: a joint inversion of thickness and
+  sliding hardly moved towards the points, G03 -192 m at the GPR cells;
+  sqrt(distance to the outline) as the shape made S02 2.6 times too thick
+  and its ice flow 35 times too fast.)
 - ICEMASK: the outline at the start of the dh/dt period (attribute
   icemask_source = 'ICEMASK': used as it is, see continuix.experiment_icemask).
 
@@ -44,7 +45,6 @@ import xarray as xr
 from pyogrio.raw import read
 from rasterio.warp import Resampling, reproject
 from scipy.interpolate import griddata
-from scipy.ndimage import distance_transform_edt
 from shapely import from_wkb
 
 from frost.preprocess.continuix import _crs, _transform, open_experiment
@@ -169,12 +169,17 @@ def _outline_mask(path, grid):
     return mask[::-1].astype(bool)
 
 
-def _interpolate_thickness(thkobs, icemask):
-    """THK from the point cells: thickness over sqrt(distance to the outline)
-    interpolated linearly between the points (nearest outside them) and
-    multiplied back, so THK matches the points, goes to zero at the outline
-    and keeps a valley-shaped cross profile between the profiles."""
-    shape = np.sqrt(distance_transform_edt(icemask))
+def _interpolate_thickness(thkobs, icemask, dem, vx, vy, dx):
+    """THK from the point cells: IGM's start thickness of the inversion
+    (SIA from velocity and slope, blended with a distance-to-margin shape)
+    scaled to the points. The ratio of the points to it is interpolated
+    linearly between them (nearest outside) and multiplied back, so THK
+    matches the points and keeps IGM's shape elsewhere."""
+    # IGM's field_inversion module imports TensorFlow (compute node)
+    from igm.assimilations.field_inversion.utils import initial_thickness
+    shape = initial_thickness(np.asarray(dem, dtype=np.float64), vx, vy,
+                              icemask, dx, dx,
+                              smooth_sigma_cells=max(1, round(100 / dx)))
     known = icemask & np.isfinite(thkobs) & (shape > 0)
     ratio = thkobs[known] / shape[known]
     targets = np.argwhere(icemask)
@@ -252,9 +257,12 @@ def build(raw_dir, data_dir, glacier, out_dir):
         add('THKOBS', thkobs, units='m i.e.',
             description=f'{shapefile} ({count} points, field {field}), '
                         'mean per cell')
-        add('THK', _interpolate_thickness(thkobs, icemask), units='m i.e.',
-            description='THKOBS interpolated (ratio to sqrt of the distance to '
-                        'the outline), 0 at the outline')
+        dx = float(abs(grid['x'].values[1] - grid['x'].values[0]))
+        add('THK', _interpolate_thickness(thkobs, icemask, out['DEM'].values,
+                                          out['VX'].values, out['VY'].values,
+                                          dx),
+            units='m i.e.', description='IGM start thickness scaled to '
+                                        'THKOBS (ratio interpolated)')
     out['spatial_ref'] = reference['spatial_ref']
     for name in out.data_vars:
         if name != 'spatial_ref':
@@ -279,11 +287,14 @@ def _build_s02(raw_dir, path):
     ds = ds.rename({'THK': 'THKOBS'}).drop_vars(['BED', 'UNCT_THK'])
     icemask = ds['ICEMASK'].values
     icemask = np.isfinite(icemask) & (icemask > 0)
+    dx = float(abs(ds['x'].values[1] - ds['x'].values[0]))
     ds['THK'] = (ds['THKOBS'].dims,
-                 _interpolate_thickness(ds['THKOBS'].values, icemask))
+                 _interpolate_thickness(ds['THKOBS'].values, icemask,
+                                        ds['DEM'].values, ds['VX'].values,
+                                        ds['VY'].values, dx))
     ds['THK'].attrs = {'units': 'm i.e.', 'grid_mapping': 'spatial_ref',
-                       'description': 'THKOBS interpolated (ratio to sqrt '
-                                      'of the distance to the outline)'}
+                       'description': 'IGM start thickness scaled to THKOBS '
+                                      '(ratio interpolated)'}
     ds.attrs['icemask_source'] = 'ICEMASK'
     ds.attrs['source'] = ('EXP02_S02_all.nc, THK (profiles only) renamed to '
                           'THKOBS and interpolated to THK')

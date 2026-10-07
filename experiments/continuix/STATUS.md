@@ -117,21 +117,23 @@ are in the EXP01 CRS, nothing is reprojected.
 - THK: raster for G01 (2013; tagged "Geoid height" but is thickness,
   r 0.999 with EXP01), G04, G06. GPR points only for G02, G03, G05 (101k
   points), S02 (62 cells on the trunk): points averaged per cell
-  (THKOBS), THK = interpolated ratio THKOBS / sqrt(distance to outline)
-  times sqrt(distance) (nearest ratio outside the profiles). Then all
-  glaciers as EXP01 (THK fixed, tau_ref inverted).
-  Against the EXP01 thickness: G02 r 0.70 (+43 %), G03 0.76 (+35 %), G05
-  0.92 (+9 %), S02 0.27 (+160 %: basins far from the trunk profiles).
-  Perfect-plastic shape (1/slope) fits G03 better (r 0.89) but S02 worse
-  (x4-7). Tried first: joint inversion of thk and tau_ref with a thkobs
-  misfit (std 10 m) from the SIA start; it hardly moved (G03 at the GPR
-  cells 82 -> 94 m in 500 iterations, obs 285 m), dropped.
+  (THKOBS); THK = IGM's start thickness (`initial_thickness`: SIA from
+  velocity and slope, blended with a distance shape) times the
+  interpolated ratio THKOBS / start thickness. Then all glaciers as EXP01
+  (THK fixed, tau_ref inverted). Against the EXP01 THK: G02 r 0.69 (51 vs
+  35 m), G03 0.86 (145/135), G05 0.94 (156/146), S02 0.90 (169/179).
+  Tried and dropped: (1) joint inversion of thk and tau_ref with a
+  thkobs misfit from the SIA start hardly moved (G03 at the GPR cells
+  82 -> 94 m in 500 iterations, obs 285 m); (2) sqrt(distance to the
+  outline) as the shape: S02 2.6 times too thick, ice flow 35 times too
+  fast (mean 1716 m/yr), calibration diverged (ELA 14700 m).
 - ICEMASK: outline at the start of the dh/dt period, used as is
   (attribute `icemask_source`).
-Job 4485043: G01, G06 fine (raster THK). G02 (empty shapefile records)
-and G04 (flag) crashed; G03, G05, S02 ran with the joint inversion.
-Rerun G02-G05, S02 (tasks 2-5, 7). Then add `tasks_exp02.txt` to
-`TASK_LISTS` in `package_submission.py` and describe EXP02 in the README.
+Jobs: 4485043 (G01, G06 fine), 4485208 (G02-G05, S02; G04 fine, the
+others with the sqrt-distance THK). With the sqrt-distance THK the
+glacier-mean SMB of G02, G03, G05 was within 0.25 m/yr of EXP01; S02
+diverged. Rerun G02, G03, G05, S02 (tasks 2, 3, 5, 7) with the IGM-shape
+THK, then rebuild the package (`tasks_exp02.txt` is in `TASK_LISTS`).
 
 ## EXP03-15, mandatory glaciers (2026-10-06)
 

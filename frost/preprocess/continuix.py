@@ -464,7 +464,16 @@ def write_submission(rgi_id_dir, path, method_description=''):
         'DENSITY': (masked(np.full(icemask.shape, ICE_DENSITY)),
                     'density used for ice equivalent', 'kg m-3'),
     }
-    if not _thk_inverted(rgi_id_dir):
+    if 'THKOBS' in ds:
+        # EXP02 GPR glaciers: THK interpolated from the profiles
+        # (continuix_raw), so modified
+        thk = masked(np.nan_to_num(ds['THK'].values))
+        variables['THK'] = (thk, 'ice thickness (modified: interpolated from '
+                                 'the GPR points, see README)', 'm i.e.')
+        variables['BED'] = (masked(dem - thk),
+                            'basal topography (modified: DEM - THK)',
+                            'm a.s.l.')
+    elif not _thk_inverted(rgi_id_dir):
         del variables['THK'], variables['BED']
     out = xr.Dataset(coords={'x': ds['x'], 'y': ds['y']})
     for name, (values, long_name, units) in variables.items():
