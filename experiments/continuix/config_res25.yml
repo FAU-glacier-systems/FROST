@@ -1,11 +1,14 @@
 # FROST for ContinuIX WP2/WP3 (https://github.com/ContinuIX/ContinuIX-1)
+# Resolution test: config.yml with a 25 m model grid instead of 50 m, in
+# its own results folder (tasks_res25.txt: EXP01 G02-G06). Does the finer
+# data (2-25 m) improve the fit? Before rerunning everything at 25 m.
 data_dir: "data/raw/continuix"     # unzipped Zenodo record 10.5281/zenodo.21401808
 # EXP02 raw GeoTIFFs and shapefiles as netCDF on the EXP01 grid
 # (frost.preprocess.continuix_raw, step 'raw' of run_continuix.py)
 exp02_dir: "data/results/continuix/EXP02_input"
-results_dir: "data/results/continuix"
+results_dir: "data/results/continuix/res25"
 method: "method01"                 # EXP##_G##_<method>.nc
-resolution: 50                     # model grid (m); coarser ContinuIX grids are kept
+resolution: 25                     # model grid (m); coarser ContinuIX grids are kept
 smb_model: "ELA"
 # provided THK fixed, sliding (tau_ref) inverted; params_inversion.yaml
 # inverts the thickness from an SIA start instead
@@ -39,14 +42,15 @@ EnKF:
 
 # Per-glacier settings, merged over the ones above
 glaciers:
-  # S01 on the 50 m grid of the others since 8 Oct (was 25 m): it fits better
-  # at 50 m and recovers its truth as well (STATUS.md)
   G01:
-    # ice cap of 832 km2 at 100 m (83k cells). At 50 m (333k cells) it fits
-    # its bands somewhat worse (band RMS 0.41 -> 0.57, same glacier mean),
-    # and the GLOB and thickness-noise calibrations take 4 h to > 24 h
-    # (tiny time steps of extreme prior members), so 100 m (8 Oct)
+    # ice cap of 832 km2: about 83k ice cells at 100 m (G05: 32k at 50 m);
+    # the calibration setup (band covariance) takes ~17 min, then ~2 min
+    # per iteration
     resolution: 100
+  S01:
+    # the half-pipe margins thin to a few metres within 250 m; at 50 m they
+    # are lost and the model stops there (obs 36 m/yr, model 3 m/yr)
+    resolution: 25
   # model_error = 0.5 * sqrt(chi2/n) of the 0.5 m/yr run (6 Oct): G03 6.5,
   # G05 8.6; the others are 0.15-2.3
   G03:

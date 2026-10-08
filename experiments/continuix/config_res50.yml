@@ -1,9 +1,12 @@
 # FROST for ContinuIX WP2/WP3 (https://github.com/ContinuIX/ContinuIX-1)
+# 50 m test: config.yml with G01 (100 m) and S01 (25 m) on the 50 m grid of
+# the other glaciers, in its own results folder (tasks_res50.txt: EXP01
+# G01, S01). Switch them if the fit is no worse (S01: against its truth).
 data_dir: "data/raw/continuix"     # unzipped Zenodo record 10.5281/zenodo.21401808
 # EXP02 raw GeoTIFFs and shapefiles as netCDF on the EXP01 grid
 # (frost.preprocess.continuix_raw, step 'raw' of run_continuix.py)
 exp02_dir: "data/results/continuix/EXP02_input"
-results_dir: "data/results/continuix"
+results_dir: "data/results/continuix/res50"
 method: "method01"                 # EXP##_G##_<method>.nc
 resolution: 50                     # model grid (m); coarser ContinuIX grids are kept
 smb_model: "ELA"
@@ -39,14 +42,11 @@ EnKF:
 
 # Per-glacier settings, merged over the ones above
 glaciers:
-  # S01 on the 50 m grid of the others since 8 Oct (was 25 m): it fits better
-  # at 50 m and recovers its truth as well (STATUS.md)
   G01:
-    # ice cap of 832 km2 at 100 m (83k cells). At 50 m (333k cells) it fits
-    # its bands somewhat worse (band RMS 0.41 -> 0.57, same glacier mean),
-    # and the GLOB and thickness-noise calibrations take 4 h to > 24 h
-    # (tiny time steps of extreme prior members), so 100 m (8 Oct)
-    resolution: 100
+    # ~330k ice cells at 50 m; 16 workers would not fit the A40 (G05 at
+    # 25 m, 126k cells: 22-35 GB with 16 workers)
+    EnKF:
+      forward_workers: 8
   # model_error = 0.5 * sqrt(chi2/n) of the 0.5 m/yr run (6 Oct): G03 6.5,
   # G05 8.6; the others are 0.15-2.3
   G03:

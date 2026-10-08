@@ -1,0 +1,15 @@
+G04 r25_nbit2000
+G04 r25_lam3e10
+G04 r25_lam1e10
+G04 r25_retrain
+G04 r50_retrain
+G05 r25_nbit2000
+G05 r25_lam3e10
+G05 r25_lam1e10
+G05 r25_retrain
+G05 r50_retrain
+G06 r25_nbit2000
+G06 r25_lam3e10
+G06 r25_lam1e10
+G06 r25_retrain
+G06 r50_retrain
