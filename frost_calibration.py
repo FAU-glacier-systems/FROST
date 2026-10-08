@@ -19,7 +19,7 @@ def main(rgi_id, rgi_id_dir, smb_model, synthetic, ensemble_size, inflation,
          iterations, seed, init_offset, elev_band_height, forward_parallel,
          synth_obs_std=None, smb_reference_mean=None, smb_reference_std=None,
          dark_monitor=True, monitor_plots='latest', method='esmda',
-         model_error=0.0, max_velbar=0.0):
+         model_error=0.0, max_velbar=0.0, forward_workers=0):
     """
     main function to run the calibration, handles the interaction between
     observation, ensemble and visualization. It saves the results in the experiment
@@ -55,6 +55,9 @@ def main(rgi_id, rgi_id_dir, smb_model, synthetic, ensemble_size, inflation,
                                    error of every band
            max_velbar(float)     - cap of the depth-averaged speed in the
                                    forward runs (m/yr), 0 for none
+           forward_workers(int)  - parallel forward runs: worker processes
+                                   that keep IGM loaded (0: one per core of
+                                   the job, at most one per member)
 
     Returns:
            none
@@ -104,7 +107,8 @@ def main(rgi_id, rgi_id_dir, smb_model, synthetic, ensemble_size, inflation,
                                       smb_reference_mean=smb_reference_mean,
                                       smb_reference_std=smb_reference_std,
                                       obs_provider=obs_provider,
-                                      max_velbar=max_velbar)
+                                      max_velbar=max_velbar,
+                                      forward_workers=forward_workers)
 
     # Initialise a monitor for visualising the process
     monitor = Monitor(EnKF_object=ensembleKF,
@@ -191,6 +195,8 @@ def main(rgi_id, rgi_id_dir, smb_model, synthetic, ensemble_size, inflation,
                                      write_json=posterior)
 
         ensembleKF.reset_time()
+
+    ensembleKF.close()
 
     #################################################################################
 

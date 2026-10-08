@@ -14,6 +14,7 @@ import concurrent.futures
 import json
 from pathlib import Path
 import copy
+import time
 
 
 class EnsembleKalmanFilter:
@@ -46,7 +47,7 @@ class EnsembleKalmanFilter:
     def __init__(self, rgi_id, rgi_id_dir, smb_model, ensemble_size, inflation,
                  seed, start_year, smb_prior_mean, smb_prior_std,
                  smb_reference_mean, smb_reference_std, usurf_ensemble, obs_provider,
-                 init_offset=0, max_velbar=0.0):
+                 init_offset=0, max_velbar=0.0, forward_workers=0):
         """
         Initializes the Ensemble Kalman Filter by loading required data and setting up
         the initial ensemble.
@@ -76,6 +77,11 @@ class EnsembleKalmanFilter:
         self.current_year = start_year
         # cap of the depth-averaged speed in the forward runs (m/yr, 0: none)
         self.max_velbar = max_velbar
+        # parallel forward runs: worker processes that keep IGM loaded
+        # (0: one per core of the job, at most one per member)
+        self.forward_workers = forward_workers or min(
+            ensemble_size, len(os.sched_getaffinity(0)))
+        self.executor = None
 
         # Create ensemble directory if not existing
         ensemble_dir = os.path.join(self.rgi_id_dir, 'Ensemble')
@@ -196,6 +202,27 @@ class EnsembleKalmanFilter:
         self.ensemble_usurf = np.copy(self.ensemble_usurf_log[0])
         self.current_year = self.start_year
 
+    def forward_executor(self):
+        """Worker pool of the parallel forward runs, started on first use and
+        kept for all iterations: each worker loads IGM once and runs its
+        members in process (igm_wrapper.run_igm). 'spawn', not fork: the
+        inversion may have initialised CUDA in this process."""
+        if self.executor is None:
+            import multiprocessing
+            from concurrent.futures import ProcessPoolExecutor
+            print(f"Forward workers: {self.forward_workers}")
+            self.executor = ProcessPoolExecutor(
+                self.forward_workers,
+                mp_context=multiprocessing.get_context('spawn'),
+                initializer=IGM_wrapper.warm_up)
+        return self.executor
+
+    def close(self):
+        """Stop the forward workers."""
+        if self.executor is not None:
+            self.executor.shutdown()
+            self.executor = None
+
     def forward(self, year, forward_parallel):
         """
         Advances the ensemble members forward in time.
@@ -210,8 +237,7 @@ class EnsembleKalmanFilter:
         #year_interval = year - self.current_year
         year_start = self.current_year
         year_end   = year
-        workers = os.cpu_count()  # Default worker count
-        print(f"Default max workers: {workers}")
+        t0 = time.time()
         new_usurf_ensemble = np.empty_like(self.ensemble_usurf)
         new_smb_raster_ensemble = np.empty_like(self.ensemble_smb_raster)
         new_init_surf_ensemble = np.empty_like(self.ensemble_smb_raster)
@@ -224,39 +250,37 @@ class EnsembleKalmanFilter:
         output2D_3D = True
 
         if forward_parallel:
+            from concurrent.futures import as_completed
 
-            from concurrent.futures import ProcessPoolExecutor, as_completed
+            executor = self.forward_executor()
+            futures = [
+                executor.submit(
+                    IGM_wrapper.forward,
+                    exp,
+                    output1D,
+                    output2D_3D,
+                    member_id,
+                    self.smb_model,
+                    usurf,
+                    smb,
+                    year_start,
+                    year_end,
+                    os.path.join(self.rgi_id_dir, "Ensemble", f"Member_{member_id}"),
+                    os.path.join(self.rgi_id_dir, "climate_historical.nc"),
+                    self.emulator_path,
+                    self.max_velbar,
+                    True,
+                )
+                for member_id, (usurf, smb) in enumerate(zip(self.ensemble_usurf, self.ensemble_smb))
+            ]
 
-
-            with ProcessPoolExecutor() as executor:
-                futures = [
-                    executor.submit(
-                        IGM_wrapper.forward,
-                        exp,
-                        output1D,
-                        output2D_3D,
-                        member_id,
-                        self.smb_model,
-                        usurf,
-                        smb,
-                        year_start,
-                        year_end,
-                        os.path.join(self.rgi_id_dir, "Ensemble", f"Member_{member_id}"),
-                        os.path.join(self.rgi_id_dir, "climate_historical.nc"),
-                        self.emulator_path,
-                        self.max_velbar,
-                    )
-                    for member_id, (usurf, smb) in enumerate(zip(self.ensemble_usurf, self.ensemble_smb))
-                ]
-
-                for future in as_completed(futures):
-                    member_id, new_usurf, new_smb_raster, init_usurf, new_velsurf_mag, new_divflux = future.result()
-                    new_usurf_ensemble[member_id] = new_usurf
-                    new_smb_raster_ensemble[member_id] = new_smb_raster
-                    new_init_surf_ensemble[member_id] = init_usurf
-                    new_velsurf_mag_ensemble[member_id] = new_velsurf_mag
-                    new_divflux_ensemble[member_id] = new_divflux
-
+            for future in as_completed(futures):
+                member_id, new_usurf, new_smb_raster, init_usurf, new_velsurf_mag, new_divflux = future.result()
+                new_usurf_ensemble[member_id] = new_usurf
+                new_smb_raster_ensemble[member_id] = new_smb_raster
+                new_init_surf_ensemble[member_id] = init_usurf
+                new_velsurf_mag_ensemble[member_id] = new_velsurf_mag
+                new_divflux_ensemble[member_id] = new_divflux
 
         else:
 
@@ -283,6 +307,8 @@ class EnsembleKalmanFilter:
                 new_velsurf_mag_ensemble[member_id] = new_velsurf_mag
                 new_divflux_ensemble[member_id] = new_divflux
 
+        print(f"--- forward {self.ensemble_size} members {year_start}-"
+              f"{year_end}: {time.time() - t0:.0f} s")
         self.ensemble_usurf = new_usurf_ensemble
         self.ensemble_smb_raster = new_smb_raster_ensemble
         self.ensemble_init_surf_raster = new_init_surf_ensemble

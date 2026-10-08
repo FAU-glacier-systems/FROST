@@ -40,9 +40,41 @@ def install_user_processes(workdir, processes):
             os.path.join(workdir, 'user', 'conf', 'processes'))
 
 
+def run_igm(workdir, in_process=False):
+    """igm_run +experiment=params in workdir. in_process: call IGM's main()
+    in this process instead of starting igm_run, so TensorFlow, CUDA and
+    IGM are loaded once per process, not once per run (G02: 18.9 s per
+    igm_run, 2.6 s per call after the first). For worker processes that run
+    one member at a time: changes the working directory while it runs."""
+    if not in_process:
+        subprocess.run(["igm_run", "+experiment=params"], cwd=workdir)
+        return
+    import sys
+    from igm.igm_run import main as igm_main
+    cwd, argv = os.getcwd(), sys.argv
+    try:
+        os.chdir(workdir)
+        sys.argv = ["igm_run", "+experiment=params"]
+        igm_main()
+    except SystemExit as e:
+        # hydra exits on errors; a failed member must not leave the previous
+        # round's output.nc to be read as its result
+        if e.code:
+            raise RuntimeError(f"igm_run failed in {workdir}") from e
+    finally:
+        os.chdir(cwd)
+        sys.argv = argv
+
+
+def warm_up():
+    """Pool initializer: import IGM (and TensorFlow) once per worker."""
+    import igm.igm_run  # noqa: F401
+
+
 def forward(exp, output1D, output2D_3D, member_id, smb_model, usurf, smb,
             year_start, year_end, workdir, climate_file,
-            emulator_path="dahunet_mini.keras", max_velbar=0.0):
+            emulator_path="dahunet_mini.keras", max_velbar=0.0,
+            in_process=False):
     '''
     Runs a single forward model simulation for an ensemble member.
 
@@ -68,6 +100,7 @@ def forward(exp, output1D, output2D_3D, member_id, smb_model, usurf, smb,
         max_velbar (float)    - Cap of the depth-averaged speed (m/yr), 0 for
                                 none; keeps single cells at a retreating ice
                                 cliff from forcing tiny time steps
+        in_process (bool)     - run IGM in this process (run_igm)
 
     Returns:
         member_id (int)         - Ensemble member ID
@@ -287,15 +320,7 @@ def forward(exp, output1D, output2D_3D, member_id, smb_model, usurf, smb,
             var_out[:] = input_dataset.variables['icemask'][:]
 
     # Run the Iceflow Glacier Model (IGM)
-    subprocess.run(["igm_run", "+experiment=params"], cwd=workdir)
-    # import sys
-    # from igm.igm_run import main as igm_main
-    # cwd = os.getcwd()
-    # print(cwd)
-    # os.chdir(workdir)
-    # sys.argv = ["igm_run", "+experiment=params"]
-    # igm_main()
-    # os.chdir(cwd)
+    run_igm(workdir, in_process)
 
     if str(exp) == 'Calibration':
         # Read updated results from the output file

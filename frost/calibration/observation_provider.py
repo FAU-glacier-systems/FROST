@@ -100,7 +100,6 @@ class ObservationProvider:
         self.averaging = np.zeros((self.num_bins, len(rows)))
         self.averaging[self.pixel_band, np.arange(len(rows))] = \
             1.0 / counts[self.pixel_band]
-        self.pixel_xy = np.column_stack((self.x[cols], self.y[rows]))
 
         self.observation = self.band_mean(self.dhdt)
         self.model_error = model_error
@@ -111,20 +110,32 @@ class ObservationProvider:
         """Mean of a field over the valid pixels of every band."""
         return self.averaging @ field[self.valid]
 
-    def band_covariance(self, sigma, block=1000):
-        """C = A S A^T for pixel errors sigma, in row blocks of pixels so the
-        pixel covariance S is never held in memory."""
-        covariance = np.zeros((self.num_bins, self.num_bins))
-        for start in range(0, len(sigma), block):
-            stop = min(start + block, len(sigma))
-            distance = np.linalg.norm(
-                self.pixel_xy[start:stop, None, :] - self.pixel_xy[None, :, :],
-                axis=2)
-            s_block = (sigma[start:stop, None] * sigma[None, :]
-                       * error_correlation(distance))
-            covariance += self.averaging[:, start:stop] @ (
-                s_block @ self.averaging.T)
-        return covariance
+    def band_covariance(self, sigma):
+        """C = A S A^T for pixel errors sigma. The pixels lie on a regular
+        grid and rho depends only on the lag, so S w is a convolution of the
+        map w with rho: C_bc = <w_b, rho * w_c> with w_c = sigma a_c, by FFT
+        in O(bands N log N) instead of O(pixels^2)."""
+        rows, cols = np.nonzero(self.valid)
+        ny, nx = self.valid.shape
+        dx, dy = abs(self.x[1] - self.x[0]), abs(self.y[1] - self.y[0])
+        # rho on all lags, wrapped so that lag 0 is at [0, 0]; 2n per axis
+        # avoids circular overlap
+        lag_y = np.fft.fftfreq(2 * ny, 1 / (2 * ny)) * dy
+        lag_x = np.fft.fftfreq(2 * nx, 1 / (2 * nx)) * dx
+        kernel = error_correlation(np.hypot(lag_y[:, None], lag_x[None, :]))
+        kernel_hat = np.fft.rfft2(kernel)
+        weights = np.zeros((self.num_bins, ny, nx))
+        weights[self.pixel_band, rows, cols] = (
+            sigma * self.averaging[self.pixel_band, np.arange(len(rows))])
+        covariance = np.empty((self.num_bins, self.num_bins))
+        for c in range(self.num_bins):
+            smoothed = np.fft.irfft2(
+                np.fft.rfft2(weights[c], s=kernel.shape) * kernel_hat,
+                s=kernel.shape)[:ny, :nx]
+            covariance[:, c] = weights.reshape(self.num_bins, -1) @ \
+                smoothed.ravel()
+        # symmetric up to rounding
+        return (covariance + covariance.T) / 2
 
     def get_next_observation(self, current_year, num_samples):
         """Band-mean dh/dt over the period, its covariance, noise samples
