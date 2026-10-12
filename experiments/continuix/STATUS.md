@@ -1,4 +1,4 @@
-# ContinuIX: status (2026-10-12: ready to upload)
+# ContinuIX: status (2026-10-12: submission v1 done)
 
 FROST contribution to ContinuIX WP2/WP3
 (https://github.com/ContinuIX/ContinuIX-1), SMB-gradient approach.
@@ -6,7 +6,14 @@ Submission deadline: **end of October 2026**.
 
 ## Open (start here)
 
-State on 2026-10-12 (ready to upload):
+Submission v1 done (2026-10-12): `data/results/continuix/GROUP_FAU2.zip`
+(1.11 GB, 155 files: 149 nc + README, log, checklist, report, two
+ContinuIX instruction files; zipped and tested by job 4542227). The folder
+and zip are world-readable, so Johannes can copy them from the cluster.
+149 = everything ContinuIX offers (no EXP02 raw data for S01, EXP16-20
+only for the six real glaciers), not 8 x 20.
+
+State on 2026-10-12:
 - Final grids: 50 m for G02-G06 and S01; 100 m for G01 (fit and cost)
   and S02 (data grid). Emulator dahunet_mini pretrained on 50-250 m
   (S. Rosier, pers. comm.). lam 1e11.
@@ -31,10 +38,14 @@ State on 2026-10-12 (ready to upload):
   `summary/maps_EXP01.npz`; draw on fritz2 (compute nodes lack the font).
 
 Next:
-1. `sbatch experiments/continuix/zip_submission.sh` -> `GROUP_FAU2.zip`;
-   upload it (or `GROUP_FAU2/`, 3.8 GB) to the
-   ContinuIX SharePoint (manual).
-2. After the upload delete the backups `backup_grid_1008/` (S01 25 m),
+1. Upload `GROUP_FAU2.zip` to the ContinuIX SharePoint, if not done yet.
+2. Johannes Fürst: asked (Slack, 12 Oct) whether he wants to be a
+   contributor. Now only acknowledged as FROST co-developer. If yes:
+   add him to the contributors in the README header
+   (`experiments/continuix/submission/`), drop him from the
+   acknowledgement, copy into GROUP_FAU2, rezip
+   (`zip_submission.sh`), resend.
+3. After the upload delete the backups `backup_grid_1008/` (S01 25 m),
    `backup_g01_50m_1008/` (G01 50 m) and the test folders `res25/`,
    `res25_inproc/`, `res50/`, `res_native/`, `lam_test/`,
    `inversion_test/`, `bench/` (numbers kept in this file). The grid
