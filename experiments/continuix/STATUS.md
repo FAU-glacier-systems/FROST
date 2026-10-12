@@ -14,6 +14,9 @@ State on 2026-10-12 (ready to upload):
   checked (12 Oct): 149 result files (EXP01 8, EXP02 7, EXP03-15 104,
   EXP16-20 30), README, log (41.3 GPU hours), checklist, ContinuIX
   instructions; no result file newer than the package of 8 Oct 14:13.
+  Also `report_GROUP_FAU2_method01.pdf` (copy of the 12 Oct report,
+  added by hand: package_and_check.sh deletes the folder, so copy it
+  again after a rebuild).
 - Method README (`experiments/continuix/submission/`, copied into
   GROUP_FAU2) updated 12 Oct from the check report: emulator training
   range; EXP14 below the grid <= 0.10 m/yr (G06; G01, G04, G05, S01
