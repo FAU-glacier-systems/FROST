@@ -45,12 +45,14 @@ Next:
    (`experiments/continuix/submission/`), drop him from the
    acknowledgement, copy into GROUP_FAU2, rezip
    (`zip_submission.sh`), resend.
-3. After the upload delete the backups `backup_grid_1008/` (S01 25 m),
-   `backup_g01_50m_1008/` (G01 50 m) and the test folders `res25/`,
-   `res25_inproc/`, `res50/`, `res_native/`, `lam_test/`,
-   `inversion_test/`, `bench/` (numbers kept in this file). The grid
-   chart of the report reads res25, res50, res_native and
-   backup_grid_1008, so the report cannot be redrawn afterwards.
+3. Cleanup. Done 12 Oct (183 GB): `backup_g01_50m_1008/` (G01 50 m,
+   181 GB), `res25_inproc/`, `bench/`, the superseded summaries (8 Oct
+   report, ContinuIX_FROST_summary.pdf, page1/2.png,
+   summary_data_1007.json). Still there, delete once the upload is
+   accepted: `backup_grid_1008/` (S01 25 m), `res25/`, `res50/`,
+   `res_native/`, `lam_test/` (22 GB), `inversion_test/` (numbers kept in
+   this file). The report's grid chart reads res25, res50, res_native and
+   backup_grid_1008, so it cannot be redrawn afterwards.
 
 Log of 8 Oct (details):
 
