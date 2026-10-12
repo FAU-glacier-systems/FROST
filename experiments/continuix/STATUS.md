@@ -31,7 +31,8 @@ State on 2026-10-12 (ready to upload):
   `summary/maps_EXP01.npz`; draw on fritz2 (compute nodes lack the font).
 
 Next:
-1. Upload `data/results/continuix/GROUP_FAU2/` (3.8 GB) to the
+1. `sbatch experiments/continuix/zip_submission.sh` -> `GROUP_FAU2.zip`;
+   upload it (or `GROUP_FAU2/`, 3.8 GB) to the
    ContinuIX SharePoint (manual).
 2. After the upload delete the backups `backup_grid_1008/` (S01 25 m),
    `backup_g01_50m_1008/` (G01 50 m) and the test folders `res25/`,
