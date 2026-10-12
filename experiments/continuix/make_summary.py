@@ -26,7 +26,7 @@ import numpy as np
 
 RESULTS = os.path.join('data', 'results', 'continuix')
 HERE = os.path.join(RESULTS, 'summary')
-STATUS_DATE = '8 October 2026'
+STATUS_DATE = '12 October 2026'
 
 
 def load():
@@ -171,8 +171,9 @@ def sensitivity():
     """EXP03-15 glacier-mean SMB minus EXP01 per glacier and experiment."""
     exps = [f'EXP{i:02d}' for i in range(3, 16)]
     rows = ['G01', 'G05', 'S01', 'S02', 'G02', 'G03', 'G04', 'G06']
-    return exps, rows, np.array([[F[f'{e}_{g}']['smb'] - F[f'EXP01_{g}']['smb']
-                                   for e in exps] for g in rows])
+    # round: the check report has two decimals, so 0.07 must not become 0.0700001
+    return exps, rows, np.round([[F[f'{e}_{g}']['smb'] - F[f'EXP01_{g}']['smb']
+                                  for e in exps] for g in rows], 2)
 
 
 def page2(total=2):

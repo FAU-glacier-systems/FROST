@@ -4,39 +4,43 @@
 # Published under the GNU GPL (Version 3), check the LICENSE file
 
 """
-ContinuIX report of 8 Oct 2026: the submission summary (two pages from
-make_summary.py, from the check report of GROUP_FAU2) and a section on the
-model grid with the tests of 8 Oct: why FROST runs on a 50 m grid (G01
-100 m, S02 at its 100 m data grid). Reads the band scores
-(band_score.json, lam_test.py --score), the inversion test (stats.json),
-the posterior metrics of the G01 reruns and the data grids of the
-ContinuIX files. Light, runs on the login node.
+ContinuIX report: the submission summary (two pages from make_summary.py,
+from the check report of GROUP_FAU2), a page of EXP01 maps (observed dh/dt,
+submitted SMB, mismatch SMB - FDIV - dh/dt) and a page on the model grid
+(why FROST runs on 50 m, G01 and S02 on 100 m, with the tests of 8 Oct).
 
-Run from the repository root:
+The maps come from the full-resolution result files, so they are first
+reduced in a job (summary/maps_EXP01.npz); drawing the report is light and
+runs on the login node. Run from the repository root:
+    sbatch experiments/continuix/report_maps.sh     # once, after packaging
     python experiments/continuix/report_resolution.py
 """
 
-import glob
 import json
 import os
 import sys
+import textwrap
 
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
+from matplotlib.colors import LinearSegmentedColormap
 import numpy as np
-from netCDF4 import Dataset
 
 R = os.path.join('data', 'results', 'continuix')
-OUT = os.path.join(R, 'summary', 'ContinuIX_FROST_report_2026-10-08.pdf')
+OUT = os.path.join(R, 'summary', 'ContinuIX_FROST_report_2026-10-12.pdf')
+MAPS = os.path.join(R, 'summary', 'maps_EXP01.npz')
 TOTAL = 4
 GLACIERS = ['G01', 'G02', 'G03', 'G04', 'G05', 'G06', 'S01', 'S02']
+MAP_CELLS = 160  # longest side of a reduced map
 
 # reference palette (dataviz skill, categorical slots 1-4, fixed order)
 INK, INK2, MUTED, GRID = '#0b0b0b', '#52514e', '#8a8984', '#e3e2dc'
 BLUE, ORANGE, AQUA, YELLOW = '#2a78d6', '#eb6834', '#1baf7a', '#eda100'
 SURFACE, BAND = '#fcfcfb', '#f3f2ee'
+DIVERGING = LinearSegmentedColormap.from_list(
+    'div', ['#a83c12', ORANGE, '#f1f0ea', BLUE, '#174e94'])
 STYLE = {
     'font.family': 'DejaVu Sans', 'font.size': 8, 'text.color': INK,
     'axes.edgecolor': MUTED, 'axes.labelcolor': INK2, 'axes.linewidth': 0.6,
@@ -45,119 +49,229 @@ STYLE = {
     'axes.titlesize': 9, 'axes.titleweight': 'bold',
     'axes.titlelocation': 'left', 'figure.facecolor': SURFACE,
     'axes.facecolor': SURFACE}
-plt.rcParams.update(STYLE)
 A4 = (8.27, 11.69)
 
 
+# ------------------------------------------------------ map extraction ----
+def coarsen(a, k):
+    """Block mean ignoring NaN; k x k blocks, edges padded with NaN."""
+    if k == 1:
+        return a
+    ny, nx = (-(-n // k) * k for n in a.shape)
+    p = np.full((ny, nx), np.nan, dtype=np.float32)
+    p[:a.shape[0], :a.shape[1]] = a
+    b = p.reshape(ny // k, k, nx // k, k)
+    with np.errstate(invalid='ignore'):
+        n = np.sum(np.isfinite(b), axis=(1, 3))
+        return np.where(n > 0, np.nansum(b, axis=(1, 3)) / np.maximum(n, 1), np.nan)
+
+
+def extract_maps():
+    """EXP01 maps of every glacier at <= MAP_CELLS cells per side (job)."""
+    from netCDF4 import Dataset
+    out = {}
+    for g in GLACIERS:
+        with Dataset(os.path.join('data', 'raw', 'continuix', 'EXP01',
+                                  f'EXP01_{g}.nc')) as nc:
+            x, y = nc['x'][:].data, nc['y'][:].data
+            ice = np.asarray(nc['ICEMASK'][:].filled(0)) > 0.5
+            dem = np.asarray(nc['DEM'][:].filled(np.nan), dtype=np.float32)
+            dhdt = np.asarray(nc['DHDT'][:].filled(np.nan), dtype=np.float32)
+        with Dataset(os.path.join(R, 'GROUP_FAU2', 'EXP01',
+                                  f'EXP01_{g}_method01.nc')) as nc:
+            smb = np.asarray(nc['SMB'][:].filled(np.nan), dtype=np.float32)
+            fdiv = np.asarray(nc['FDIV'][:].filled(np.nan), dtype=np.float32)
+        dhdt[dhdt == 0] = np.nan  # ContinuIX fills gaps with 0
+        for a in (dhdt, smb, fdiv):
+            a[~ice] = np.nan
+        dem[~ice] = np.nan
+        k = max(1, int(np.ceil(max(ice.shape) / MAP_CELLS)))
+        maps = dict(dhdt=dhdt, smb=smb, mismatch=smb - fdiv - dhdt, dem=dem,
+                    ice=ice.astype(np.float32))
+        maps = {n: coarsen(a, k) for n, a in maps.items()}
+        if y[1] < y[0]:  # store with y increasing
+            maps = {n: a[::-1] for n, a in maps.items()}
+        dx = abs(float(x[1] - x[0]))
+        extent = [0, len(x) * dx, 0, len(y) * dx]
+        for n, a in maps.items():
+            out[f'{g}_{n}'] = a
+        out[f'{g}_extent'] = np.array(extent)
+        print(g, ice.shape, '->', maps['ice'].shape, flush=True)
+    np.savez_compressed(MAPS, **out)
+    print(MAPS)
+
+
+# -------------------------------------------------------------- drawing ----
 def score(path):
     p = os.path.join(R, path, 'band_score.json')
     return json.load(open(p)) if os.path.exists(p) else None
 
 
-def metrics(path):
-    d = os.path.join(R, path)
-    try:
-        cal = json.load(open(os.path.join(d, 'calibration_results.json')))
-        m = json.load(open(sorted(glob.glob(os.path.join(d, 'Monitor',
-                                                         'metrics_*.json')))[-1]))
-        meta = json.load(open(os.path.join(d, 'continuix.json')))
-    except (OSError, IndexError):
-        return None
-    post = cal['diagnostics'][-1]
-    return dict(grid=meta['resolution_model'], chi2=post['misfit'],
-                ela=post['parameter_mean'][0], smb=m['modelled_surface_mass_balance'],
-                obs=m['observed_elevation_change'], model=m['modelled_elevation_change'])
+def model_grid(g):
+    return json.load(open(os.path.join(R, 'EXP01', g, 'continuix.json')))['resolution_model']
 
 
-def data_grid(exp, glacier):
-    for p in [os.path.join('data', 'raw', 'continuix', exp, f'{exp}_{glacier}.nc'),
-              os.path.join('data', 'raw', 'continuix', exp, 'optional',
-                           f'{exp}_{glacier}.nc')]:
-        if os.path.exists(p):
-            with Dataset(p) as nc:
-                x = nc['x'][:2]
-            return abs(float(x[1] - x[0]))
-    return None
-
-
-def table(ax, rows, header, widths, title=None, fontsize=7, highlight=()):
-    """Plain table: bold header, light banding, no vertical rules."""
-    ax.axis('off')
-    if title:
-        ax.set_title(title)
-    t = ax.table(cellText=rows, colLabels=header, colWidths=widths,
-                 loc='upper left', cellLoc='left', colLoc='left')
-    t.auto_set_font_size(False)
-    t.set_fontsize(fontsize)
-    t.scale(1, 1.35)
-    for (r, c), cell in t.get_celld().items():
-        cell.set_edgecolor(GRID)
-        cell.visible_edges = 'B'
-        cell.set_text_props(color=INK if r == 0 else INK2)
-        if r == 0:
-            cell.set_text_props(weight='bold', color=INK)
-        elif r in highlight:
-            cell.set_facecolor('#e6eef9')
-        elif r % 2 == 0:
-            cell.set_facecolor(BAND)
-        else:
-            cell.set_facecolor(SURFACE)
-    return t
-
-
-def text(fig, x, y, s, size=8, weight='normal', color=INK, width=None):
-    import textwrap
+def text(fig, x, y, s, size=8, weight='normal', color=INK, width=None, spacing=1.4):
     if width:
-        s = '\n'.join(textwrap.fill(par, width) for par in s.split('\n'))
+        s = '\n'.join(textwrap.fill(par, width, subsequent_indent='   '
+                                    if par.startswith('•') else '')
+                      for par in s.split('\n'))
     fig.text(x, y, s, fontsize=size, weight=weight, color=color, va='top',
-             linespacing=1.35)
+             linespacing=spacing)
 
 
-def fmt(v, f='{:.2f}'):
-    return '–' if v is None else f.format(v)
+def scale_bar(ax, extent):
+    """Round-number km bar of about a quarter of the map width."""
+    w = extent[1] - extent[0]
+    nice = [0.25, 0.5, 1, 2, 5, 10, 20]
+    km = max(n for n in nice if n * 1000 <= w / 3)
+    x0, y0 = extent[0] + 0.04 * w, extent[2] + 0.06 * (extent[3] - extent[2])
+    ax.plot([x0, x0 + km * 1000], [y0, y0], color=INK, lw=1.6, solid_capstyle='butt')
+    ax.text(x0 + km * 1000 / 2, y0, f'{km:g} km', ha='center', va='bottom',
+            fontsize=5.8, color=INK)
 
 
-# ---------------------------------------------------------------- data ----
-grids = {g: [data_grid(e, g) for e in ('EXP01', 'EXP14', 'EXP15')] for g in GLACIERS}
+def page_maps(maps):
+    fig = plt.figure(figsize=A4)
+    text(fig, 0.07, 0.968, 'EXP01 maps: where the SMB profile fits and where it does not',
+         14, 'bold')
+    text(fig, 0.07, 0.944, 'Modelled dh/dt = submitted SMB − FDIV (mass conservation). '
+         'Black line: SMB = 0 (calibrated ELA); grey: 100 m surface contours.',
+         8, color=INK2, width=125)
+    cols = [('Observed dh/dt', 'dhdt', 6), ('Submitted SMB', 'smb', 6),
+            ('Modelled − observed dh/dt', 'mismatch', 2)]
+    x0s, w = [0.135, 0.42, 0.705], 0.27
+    top, bottom = 0.905, 0.125
+    h = (top - bottom) / len(GLACIERS)
+    for x0, (title, _, _) in zip(x0s, cols):
+        fig.text(x0, top + 0.008, title, fontsize=9, weight='bold')
+    images = {}
+    for i, g in enumerate(GLACIERS):
+        ext = maps[f'{g}_extent']
+        y0 = top - (i + 1) * h + 0.006
+        fig.text(0.07, y0 + h / 2 + 0.008, g, fontsize=11, weight='bold', va='center')
+        fig.text(0.07, y0 + h / 2 - 0.012, f'{model_grid(g):g} m grid', fontsize=6.8,
+                 color=INK2, va='center')
+        dem = maps[f'{g}_dem']
+        levels = np.arange(np.floor(np.nanmin(dem) / 100) * 100, np.nanmax(dem), 100)
+        for j, (x0, (_, name, lim)) in enumerate(zip(x0s, cols)):
+            ax = fig.add_axes([x0, y0, w, h - 0.012])
+            ax.set_facecolor(SURFACE)
+            images[name] = ax.imshow(maps[f'{g}_{name}'], origin='lower', extent=ext,
+                                     cmap=DIVERGING, vmin=-lim, vmax=lim,
+                                     interpolation='nearest')
+            ax.contour(maps[f'{g}_ice'], levels=[0.5], origin='lower', extent=ext,
+                       colors=INK2, linewidths=0.5)
+            ax.contour(dem, levels=levels, origin='lower', extent=ext,
+                       colors=MUTED, linewidths=0.3, alpha=0.8)
+            if name == 'smb':
+                ax.contour(maps[f'{g}_smb'], levels=[0], origin='lower', extent=ext,
+                           colors=INK, linewidths=0.9)
+            if j == 0:
+                scale_bar(ax, ext)
+            ax.set_xticks([])
+            ax.set_yticks([])
+            ax.set_aspect('equal')
+            for side in ax.spines.values():
+                side.set_visible(False)
+    for (x0, x1), name, label in [((x0s[0], x0s[1] + w), 'smb', 'dh/dt and SMB (m i.e. yr⁻¹)'),
+                                  ((x0s[2], x0s[2] + w), 'mismatch', 'modelled − observed dh/dt (m i.e. yr⁻¹)')]:
+        cax = fig.add_axes([x0, 0.098, x1 - x0, 0.008])
+        cb = fig.colorbar(images[name], cax=cax, orientation='horizontal', extend='both')
+        cb.outline.set_visible(False)
+        cb.ax.tick_params(labelsize=6.8, length=2)
+        cb.set_label(label, fontsize=7.2, color=INK2)
+    text(fig, 0.07, 0.06, 'Right column: orange, the model thins faster than observed; '
+         'blue, slower. The speckle is cell-scale noise of the flux divergence, which '
+         'cancels in the 50 m elevation bands the calibration fits; the systematic misfit '
+         'is the upper basin of G03.',
+         7, color=INK2, width=140)
+    return fig
 
-# finer vs. coarser grid, EXP01, lam 1e11: (label, path)
-comparisons = {
-    'G01': [('100 m', 'EXP01/G01'), ('50 m', 'res50/EXP01/G01')],
-    'G02': [('50 m', 'EXP01/G02'), ('25 m', 'res25/EXP01/G02')],
-    'G03': [('50 m', 'EXP01/G03'), ('25 m', 'res25/EXP01/G03'),
-            ('20 m (data)', 'res_native/EXP01/G03')],
-    'G04': [('50 m', 'EXP01/G04'), ('25 m', 'res25/EXP01/G04')],
-    'G05': [('50 m', 'EXP01/G05'), ('25 m', 'res25/EXP01/G05')],
-    'G06': [('50 m', 'EXP01/G06'), ('25 m', 'res25/EXP01/G06'),
-            ('10 m (data)', 'res_native/EXP01/G06')],
-    'S01': [('25 m', 'backup_grid_1008/EXP01/S01'), ('50 m', 'res50/EXP01/S01')],
-}
-scores = {g: [(lab, score(p)) for lab, p in runs] for g, runs in comparisons.items()}
 
-LAMS = [3e9, 1e10, 3e10, 1e11]
+def page_grid():
+    fig = plt.figure(figsize=A4)
+    text(fig, 0.07, 0.965, 'Model grid: 50 m (G01 and S02: 100 m)', 14, 'bold')
+    fig.patches.append(plt.Rectangle((0.07, 0.872), 0.86, 0.058, transform=fig.transFigure,
+                                     facecolor='#e6eef9', edgecolor='none'))
+    text(fig, 0.09, 0.917,
+         'IGM\'s ice-flow emulator (dahunet_mini) was pretrained on 50–250 m grids '
+         '(S. Rosier, pers. comm.). 50 m is the finest grid in its training range, and '
+         'every finer grid we tested did worse.', 9.5, color='#184f95', width=100)
 
+    text(fig, 0.07, 0.85, '\n'.join([
+        '• Finer grids did not help. At 25 m (G02–G06) and on the provided data grids '
+        '(G03 20 m, G06 10 m), the dh/dt fit was the same or worse, except on G06, where '
+        'it improved slightly while the velocity fit collapsed (r 0.62 → 0.36 at 25 m; '
+        'at 10 m the sliding inversion failed). G04 (2 m) and G05 (10 m) did not fit '
+        'into GPU memory.',
+        '• Tuning did not rescue 25 m. A weaker sliding regularisation fitted the '
+        'velocities better but the dh/dt worse; retraining the emulator was worse at '
+        '25 and 50 m. λ = 1e11 stays.',
+        '• S01 moved from 25 to 50 m: better fit (band RMS 0.64 → 0.50 m/yr), same '
+        'recovery of its true SMB.',
+        '• G01 stays at 100 m: at 50 m it fits worse (0.41 → 0.57 m/yr), and its '
+        'thickness-noise and GLOB calibrations take 4 h to more than a day. S02 runs on '
+        'its 100 m data grid.',
+        '• For EXP14/15 the model grid follows the data where they are coarser: EXP15 '
+        'changes the grid for all glaciers except G01 and S02, EXP14 only for G02, G03 '
+        'and S02. Elsewhere EXP14 tests input detail below the grid (≤ 0.10 m/yr).']),
+        8.8, width=108, spacing=1.5)
 
-def lam_score(g, res, lam):
-    if lam == 1e11:
-        return score(f'EXP01/{g}' if res == 50 else f'res25/EXP01/{g}')
-    return score(f"lam_test/r{res}_lam{lam:.0e}".replace('+', '') + f'/EXP01/{g}')
-
-
-inv = {}
-for p in glob.glob(os.path.join(R, 'inversion_test', '*', '*', 'stats.json')):
-    s = json.load(open(p))
-    inv[(s['glacier'], s['variant'])] = s
-
-# ---------------------------------------------------------------- pages ---
-page = [0]
+    order = ['G01', 'G02', 'G03', 'G04', 'G05', 'G06', 'S01']
+    comparisons = {
+        'G01': [('100 m', 'EXP01/G01'), ('50 m', 'res50/EXP01/G01')],
+        'G02': [('50 m', 'EXP01/G02'), ('25 m', 'res25/EXP01/G02')],
+        'G03': [('50 m', 'EXP01/G03'), ('25 m', 'res25/EXP01/G03'),
+                ('20 m', 'res_native/EXP01/G03')],
+        'G04': [('50 m', 'EXP01/G04'), ('25 m', 'res25/EXP01/G04')],
+        'G05': [('50 m', 'EXP01/G05'), ('25 m', 'res25/EXP01/G05')],
+        'G06': [('50 m', 'EXP01/G06'), ('25 m', 'res25/EXP01/G06'),
+                ('10 m', 'res_native/EXP01/G06')],
+        'S01': [('50 m', 'EXP01/S01'), ('25 m', 'backup_grid_1008/EXP01/S01')],
+    }
+    ax = fig.add_axes([0.16, 0.13, 0.76, 0.5])
+    for i, g in enumerate(order):
+        y = len(order) - 1 - i
+        runs = [(lab, score(p)) for lab, p in comparisons[g]]
+        ref = runs[0][1]['band_rms']
+        vals = [(lab, s['band_rms'] / ref, s) for lab, s in runs if s]
+        xs = [v for _, v, _ in vals]
+        ax.plot([min(xs), max(xs)], [y, y], color=GRID, lw=2, zorder=1)
+        for k, (lab, v, s) in enumerate(vals):
+            sub = k == 0
+            ax.scatter(v, y, s=70 if sub else 45, color=BLUE if sub else ORANGE,
+                       edgecolor=SURFACE, linewidth=1.5, zorder=3)
+            failed = s['velocity']['r'] < 0.2
+            note = lab + ('\n(inversion failed)' if failed else '')
+            ax.annotate(note, (v, y), xytext=(0, 8 if sub else -9),
+                        textcoords='offset points', ha='center',
+                        va='bottom' if sub else 'top', fontsize=7,
+                        color=BLUE if sub else INK2)
+    ax.axvline(1, color=MUTED, lw=0.8, ls=(0, (3, 3)), zorder=0)
+    ax.set_yticks(range(len(order)), order[::-1], fontsize=9)
+    ax.set_xscale('log')
+    ax.set_xticks([0.75, 1, 1.5, 2, 3], ['0.75', '1', '1.5', '2', '3'])
+    ax.set_xlim(0.62, 3)
+    ax.minorticks_off()
+    ax.set_xlabel('band RMS relative to the submitted grid  (> 1: worse fit of the '
+                  'dh/dt elevation profile)', fontsize=8)
+    ax.set_ylim(-0.7, len(order) - 0.3)
+    ax.grid(axis='x', color=GRID, lw=0.5)
+    ax.set_title('EXP01: every tested grid against the submitted one (blue)', fontsize=10)
+    text(fig, 0.07, 0.075, 'Band RMS: RMS over 50 m elevation bands of the posterior '
+         'ensemble-mean dh/dt against the observed band means; λ = 1e11 in every run. '
+         'Full numbers: experiments/continuix/STATUS.md.', 7, color=INK2, width=140)
+    return fig
 
 
 def save(pdf, fig, footer=True):
     """Page into the PDF and as PNG next to it (for a quick look)."""
     page[0] += 1
     if footer:
-        fig.text(0.07, 0.025, 'GROUP_FAU2 · method01 · section 2: model grid · '
-                 'details: experiments/continuix/STATUS.md', fontsize=6.5, color=MUTED)
+        fig.text(0.07, 0.025, 'GROUP_FAU2 · method01 · details: '
+                 'experiments/continuix/STATUS.md and README_GROUP_FAU2_method01.txt',
+                 fontsize=6.5, color=MUTED)
         fig.text(0.93, 0.025, f'{page[0]}/{TOTAL}', fontsize=6.5, color=MUTED,
                  ha='right')
     pdf.savefig(fig)
@@ -165,133 +279,22 @@ def save(pdf, fig, footer=True):
     plt.close(fig)
 
 
-with PdfPages(OUT) as pdf:
-    # ---- section 1: submission summary (make_summary.py)
+page = [0]
+
+if __name__ == '__main__':
+    if '--extract-maps' in sys.argv:
+        extract_maps()
+        sys.exit()
+    if not os.path.exists(MAPS):
+        sys.exit(f'{MAPS} missing: sbatch experiments/continuix/report_maps.sh first')
+    maps = dict(np.load(MAPS))
     sys.path.insert(0, os.path.join('experiments', 'continuix'))
     import make_summary
     make_summary.load()
-    for draw in (make_summary.page1, make_summary.page2):
-        save(pdf, draw(total=TOTAL), footer=False)
-    plt.rcParams.update(STYLE)
-
-    # ---- page 3: the emulator, the decision and the grids
-    fig = plt.figure(figsize=A4)
-    text(fig, 0.07, 0.965, 'Section 2: model grid of FROST', 15, 'bold')
-    text(fig, 0.07, 0.94, 'Why FROST computes on 50 m (G01: 100 m), with the tests of '
-         '8 October 2026', 9, color=INK2)
-    # key statement
-    fig.patches.append(plt.Rectangle((0.07, 0.8), 0.86, 0.11, transform=fig.transFigure,
-                                     facecolor='#e6eef9', edgecolor='none'))
-    text(fig, 0.09, 0.897, 'The ice-flow emulator was trained on 50-250 m grids', 12.5,
-         'bold', color='#184f95')
-    text(fig, 0.09, 0.872,
-         'FROST computes the ice flow with IGM\'s pretrained emulator dahunet_mini (CNN, '
-         'six 3x3 convolutions, no pooling), fine-tuned on each glacier at the start of '
-         'the inversion and then frozen. It was trained on grids of 50-250 m (S. Rosier, '
-         'IGM, pers. comm.), so 50 m is the finest grid it knows. On finer grids it '
-         'extrapolates, and its fixed window of ±7 cells shrinks to ±175 m at 25 m and '
-         '±70 m at 10 m, less than the several ice thicknesses over which longitudinal '
-         'stresses couple the flow. This is why every finer grid we tested performed '
-         'worse.', 8.2, width=112)
-    text(fig, 0.07, 0.775, 'Decision', 10, 'bold')
-    text(fig, 0.07, 0.757,
-         'Model grid 50 m for all glaciers and experiments, G01 (the 832 km² ice cap) '
-         '100 m; where the ContinuIX grid is coarser it is kept (S02 100 m; EXP14: G02 '
-         '75 m, G03 60 m, S02 300 m; EXP15: 100 m). The perturbed inputs are used exactly '
-         'as provided, so the EXP14/EXP15 results stay comparable with the other methods. '
-         'Changed today: S01 from 25 m to 50 m.', 8, width=118)
-    text(fig, 0.07, 0.69, 'What the tests showed (EXP01, details on the next page)', 10, 'bold')
-    text(fig, 0.07, 0.672, '\n'.join([
-        '• Finer than 50 m is worse or at best equal: 25 m on G02-G06 (G03 band RMS 1.30 → '
-        '2.71 m/yr, G05 1.55 → 1.80, G04 0.20 → 0.30), the data grids of G03 (20 m) and '
-        'G06 (10 m: inversion failed, velocity r -0.08); G04 (2 m) and G05 (10 m) do not '
-        'fit into GPU memory.',
-        '• Tuning does not rescue 25 m: a weaker sliding regularisation fits the '
-        'velocities better but the dh/dt worse; retraining the emulator is worse '
-        'everywhere.',
-        '• S01 fits better at 50 m than at 25 m (0.64 → 0.50) with the same recovery of '
-        'its true SMB. G01 at 50 m fits worse than at 100 m (0.41 → 0.57) and its '
-        'thickness-noise and GLOB calibrations take 4 h to more than a day, so it stays at '
-        '100 m.']), 8, width=120)
-    ax = fig.add_axes([0.07, 0.25, 0.86, 0.29])
-    rows = []
-    for g in GLACIERS:
-        d01, d14, d15 = grids[g]
-        base = 100 if g in ('S02', 'G01') else 50
-        m = [max(base, d) for d in (d01, d14, d15)]
-        mark = lambda a, b: 'coarser' if b > a else 'same grid'
-        rows.append([g, f'{d01:g} / {d14:g} / {d15:g} m', f'{m[0]:g} m',
-                     f'{m[1]:g} m ({mark(m[0], m[1])})', f'{m[2]:g} m ({mark(m[0], m[2])})'])
-    table(ax, rows, ['Glacier', 'Data grid EXP01 / 14 / 15', 'Model grid EXP01',
-                     'Model grid EXP14', 'Model grid EXP15'],
-          [0.1, 0.25, 0.17, 0.24, 0.24],
-          'Model grid = coarser of the base grid (50 m; G01 100 m) and the data grid')
-    text(fig, 0.07, 0.345,
-         'Mandatory glaciers of EXP14/15: G01, G05, S01, S02. Where EXP14/15 keep the EXP01 '
-         'model grid, they test input detail below FROST\'s grid: the glacier-mean SMB '
-         'changes by at most 0.08 m/yr there (G06; G01, G04, G05, S01 <= 0.015). All '
-         'grids used for the submission are inside the emulator\'s training range except '
-         'EXP14 S02 (300 m, slightly above). EXP02 (raw data) runs on the EXP01 grids.',
-         7, color=INK2, width=135)
-    save(pdf, fig)
-
-    # ---- page 4: evidence
-    fig = plt.figure(figsize=A4)
-    text(fig, 0.07, 0.965, 'Evidence: finer grids and the sliding regularisation', 12, 'bold')
-    ax = fig.add_axes([0.2, 0.66, 0.72, 0.26])
-    order = ['G01', 'G02', 'G03', 'G04', 'G05', 'G06', 'S01']
-    for i, g in enumerate(order):
-        y = len(order) - 1 - i
-        ref = dict(scores[g])['50 m']['band_rms']
-        vals = [(lab, s['band_rms'] / ref, s) for lab, s in scores[g] if s]
-        xs = [v for _, v, _ in vals]
-        ax.plot([min(xs + [1]), max(xs + [1])], [y, y], color=GRID, lw=2, zorder=1)
-        for lab, v, s in vals:
-            sub = lab.startswith('50')
-            ax.scatter(v, y, s=60 if sub else 40, color=BLUE if sub else ORANGE,
-                       edgecolor=SURFACE, linewidth=1.5, zorder=3)
-            if not sub:
-                below = s['velocity']['r'] < 0.2
-                note = lab + (' (inversion failed)' if below else '')
-                ax.annotate(note, (v, y), xytext=(0, -11 if below else 7),
-                            textcoords='offset points', ha='center', fontsize=6.5,
-                            color=INK2)
-    ax.axvline(1, color=MUTED, lw=0.8, ls=(0, (3, 3)), zorder=0)
-    ax.set_yticks(range(len(order)), order[::-1])
-    ax.set_xscale('log')
-    ax.set_xticks([0.5, 0.75, 1, 1.5, 2, 3], ['0.5', '0.75', '1', '1.5', '2', '3'])
-    ax.set_xlabel('Band RMS relative to the 50 m run (< 1: fits the dh/dt bands better)')
-    ax.set_ylim(-0.6, len(order) - 0.3)
-    ax.grid(axis='x', color=GRID, lw=0.5)
-    ax.set_title('EXP01: each tested grid relative to 50 m (lam 1e11)')
-    ax.scatter([], [], s=60, color=BLUE, label='50 m')
-    ax.scatter([], [], s=40, color=ORANGE, label='other grid')
-    ax.legend(loc='lower right', fontsize=7)
-
-    rows, hl = [], []
-    for g in order:
-        for lab, s in scores[g]:
-            if not s:
-                continue
-            rows.append([g, lab, fmt(s['band_rms']), fmt(s['chi2']),
-                         fmt(s['obs_mean'], '{:+.2f}'), fmt(s['model_mean'], '{:+.2f}'),
-                         fmt(s['velocity']['r'])])
-            if (g == 'G01' and lab == '100 m') or (g != 'G01' and lab.startswith('50')):
-                hl.append(len(rows))
-    table(fig.add_axes([0.07, 0.17, 0.86, 0.42]), rows,
-          ['Glacier', 'Grid', 'Band RMS', 'chi2/n', 'Obs. dh/dt', 'Model dh/dt',
-           'Velocity r'], [0.1, 0.16, 0.13, 0.11, 0.15, 0.16, 0.13],
-          'EXP01 results per grid (highlighted: submitted grid), dh/dt in m/yr',
-          highlight=hl)
-    text(fig, 0.07, 0.165, '\n'.join([
-        'Band RMS: RMS over 50 m elevation bands of the posterior ensemble-mean dh/dt '
-        'against the observed band means. S01 truth: ELA 2350 m, gradients 10 m/yr per km.',
-        'Sliding regularisation (G04-G06, lam 3e9 to 1e11, 25 and 50 m): lower lam raises '
-        'the velocity r but not the dh/dt fit (G06 band RMS 0.68 → 1.51 m/yr at 25 m); '
-        'lam 1e11 kept.',
-        'Faster pipeline (same results): band covariance by FFT (G01 17 min → 0.8 s), '
-        'forward runs in persistent in-process workers (calibration 2.6-3.8x faster).']),
-        7, color=INK2, width=135)
-    save(pdf, fig)
-
-print(OUT)
+    with PdfPages(OUT) as pdf:
+        for draw in (make_summary.page1, make_summary.page2):
+            save(pdf, draw(total=TOTAL), footer=False)
+        plt.rcParams.update(STYLE)
+        save(pdf, page_maps(maps))
+        save(pdf, page_grid())
+    print(OUT)

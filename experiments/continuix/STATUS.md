@@ -1,4 +1,4 @@
-# ContinuIX: status (2026-10-08, evening: repackage, then upload)
+# ContinuIX: status (2026-10-12: ready to upload)
 
 FROST contribution to ContinuIX WP2/WP3
 (https://github.com/ContinuIX/ContinuIX-1), SMB-gradient approach.
@@ -6,35 +6,36 @@ Submission deadline: **end of October 2026**.
 
 ## Open (start here)
 
-State at the end of 2026-10-08:
-- Final grids: 50 m for G02-G06 and S01 (S01 rerun today, was 25 m);
-  100 m for G01 (tested at 50 m: worse fit, calibrations 4 h to > 1 day)
-  and S02 (its data grid). Reason: IGM's emulator dahunet_mini was
-  pretrained on 50-250 m grids (S. Rosier, pers. comm.), so 50 m is the
-  finest grid in its range; every finer grid tested worse. lam 1e11 kept.
-- `data/results/continuix/submission/`: 149 files on these grids.
-  GROUP_FAU2 and check_GROUP_FAU2.txt are still from 7 Oct (old S01).
-- Code (not committed): FFT band covariance, in-process forward workers
-  (`forward_workers`), lam_test.py, inversion_test.py, bench_forward.py,
-  report_resolution.py, make_summary.py refactor, config.yml (G01 100 m,
-  S01 50 m), method README (50 m / G01 100 m, resolution bullet).
-- Report: `summary/ContinuIX_FROST_report_2026-10-08.pdf` (4 pages:
-  submission summary + model-grid section); pages 1-2 need the new check
-  report.
+State on 2026-10-12 (ready to upload):
+- Final grids: 50 m for G02-G06 and S01; 100 m for G01 (fit and cost)
+  and S02 (data grid). Emulator dahunet_mini pretrained on 50-250 m
+  (S. Rosier, pers. comm.). lam 1e11.
+- Upload folder `data/results/continuix/GROUP_FAU2/` complete and
+  checked (12 Oct): 149 result files (EXP01 8, EXP02 7, EXP03-15 104,
+  EXP16-20 30), README, log (41.3 GPU hours), checklist, ContinuIX
+  instructions; no result file newer than the package of 8 Oct 14:13.
+- Method README (`experiments/continuix/submission/`, copied into
+  GROUP_FAU2) updated 12 Oct from the check report: emulator training
+  range; EXP14 below the grid <= 0.10 m/yr (G06; G01, G04, G05, S01
+  <= 0.05); 77 % of 104 runs within 0.07 m/yr; S01 EXP03/04
+  +0.12/+0.12; velocity runs <= 0.07 on the mandatory glaciers; S01
+  velocity 28 % low; GLOB G02: thin ice runs out, so the global dh/dt
+  cannot rule out very negative SMB (EXP17 SMB -3.1, model dh/dt -0.9,
+  obs -0.5; posterior ELA spread 316-353 m vs prior 372 m).
+- Report `summary/ContinuIX_FROST_report_2026-10-12.pdf` (4 pages:
+  summary, EXP01 maps of observed dh/dt, SMB and modelled - observed
+  dh/dt, model grid). Maps reduced by `report_maps.sh` ->
+  `summary/maps_EXP01.npz`; draw on fritz2 (compute nodes lack the font).
 
-Next (in this order):
-1. `sbatch experiments/continuix/package_and_check.sh`.
-2. Method README: add "pretrained on 50-250 m grids (S. Rosier, pers.
-   comm.)" to the resolution bullet; update the S01-dependent numbers from
-   the new check report (perturbation bullet: share of runs within 0.07
-   m/yr, S01 EXP03/04, EXP14/15, "S01 at 100 m has only 219 ice cells";
-   S01 velocity 29 % -> 28 %); copy the README into GROUP_FAU2.
-3. `python experiments/continuix/report_resolution.py` (final report).
-4. Commit (git status -sb first: shared checkout), upload GROUP_FAU2.
-5. Delete the backups after the upload: `backup_grid_1008/` (S01 25 m),
-   `backup_g01_50m_1008/` (G01 50 m), and the test folders `res25/`,
+Next:
+1. Upload `data/results/continuix/GROUP_FAU2/` (3.8 GB) to the
+   ContinuIX SharePoint (manual).
+2. After the upload delete the backups `backup_grid_1008/` (S01 25 m),
+   `backup_g01_50m_1008/` (G01 50 m) and the test folders `res25/`,
    `res25_inproc/`, `res50/`, `res_native/`, `lam_test/`,
-   `inversion_test/`, `bench/` (keep their numbers in this file).
+   `inversion_test/`, `bench/` (numbers kept in this file). The grid
+   chart of the report reads res25, res50, res_native and
+   backup_grid_1008, so the report cannot be redrawn afterwards.
 
 Log of 8 Oct (details):
 
