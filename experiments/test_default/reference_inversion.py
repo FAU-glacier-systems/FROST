@@ -5,9 +5,10 @@
 
 """
 The igm-examples aletsch Part D inversion (params_D_real) on the example's
-own input.nc, run through FROST's inversion step with test_default's
-params_inversion.yaml. Next to test_default on Aletsch (OGGM-shop data)
-this separates the effect of the input data from the inversion setup.
+own input.nc, run through FROST's inversion step with
+params_inversion_igm_example.yaml (test_default's inversion until
+2026-10-22). Next to the same setup on Aletsch OGGM-shop data this separates
+the effect of the input data from the inversion setup.
 
 Run from the repository root, on a GPU node:
     python experiments/test_default/reference_inversion.py
@@ -26,7 +27,8 @@ from frost.preprocess import igm_inversion
 
 EXAMPLE_INPUT = os.path.join(os.path.dirname(os.getcwd()), 'igm-examples',
                              'aletsch', 'data', 'input.nc')
-PARAMS = os.path.join('experiments', 'test_default', 'params_inversion.yaml')
+PARAMS = os.path.join('experiments', 'test_default',
+                      'params_inversion_igm_example.yaml')
 RGI_ID_DIR = os.path.join('data', 'results', 'test_default',
                           'igm_examples_aletsch')
 

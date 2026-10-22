@@ -9,6 +9,8 @@ pipeline_steps:
 
 download:
   oggm_shop: true                  # Use OGGM-shop data
+  thickness_product: millan  # as run (FROST default since 2026-10-22: iceboost)
+  velocity_product: millan   # as run (FROST default since 2026-10-22: itslive)
   hugonnet: true                   # Download Hugonnet et al. dh/dt data
   year_interval: 20                # Temporal span for Hugonnet data
   target_resolution: None          # Leave unset to use native resolution

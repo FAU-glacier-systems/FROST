@@ -45,7 +45,8 @@ def source_data(rgi_id):
         download_data.main(rgi_id=rgi_id,
                            rgi_id_dir=os.path.join(SOURCE_DIR, rgi_id),
                            smb_model='TI', target_resolution='None',
-                           oggm_shop=True)
+                           oggm_shop=True, thickness_product='millan',
+                           velocity_product='millan')
     return data_dir
 
 

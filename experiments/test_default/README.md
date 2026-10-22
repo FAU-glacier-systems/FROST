@@ -1,11 +1,13 @@
 # test_default: reference run on one glacier
 
 The default FROST setup, used for development and the end-to-end test: download
-OGGM-shop data, invert the ice thickness from surface velocities, calibrate the
-ELA mass-balance model with ES-MDA against Hugonnet et al. (2021) elevation
-change. The inversion is set up exactly as the igm-examples Aletsch tutorial
-(Part D, `params_D_real.yaml`): SIA start, Huber velocity misfit,
-squared-Laplacian regularisation of the bed.
+OGGM-shop data with the IceBoost v2.0 thickness, invert for sliding, calibrate
+the ELA mass-balance model with ES-MDA against Hugonnet et al. (2021) elevation
+change. The inversion keeps the geometry fixed: IceBoost, shifted from 2012
+(its TanDEM-X surface) to 2000 with the Hugonnet dh/dt; only tau_ref is fitted
+to the surface velocity (Huber misfit, squared-Laplacian smoothness 1e11).
+Chosen in `experiments/inversion_setup` (IceBoost against date-corrected
+GlaThiDa: bias +8 m, RMS 46 m; Millan et al. 2022: +69 m, 115 m).
 
 ## Run
 
@@ -39,5 +41,6 @@ python experiments/test_default/reference_inversion.py
 | File | Purpose |
 |---|---|
 | `pipeline_config.yml` | Glacier, pipeline steps, EnKF settings and SMB prior |
-| `params_inversion.yaml` | IGM `field_inversion` setup |
-| `reference_inversion.py` | Same inversion on the igm-examples input |
+| `params_inversion.yaml` | IGM `field_inversion` setup (fixed IceBoost geometry, tau_ref fitted) |
+| `params_inversion_igm_example.yaml` | The igm-examples Aletsch Part D inversion (thickness from velocity), the default until 2026-10-22 |
+| `reference_inversion.py` | The Part D inversion on the igm-examples input |

@@ -15,6 +15,9 @@ import subprocess
 import yaml
 import rioxarray
 
+from frost.preprocess.thickness_products import set_thickness_product
+from frost.preprocess.velocity_products import set_velocity_product
+
 """
 TODOs:
 - make netCDF file names variables (input_saved.nc, observations.nc)
@@ -27,7 +30,10 @@ def main(rgi_id,
          rgi_id_dir,
          smb_model,
          target_resolution,
-         oggm_shop):  # Parse command-line arguments
+         oggm_shop,
+         thickness_product='iceboost',
+         velocity_product='itslive',
+         velocity_year=None):  # Parse command-line arguments
 
     # Create output folder
     os.makedirs(rgi_id_dir, exist_ok=True)
@@ -43,7 +49,8 @@ def main(rgi_id,
     # Call functions based on flags
     if oggm_shop:
         print(f"Downloading OGGM shop data for RGI ID: {rgi_id}...")
-        download_OGGM_shop(rgi_id, rgi_id_dir, flag_OGGM_climate)
+        download_OGGM_shop(rgi_id, rgi_id_dir, flag_OGGM_climate,
+                           thickness_product, velocity_product, velocity_year)
         print("OGGM shop data download completed.")
 
     # TODO
@@ -295,11 +302,19 @@ def scale_raster(input_file, output_file, scale_factor):
 
 
 # Function to handle the main logic
-def download_OGGM_shop(rgi_id, rgi_id_dir, flag_OGGM_climate):
+def download_OGGM_shop(rgi_id, rgi_id_dir, flag_OGGM_climate,
+                       thickness_product='iceboost', velocity_product='itslive',
+                       velocity_year=None):
     """
     wrapper to call 'igm_run'
     - JSON file needs to specify the oggm_shop routine of IGM
     - function generates generic OGGMshop netcdf
+    - thk of input.nc: thickness_product, iceboost (IceBoost v2.0),
+      consensus (Farinotti et al. 2019) or millan (Millan et al. 2022), see
+      thickness_products.py
+    - uvelsurfobs, vvelsurfobs of input.nc: velocity_product, itslive
+      (velocity_year: None for the composite) or millan, see
+      velocity_products.py
 
     Authors: Oskar Herrmann
 
@@ -401,6 +416,11 @@ def download_OGGM_shop(rgi_id, rgi_id_dir, flag_OGGM_climate):
             # Update usurf with DEM data - flip y axis
             input_dataset['usurf'][:] = dem.data[::-1]
 
+    # OGGM shop writes Millan et al. (2022) thickness and velocities;
+    # IceBoost and ITS_LIVE (defaults) replace them
+    set_thickness_product(input_nc, thickness_product, rgi_id)
+    set_velocity_product(input_nc, velocity_product, rgi_id, velocity_year)
+
     os.chdir(original_dir)
 
 
@@ -438,6 +458,17 @@ if __name__ == '__main__':
     parser.add_argument('--download_oggm_shop', action='store_true',
                         help='Flag to control execution of download_OGGM_shop.')
 
+    parser.add_argument('--thickness_product', default='iceboost',
+                        choices=['iceboost', 'consensus', 'millan'],
+                        help='Thickness of input.nc: iceboost (IceBoost v2.0), '
+                             'consensus (Farinotti et al. 2019) or millan '
+                             '(Millan et al. 2022).')
+
+    parser.add_argument('--velocity_product', default='itslive',
+                        choices=['itslive', 'millan'],
+                        help='Velocities of input.nc: itslive (ITS_LIVE v2 '
+                             'composite) or millan (Millan et al. 2022).')
+
     parser.add_argument('--download_hugonnet', action='store_true',
                         help='Flag to control execution of download_Hugonnet.')
 
@@ -459,6 +490,8 @@ if __name__ == '__main__':
          smb_model=args.smb_model,
          target_resolution=args.target_resolution,
          oggm_shop=args.download_oggm_shop,
+         thickness_product=args.thickness_product,
+         velocity_product=args.velocity_product,
          hugonnet=args.download_hugonnet,
          hugonnet_directory=args.hugonnet_directory,
          year_interval=args.year_interval,

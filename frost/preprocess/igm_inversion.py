@@ -19,16 +19,30 @@ def emulator_path(rgi_id_dir):
     return os.path.join(rgi_id_dir, 'Preprocess', 'outputs', 'emulator.keras')
 
 
-def thickness_at_2000(input_file, product_year):
-    """Shift the thickness product of input.nc (the OGGM-shop thk, e.g.
-    Millan et al. 2022) from its reference year back to 2000 with the
-    observed dh/dt: thk_2000 = thk - dhdt * (product_year - 2000). Gaps of
+def thickness_at_2000(input_file, product_year=None):
+    """Shift the thickness product of input.nc (thk of the download, see
+    thickness_products.py) from its reference year back to 2000 with the
+    observed dh/dt: thk_2000 = thk - dhdt * (product_year - 2000). The year
+    is the thk_source_year of input.nc; product_year is needed only for
+    downloads without it (Millan, before 2026-10-22) and must match it. Gaps of
     the product inside the ice mask take the nearest value. Writes the result
     to thk (start of the inversion) and thkprior (reference for a thickness
     misfit); the unshifted product is kept as thk_product."""
     from scipy.ndimage import distance_transform_edt
 
     with Dataset(input_file, 'r+') as ds:
+        source_year = ds.getncattr('thk_source_year') \
+            if 'thk_source_year' in ds.ncattrs() else None
+        if source_year is None and product_year is None:
+            raise ValueError(f'{input_file} has no thk_source_year; set '
+                             'frost: thk_product_year in params_inversion.yaml')
+        if source_year is not None and product_year is not None \
+                and int(source_year) != int(product_year):
+            raise ValueError(
+                f'thk_product_year {product_year} of params_inversion.yaml, but '
+                f'the thickness of {input_file} is {ds.getncattr("thk_source")} '
+                f'of {source_year}')
+        product_year = int(source_year if source_year is not None else product_year)
         if 'thk_product' not in ds.variables:
             product = ds.createVariable('thk_product', 'f4', ('y', 'x'))
             product[:] = ds['thk'][:]
@@ -56,14 +70,17 @@ def thickness_at_2000(input_file, product_year):
                            '2000 with the observed dh/dt')
 
 
-def main(rgi_id_dir, params_inversion_path, min_velocity_p99=10.0):
+def main(rgi_id_dir, params_inversion_path, min_velocity_p99=0.0):
     """
     Generates params.json for IGM inversion and runs igm_run.
 
     Args:
         rgi_id (str) - Glacier RGI ID
         min_velocity_p99 (float) - velocity observations are used only if
-                                   their 99th percentile exceeds this (m/yr)
+                                   their 99th percentile exceeds this (m/yr);
+                                   0 (default since 2026-10-22): whenever
+                                   there are any. 10 dropped the slow
+                                   glaciers with ITS_LIVE (p99 1-8 m/yr)
     """
 
     # Check if velocity observations are available
@@ -118,7 +135,7 @@ def main(rgi_id_dir, params_inversion_path, min_velocity_p99=10.0):
     # FROST options, not passed to IGM
     frost_options = inv_params.pop('frost', None) or {}
     if frost_options.get('thk_start') == 'product_2000':
-        thickness_at_2000(input_file, frost_options['thk_product_year'])
+        thickness_at_2000(input_file, frost_options.get('thk_product_year'))
 
     # Drop the velsurf misfit term if no usable velocity observations are available
     if not flag_velsurfobs:

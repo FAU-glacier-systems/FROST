@@ -9,6 +9,9 @@ pipeline_steps:
 
 download:
   oggm_shop: true                  # Use OGGM-shop data
+  thickness_product: iceboost     # iceboost (IceBoost v2.0) or millan (Millan et al. 2022)
+  velocity_product: itslive        # itslive (ITS_LIVE v2) or millan (Millan et al. 2022)
+  velocity_year: null             # itslive: null for the 2014-2022 composite, else an annual mosaic
   hugonnet: true                   # Download Hugonnet et al. dh/dt data
   year_interval: 20                # Temporal span for Hugonnet data
   target_resolution: None          # Leave unset to use native resolution

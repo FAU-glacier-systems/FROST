@@ -53,7 +53,12 @@ def run_frost_pipeline(cfg):
                            rgi_id_dir=rgi_id_dir,
                            smb_model=cfg['smb_model'],
                            target_resolution=cfg['download']['target_resolution'],
-                           oggm_shop=cfg['download']['oggm_shop'],)
+                           oggm_shop=cfg['download']['oggm_shop'],
+                           thickness_product=cfg['download'].get(
+                               'thickness_product', 'iceboost'),
+                           velocity_product=cfg['download'].get(
+                               'velocity_product', 'itslive'),
+                           velocity_year=cfg['download'].get('velocity_year'))
 
     if cfg['pipeline_steps']['inversion']:
         #####################################

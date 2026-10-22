@@ -7,6 +7,8 @@ pipeline_steps:
   calibrate: true
 download:
   oggm_shop: true
+  thickness_product: millan  # as run (FROST default since 2026-10-22: iceboost)
+  velocity_product: millan   # as run (FROST default since 2026-10-22: itslive)
   hugonnet: true
   year_interval: 20
   target_resolution: None
