@@ -46,7 +46,9 @@ def build_glacier_labels(names: pd.Series, rgi_ids: pd.Series) -> list[str]:
     return labels
 
 
-def plot_glamos_vs_predictions(merged_df_glamos: pd.DataFrame, out_path: Path) -> None:
+def plot_glamos_vs_predictions(merged_df_glamos: pd.DataFrame, out_path: Path,
+                               vel_obs_label: str = "Millan in 2017-2018",
+                               vel_mod_label: str = "Modeled in 2000") -> None:
     # Extract arrays
     Modeled_ela = merged_df_glamos['ela'].to_numpy(dtype=float)
     Modeled_grad_abl = merged_df_glamos['gradabl'].to_numpy(dtype=float)
@@ -123,6 +125,14 @@ def plot_glamos_vs_predictions(merged_df_glamos: pd.DataFrame, out_path: Path) -
         merged_df_glamos.get('rgi_id', pd.Series([""] * len(merged_df_glamos))),
     )
 
+    # 1-sigma of the glacier-mean Hugonnet dh/dt: from the band covariance
+    # (central_europe_esmda/evaluate.py), else the submitted table's mean
+    # pixel error / 4
+    if 'dhdt_mean_sigma' in merged_df_glamos.columns:
+        dhdt_sigma = merged_df_glamos['dhdt_mean_sigma'].to_numpy(dtype=float)
+    else:
+        dhdt_sigma = merged_df_glamos['dhdt_std'].to_numpy(dtype=float) / 4
+
     fig, axes = plt.subplots(3, 3, figsize=(10, 10))
     fig.patch.set_facecolor(plt.rcParams["figure.facecolor"])
     axes = axes.flatten()
@@ -181,7 +191,7 @@ def plot_glamos_vs_predictions(merged_df_glamos: pd.DataFrame, out_path: Path) -
         ax=axes[3],
         x=merged_df_glamos['dhdt_mean'],
         y=merged_df_glamos['dhdt_ensemble_mean'],
-        x_std=merged_df_glamos['dhdt_std']/4,
+        x_std=dhdt_sigma,
         y_std=merged_df_glamos['dhdt_ensemble_std'],
         xlabel="Hugonnet (m yr$^{-1}$)",
         ylabel="Modeled (m yr$^{-1}$)",
@@ -197,7 +207,7 @@ def plot_glamos_vs_predictions(merged_df_glamos: pd.DataFrame, out_path: Path) -
         ax=axes[5],
         x=merged_df_glamos['dhdt_mean'].to_numpy(dtype=float),
         y=merged_df_glamos['annual_mass_balance'].to_numpy(dtype=float) ,
-        x_std=merged_df_glamos['dhdt_std'] / 4,
+        x_std=dhdt_sigma,
         y_std=merged_df_glamos['annual_mass_balance_std'] ,
         xlabel="Hugonnet elevation change (m$\,$yr$^{-1}$)",
         ylabel="WGMS + GLAMOS mass balance (m w.e. $\,$yr$^{-1}$)",
@@ -215,8 +225,8 @@ def plot_glamos_vs_predictions(merged_df_glamos: pd.DataFrame, out_path: Path) -
             y=merged_df_glamos['Mean_velsurf_mag'].to_numpy(dtype=float),
             x_std=merged_df_glamos['Std_velsurfobs_mag'].to_numpy(dtype=float) / 2,
             y_std=merged_df_glamos['Std_velsurf_mag'].to_numpy(dtype=float) / 2,
-            xlabel="Millan in 2017-2018 (m$\,$yr$^{-1}$)",
-            ylabel="Modeled in 2000 (m$\,$yr$^{-1}$)",
+            xlabel=f"{vel_obs_label} (m$\,$yr$^{{-1}}$)",
+            ylabel=f"{vel_mod_label} (m$\,$yr$^{{-1}}$)",
             title="Velocity",
             glacier_names=glacier_names,
             ticks=np.arange(0, 54, 12),
@@ -503,6 +513,10 @@ def main():
     parser.add_argument("--output_dir", type=str,
                         default=HERE / "plots")
     parser.add_argument("--top_n", type=int, default=10, help="How many top SLA-ELA differences to print")
+    parser.add_argument("--vel_obs_label", default="Millan in 2017-2018",
+                        help="x label of the velocity panel")
+    parser.add_argument("--vel_mod_label", default="Modeled in 2000",
+                        help="y label of the velocity panel")
     global STYLE
     STYLE = plot_style.setup(parser)
     args = STYLE.args
@@ -562,7 +576,8 @@ def main():
     #     merged_df_glamos_sla.get('rgi_id', pd.Series([""] * len(merged_df_glamos_sla))),
     # )
 
-    plot_glamos_vs_predictions(merged_df_glamos, out_dir / "GLAMOS_regional_run")
+    plot_glamos_vs_predictions(merged_df_glamos, out_dir / "GLAMOS_regional_run",
+                               args.vel_obs_label, args.vel_mod_label)
 
 
     plot_sla_vs_predictions(merged_df_sla, out_dir / "SLA_regional_run")

@@ -10,7 +10,7 @@
 #SBATCH --nodes=1
 #SBATCH --partition=a40
 #SBATCH --gres=gpu:a40:1
-#SBATCH --time=02:00:00
+#SBATCH --time=00:40:00
 #SBATCH --job-name=ce_esmda
 #SBATCH --output=logs/ce_esmda_%A_%a.out
 #SBATCH --error=logs/ce_esmda_%A_%a.err

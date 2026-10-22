@@ -1,0 +1,11 @@
+# Findings (2026-10-22)
+
+Run central_europe_esmda_velyear (job 4652023): tau_ref inverted on the geometry of the velocity year (ITS_LIVE 2014-2022 composite, 2018), forward runs from the 2000 geometry, ES-MDA with 32 members and 4 iterations, absolute-sill dh/dt covariance, model error 0.5 m/yr. 24 of 25 glaciers (Gietro crashed in the grid coarsening; fixed, rerun pending).
+
+- Bed: no artefacts. The small-scale roughness of the bed on the ice is 0.2-1.1 times that of the ice-free terrain, 0-7 single-cell pits per glacier. Thickness of 2000 against GlaThiDa moved to 2000: Rhone +2 m, Aletsch -10 m; too thick on Pasterze (+50 m) and Plaine Morte (+51 m), too thin on Claridenfirn (-42 m). But the outline cells carry 25-77 m of ice: every glacier ends in a cliff, made worse by adding 12+ years of thinning when the thickness is moved back to 2000.
+- tau_ref: no sign of overfitting. Less than 1.5 % of the ice at the bounds, small-scale roughness 0.06-0.16 decades, small-scale correlation with the observed speed between -0.37 and 0.25. The sliding share (0.4-0.9) is highest on small glaciers that move less than 1 m/yr, where the speeds barely constrain tau_ref.
+- Velocity in time: the forward speed in 2018 is within 25 % of the inverted speed on 18 of 24 glaciers (Aletsch 1.08, Rhone 0.83). But the forward runs start with a transient: the speeds of 2000 are 1.3-6.5 times those of 2018 (Pasterze lower third 112 m/yr in 2000, 15 m/yr in 2001), and the slowdown 2000-2020 is 30-85 %. The 2000 geometry and the tau_ref fitted in 2018 do not fit together, most visibly at the tongues.
+- Jamtal is numerically unstable: members between 25 and 110 m/yr on a glacier observed at 0.4 m/yr. Its calibration result is not usable.
+- dh/dt: the glacier means are within 0.25 m/yr of Hugonnet. Per band the fit is within the errors only thanks to the model error: chi2/n against the data error alone is 3-4 on Aletsch, Rhone, Findel and Kesselwand. The mass budget per band shows flux converging at mid elevations (Rhone 2500-2700 m) and too little ice reaching the tongue, which thins too fast (Rhone -5 against -3.4 m/yr).
+
+Next: the 2000 start geometry at the tongues and margins (NASADEM surface, thickness moved back with dh/dt); the forward speeds 2000-2020 against the ITS_LIVE annual mosaics; Jamtal out of the evaluation until it is stable.

@@ -1,0 +1,90 @@
+# @package _global_
+# Fixed geometry (experiments/inversion_setup): the thickness product of the
+# download (thickness_product, default IceBoost v2.0) shifted from its year
+# to 2000 with the Hugonnet dh/dt and kept fixed; only
+# tau_ref (log10) fitted to the surface velocity, smoothness 1e10, on the
+# geometry of the velocity year (frost: inversion_year below).
+hydra:
+  run:
+    dir: outputs/inversion
+defaults:
+- override /inputs:
+  - local
+- override /assimilations:
+  - field_inversion
+- override /processes:
+  - iceflow
+- override /outputs: []
+processes:
+  iceflow:
+    method: unified
+    physics:
+      sliding:
+        tau_ref: 0.213
+        u_ref: 100.0
+    numerics:
+      Nz: 2
+      basis_vertical: molho
+      basis_horizontal: q1
+    unified:
+      display:
+        print_cost: true
+      mapping: network
+      inputs:
+      - thk
+      - usurf
+      - arrhenius
+      - tau_ref
+      - dX
+      optimizer: lbfgs
+      line_search: hager-zhang
+      nbit_init: 0
+      nbit: 0
+      nbit_warmup: -1
+      retrain_freq: 0
+      network:
+        pretrained_path: dahunet_mini.keras
+        pretrained: true
+assimilations:
+  field_inversion:
+    optimization:
+      retrain_iter: 0
+    variables:
+    - name: tau_ref
+      transform: log10
+      lower_bound: 0.05
+      upper_bound: 2.0
+      mask: icemask
+    objective:
+      misfit:
+      - name: velsurf
+        kind: huber
+        components:
+        - uvelsurf
+        - vvelsurf
+        obs:
+        - uvelsurfobs
+        - vvelsurfobs
+        std: 1.0
+      regularization:
+      - name: tau_ref
+        penalty: squared_laplacian
+        lam: 10000000000.0
+    output:
+      vars_to_save:
+      - usurf
+      - thk
+      - topg
+      - icemask
+      - tau_ref
+      - velbase_mag
+      - velsurf_mag
+      - velsurfobs_mag
+      - thkprior
+    use_existing_thk: true
+frost:
+  thk_start: product_2000
+  # tau_ref fitted on the geometry of the velocity year (ITS_LIVE composite
+  # 2014-2022 -> 2018): surface and thickness of 2000 moved with the Hugonnet
+  # dh/dt, bed unchanged; the forward runs still start from 2000
+  inversion_year: velocity
