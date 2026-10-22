@@ -12,6 +12,21 @@ MAE and the share of glaciers whose reference lies inside the posterior
 per km, the reference in m w.e. per km; the rows "w.e." convert the
 modelled gradients with 0.91 (ice density 910 / water 1000).
 
+Censored ELA references (experiments/validation/reference_profiles.py): in
+years without accumulation area GLAMOS reports the ELA at the glacier top
+and WGMS flags it 'above', so the mean ELA of a glacier with many such
+years is a lower bound (Plaine Morte 80 % of the years, Careser 75 %,
+Tsanfleuron 70 %, ...). r, bias and MAE of the ELA use only the glaciers
+with at most CENSORED_MAX of such years; for the others the posterior counts
+as inside +-k sigma if mean + k sigma reaches the reference.
+
+SMB profiles: the posterior SMB (all members, m ice x 0.91 -> m w.e.) at the
+elevation bins of the GLAMOS / WGMS mean annual mass balance 2000-2019,
+against it: per glacier bias, RMSE and the share of bins within +-2 std of
+the members (tables/profiles.tsv, plots/profiles.png, rows "profile" in
+evaluation.tsv). This compares the SMB directly, without the ELA and
+gradient definitions of the references.
+
 Melt-out check per glacier: elevation bands whose ice is gone in 2020 in
 every member and whose modelled dh/dt has no ensemble spread carry no
 information on the SMB parameters (as Aletsch's tongue).
@@ -23,7 +38,8 @@ plots in its own folder):
     python experiments/central_europe_esmda/evaluate.py \
         --results data/results/central_europe_esmda_velyear \
         --out experiments/central_europe_esmda_velyear
-Writes tables/evaluation.tsv, tables/glaciers.tsv and plots/evaluation.png,
+Writes tables/evaluation.tsv, tables/glaciers.tsv, tables/profiles.tsv,
+plots/evaluation.png and plots/profiles.png,
 and tables/aggregated_results.csv for experiments/central_europe/evaluation.py
 (the submitted table's metadata, SLA and references with the new ELA and
 gradients, glaciers with new results only):
@@ -47,6 +63,8 @@ import matplotlib.pyplot as plt
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(os.path.dirname(HERE)))
 from frost.calibration.observation_provider import ObservationProvider
+sys.path.insert(0, os.path.join(os.path.dirname(HERE), 'validation'))
+from reference_profiles import ela_censored_share, mass_balance_profiles
 
 REFERENCE = os.path.join('experiments', 'central_europe', 'tables', 'aggregated_results.csv')
 RUNS = {'new': os.path.join('data', 'results', 'central_europe_esmda'),
@@ -56,6 +74,7 @@ PARAMETERS = {'ela': 'ela_wgmsglamos', 'abl': 'gradabl_wgmsglamos',
 LABELS = {'ela': 'ELA (m)', 'abl': 'Ablation gradient (per km)',
           'acc': 'Accumulation gradient (per km)'}
 ICE_TO_WE = 0.91
+CENSORED_MAX = 0.25  # share of years with the reference ELA at the top
 
 
 def melt_out(rgi_dir, elevation_step=50):
@@ -79,6 +98,7 @@ def melt_out(rgi_dir, elevation_step=50):
 
 
 def glacier_rows(glaciers, reference):
+    censored = ela_censored_share([rgi_id for rgi_id, _ in glaciers])
     rows = []
     for rgi_id, name in glaciers:
         ref = reference.loc[rgi_id]
@@ -89,7 +109,8 @@ def glacier_rows(glaciers, reference):
                 continue
             with open(path) as f:
                 result = json.load(f)
-            row = dict(rgi_id=rgi_id, glacier=name, run=run)
+            row = dict(rgi_id=rgi_id, glacier=name, run=run,
+                       ela_censored=censored[rgi_id])
             for k, (p, column) in enumerate(PARAMETERS.items()):
                 row[p] = result['final_mean'][k]
                 row[f'{p}_std'] = result['final_std'][k]
@@ -111,13 +132,97 @@ def scores(table):
                 model, std = factor * g[p], factor * g[f'{p}_std']
                 diff = model - g[f'{p}_ref']
                 z = np.abs(diff) / std
-                rows.append(dict(run=run, parameter=p, unit=unit, n=len(g),
-                                 r=np.corrcoef(model, g[f'{p}_ref'])[0, 1],
-                                 bias=diff.mean(), mae=np.abs(diff).mean(),
+                # censored ELA: the reference is a lower bound
+                censored = (g.ela_censored > CENSORED_MAX).to_numpy() if p == 'ela' \
+                    else np.zeros(len(g), dtype=bool)
+                z = np.where(censored, np.maximum(-diff, 0) / std, z)
+                use = ~censored
+                rows.append(dict(run=run, parameter=p, unit=unit, n=int(use.sum()),
+                                 n_censored=int(censored.sum()),
+                                 r=np.corrcoef(model[use], g[f'{p}_ref'][use])[0, 1],
+                                 bias=diff[use].mean(), mae=np.abs(diff[use]).mean(),
                                  inside_1sigma_pct=100 * np.mean(z <= 1),
                                  inside_2sigma_pct=100 * np.mean(z <= 2),
                                  median_std=std.median()))
     return pd.DataFrame(rows)
+
+
+def member_smb(result, elevation):
+    """SMB (m w.e./yr) of every posterior member at the elevations: IGM's
+    smb simple with the member's ELA and gradients (m ice per km)."""
+    ensemble = np.array(result['final_ensemble'], dtype=float)
+    ela, abl, acc = (ensemble[:, k, None] for k in range(3))
+    smb = elevation[None] - ela
+    smb = smb * np.where(smb < 0, abl, acc) / 1000
+    return ICE_TO_WE * np.clip(smb, -100, 100)
+
+
+def profile_rows(glaciers):
+    """Modelled against reference SMB profile per glacier and run."""
+    profiles = mass_balance_profiles([rgi_id for rgi_id, _ in glaciers])
+    rows, curves = [], {}
+    for rgi_id, name in glaciers:
+        if rgi_id not in profiles:
+            continue
+        reference = profiles[rgi_id]
+        elevation = reference.elevation.to_numpy(dtype=float)
+        for run, results in RUNS.items():
+            path = os.path.join(results, rgi_id, 'calibration_results.json')
+            if not os.path.exists(path):
+                continue
+            with open(path) as f:
+                smb = member_smb(json.load(f), elevation)
+            mean, std = smb.mean(0), smb.std(0)
+            diff = mean - reference.mb.to_numpy()
+            rows.append(dict(rgi_id=rgi_id, glacier=name, run=run,
+                             source=reference.source.iloc[0], bins=len(elevation),
+                             bias=diff.mean(), rmse=np.sqrt(np.mean(diff ** 2)),
+                             inside_2std_pct=100 * np.mean(np.abs(diff) <= 2 * std)))
+            curves[(rgi_id, run)] = (elevation, mean, std, reference.mb.to_numpy())
+    return pd.DataFrame(rows), curves
+
+
+def profile_scores(profiles):
+    rows = []
+    for run, group in profiles.groupby('run'):
+        rows.append(dict(run=run, parameter='profile', unit='w.e.', n=len(group),
+                         n_censored=0, r=np.nan, bias=group.bias.mean(),
+                         mae=group.rmse.mean(), inside_1sigma_pct=np.nan,
+                         inside_2sigma_pct=group.inside_2std_pct.mean(),
+                         median_std=np.nan))
+    return pd.DataFrame(rows)
+
+
+def plot_profiles(profiles, curves, path):
+    """One panel per glacier: reference profile and the posterior SMB of
+    each run (mean +- 2 std of the members)."""
+    glaciers = list(dict.fromkeys(profiles.glacier))
+    columns = 5
+    rows = int(np.ceil(len(glaciers) / columns))
+    fig, axes = plt.subplots(rows, columns, figsize=(16, 3.2 * rows), squeeze=False)
+    colors = {'submitted': 'tab:gray', 'new': 'tab:red'}
+    for ax, name in zip(axes.flat, glaciers):
+        group = profiles[profiles.glacier == name]
+        rgi_id = group.rgi_id.iloc[0]
+        for run in RUNS:
+            if (rgi_id, run) not in curves:
+                continue
+            elevation, mean, std, reference = curves[(rgi_id, run)]
+            ax.fill_betweenx(elevation, mean - 2 * std, mean + 2 * std, color=colors[run],
+                             alpha=0.25, lw=0)
+            rmse = group[group.run == run].rmse.iloc[0]
+            ax.plot(mean, elevation, color=colors[run], label=f'{run} (RMSE {rmse:.2f})')
+        ax.plot(reference, elevation, 'ko', ms=3, label=group.source.iloc[0])
+        ax.axvline(0, color='k', lw=0.5)
+        ax.set_title(name.replace('_', ' ')[:28], fontsize=9)
+        ax.tick_params(labelsize=7)
+        ax.legend(fontsize=6)
+    for ax in axes.flat[len(glaciers):]:
+        ax.axis('off')
+    fig.supxlabel('Annual mass balance 2000-2019 (m w.e./yr); model: posterior mean +- 2 std')
+    fig.supylabel('Elevation (m)')
+    fig.tight_layout()
+    fig.savefig(path, dpi=120)
 
 
 def plot(table, path):
@@ -177,10 +282,14 @@ def panel_columns(rgi_dir, elevation_step=50):
         speed = read_field(ds, 'velsurf_mag')
         speed_obs = read_field(ds, 'velsurfobs_mag')
         x, y = np.array(ds['x'][:]), np.array(ds['y'][:])
+        no_flow = getattr(ds, 'ice_flow', 'igm') == 'none'
     moving = ice & np.isfinite(speed_obs) & np.isfinite(speed)
     for name, values in [('velsurf_mag', speed), ('velsurfobs_mag', speed_obs)]:
         row[f'Mean_{name}'] = values[moving].mean()
         row[f'Std_{name}'] = values[moving].std()
+    if no_flow:  # no modelled speed without ice flow: out of the velocity panel
+        for name in ['velsurf_mag', 'velsurfobs_mag']:
+            row[f'Mean_{name}'] = row[f'Std_{name}'] = np.nan
     glathida = os.path.join(preprocess, 'data', os.path.basename(rgi_dir),
                             'glathida_data.csv')
     for column in ['Mean_thk_obs', 'Std_thk_obs', 'Mean_thk_model_at_obs',
@@ -213,6 +322,7 @@ def aggregated_results(reference, new, path):
                            for rgi_id in table.rgi_id])
     for column in panels:
         table[column] = panels[column].to_numpy()
+    table['ela_ref_capped'] = values.loc[table.rgi_id, 'ela_censored'].to_numpy()
     table['ela'] = table['ela'].round().astype('Int64')
     table.to_csv(path, index=False, float_format='%.4f')
 
@@ -236,6 +346,9 @@ def main():
     both = table.groupby('rgi_id').run.nunique() == len(RUNS)
     table = table[table.rgi_id.isin(both[both].index)]
     summary = scores(table)
+    profiles, curves = profile_rows(
+        [g for g in glaciers if g[0] in set(table.rgi_id)])
+    summary = pd.concat([summary, profile_scores(profiles)], ignore_index=True)
     os.makedirs(os.path.join(out, 'tables'), exist_ok=True)
     os.makedirs(os.path.join(out, 'plots'), exist_ok=True)
     table.to_csv(os.path.join(out, 'tables', 'glaciers.tsv'), sep='\t',
@@ -243,6 +356,9 @@ def main():
     summary.to_csv(os.path.join(out, 'tables', 'evaluation.tsv'), sep='\t',
                    index=False, float_format='%.3g')
     plot(table, os.path.join(out, 'plots', 'evaluation.png'))
+    profiles.to_csv(os.path.join(out, 'tables', 'profiles.tsv'), sep='\t',
+                    index=False, float_format='%.3g')
+    plot_profiles(profiles, curves, os.path.join(out, 'plots', 'profiles.png'))
     aggregated_results(reference, table[table.run == 'new'],
                        os.path.join(out, 'tables', 'aggregated_results.csv'))
     print(f"{table.rgi_id.nunique()} glaciers in both runs")

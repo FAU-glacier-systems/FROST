@@ -133,6 +133,11 @@ def plot_glamos_vs_predictions(merged_df_glamos: pd.DataFrame, out_path: Path,
     else:
         dhdt_sigma = merged_df_glamos['dhdt_std'].to_numpy(dtype=float) / 4
 
+    # reference ELA capped at the glacier top in > 25 % of the years (a lower
+    # bound; central_europe_esmda/evaluate.py): open markers, not in r / MAE
+    capped = merged_df_glamos['ela_ref_capped'].to_numpy(dtype=float) > 0.25 \
+        if 'ela_ref_capped' in merged_df_glamos.columns else None
+
     fig, axes = plt.subplots(3, 3, figsize=(10, 10))
     fig.patch.set_facecolor(plt.rcParams["figure.facecolor"])
     axes = axes.flatten()
@@ -151,7 +156,8 @@ def plot_glamos_vs_predictions(merged_df_glamos: pd.DataFrame, out_path: Path,
         glacier_names=glacier_names,
         ticks=np.arange(2750, 3551, 200),
         markers=markers,
-        colors=colors
+        colors=colors,
+        hollow=capped
     )
 
 
@@ -264,7 +270,7 @@ def plot_glamos_vs_predictions(merged_df_glamos: pd.DataFrame, out_path: Path,
         )
 
 
-    handles = scatter_handles_ela
+    handles = scatter_handles_abl  # filled markers (the ELA panel has open ones)
     leg = fig.legend(
         handles[::-1],
         glacier_names[::-1],

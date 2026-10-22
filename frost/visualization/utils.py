@@ -8,7 +8,10 @@ colors = tuple(cmap[i] for i in range(0, 20, 2)) + tuple(
     cmap[i] for i in range(1, 20, 2))
 
 def scatter_plot(ax, x, y, xlabel, ylabel, title, ticks, glacier_names=None,
-                 y_std=None, x_std=None, colors=None, markers=None):
+                 y_std=None, x_std=None, colors=None, markers=None, hollow=None):
+    """hollow (bool per point): drawn as open markers and left out of r and
+    MAE (e.g. reference ELAs capped at the glacier top, a lower bound)."""
+    hollow = np.zeros(len(x), dtype=bool) if hollow is None else np.asarray(hollow, dtype=bool)
     margin = (ticks[-1] - ticks[0]) * 0.05
     x_min = ticks[0] - margin
     x_max = ticks[-1] + margin
@@ -18,19 +21,16 @@ def scatter_plot(ax, x, y, xlabel, ylabel, title, ticks, glacier_names=None,
             label="1:1 Correlation")
 
     # y = predictions, x = observations
-    mae = np.nanmean(np.abs(y - x))
-    bias = np.mean(y - x)
-    y_corr = y - bias
-    bc_didf = y_corr - x
-    bcmae = np.nanmean(np.abs(bc_didf))  # Bias-corrected MAE
-
-    mask = ~np.isnan(x) & ~np.isnan(y)
+    mask = ~np.isnan(x) & ~np.isnan(y) & ~hollow
+    mae = np.mean(np.abs(y - x)[mask])
     correlation = np.corrcoef(x[mask], y[mask])[0, 1]
     txt = (
         f"r: {correlation:.2f}\n"
         f"MAE: {mae:.2f}"
-
     )
+    if hollow.any():
+        txt += f"\nn {mask.sum()}, open: capped"
+
     ax.text(0.95, 0.05,txt,
             transform=ax.transAxes,
             bbox=dict(facecolor=plt.rcParams["axes.facecolor"], alpha=0.8),
@@ -51,7 +51,9 @@ def scatter_plot(ax, x, y, xlabel, ylabel, title, ticks, glacier_names=None,
                 x[i],
                 y[i],
                 label=label,
-                color=color,
+                facecolors='none' if hollow[i] else color,
+                edgecolors=color,
+                linewidths=1.2,
                 marker=marker,
                 zorder=10
             )
