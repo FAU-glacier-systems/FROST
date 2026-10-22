@@ -30,21 +30,33 @@ def glacier_wide_rate(rgi_id, start_year, end_year):
     raise ValueError(f'No glacier-wide dh/dt for {rgi_id}, '
                      f'{start_year}-{end_year} in {path}')
 
-# Spatial correlation of dh/dt errors (Hugonnet et al., 2021): sum of
-# exponential models with these ranges (m) and partial sills (sum 1)
+# Spatial correlation of the elevation errors (Hugonnet et al., 2021,
+# Supplementary Eqs. S13-S15): sum of exponential models with these ranges
+# (m). The partial sills are absolute variances (m^2) of the elevation at one
+# epoch, fitted against ICESat and averaged over the global distribution of
+# time lags to the closest ASTER observation (R. Hugonnet, pers. comm.,
+# Nov. 2024; normalised they give 0.477, 0.342, 0.067, 0.069, 0.016, 0.029).
+# Only the 150 m component scales with the pixel error dhdt_err (S15); the
+# longer ranges do not, they are the same for every pixel.
 VARIOGRAM_RANGES = [150, 2000, 5000, 20000, 50000, 500000]
-VARIOGRAM_SILLS = [0.47741896, 0.34238422, 0.06662273, 0.06900394,
-                   0.01602816, 0.02854199]
+ELEVATION_SILLS = [11.1026, 7.9623, 1.5493, 1.6047, 0.3727, 0.6638]
 
 
-def error_correlation(d):
+def short_range_correlation(d):
+    """Correlation of the pixel errors at distance d (m), 150 m range."""
+    return np.exp(-3 * np.asarray(d, dtype=np.float64) / VARIOGRAM_RANGES[0])
+
+
+def long_range_covariance(d, period):
     """
-    Correlation of the dh/dt errors of two pixels at distance d (m):
-    about 50% at 150 m, 20% at 2 km, a few percent at regional scales.
+    Covariance (m^2/yr^2) of the dh/dt errors of two pixels at distance d (m)
+    from the ranges of 2 km and more, for a rate over 'period' years: the
+    elevation errors of the start and end epoch are independent, so the
+    rate variance is 2 * sill / period^2.
     """
     d = np.asarray(d, dtype=np.float64)
-    return 1 - sum(sill * (1 - np.exp(-3 * d / r))
-                   for r, sill in zip(VARIOGRAM_RANGES, VARIOGRAM_SILLS))
+    return sum(2 * sill / period ** 2 * np.exp(-3 * d / r)
+               for r, sill in zip(VARIOGRAM_RANGES[1:], ELEVATION_SILLS[1:]))
 
 
 class ObservationProvider:
@@ -59,19 +71,27 @@ class ObservationProvider:
     The observable is the mean dhdt of each elevation band over the pixels
     with data; bands are 'elevation_step' wide in the start surface, and
     bands without data are left out. Its error covariance follows from the
-    pixel errors and their spatial correlation by averaging:
-        C = A S A^T + model_error^2 I,  S_pq = dhdt_err_p * dhdt_err_q * rho(d_pq)
-    with A the band-averaging matrix. The model error is added per band, so
-    averaging over many pixels does not shrink it. The model counterpart is the band mean
-    of (usurf_end - usurf_start) / period over the same pixels.
+    pixel errors and their spatial correlation by averaging, as in Hugonnet
+    et al. (2021, Supplementary Eqs. S13-S15):
+        C = A S A^T + model_error^2 I
+        S_pq = s0_p s0_q rho_150(d_pq) + L(d_pq)
+    with A the band-averaging matrix, L the long-range covariance of the
+    ranges >= 2 km (absolute sills, the same for every pixel), and
+    s0^2 = dhdt_err^2 - L(0) the pixel error left for the 150 m range. Most
+    of dhdt_err is short-range noise that averages out over a band; scaling
+    the long ranges with dhdt_err as well (as before) made the glacier-mean
+    error 4-8 times larger than the published glacier-wide error. The model
+    error is added per band, so averaging over many pixels does not shrink
+    it. The model counterpart is the band mean of
+    (usurf_end - usurf_start) / period over the same pixels.
 
     With glacier_wide_dhdt, the glacier-wide dh/dt of Hugonnet et al. (2021)
     for the same period is appended as a last observable, with its published
-    1-sigma error: the band covariance constrains the glacier mean only
-    loosely (its long-range correlation), the published glacier-wide error is
-    several times smaller. Its error is taken as independent of the band
-    errors (an approximation: both come from the same DEMs). The model
-    counterpart is the mean modelled dh/dt over the start ice mask.
+    1-sigma error. It comes from the same DEMs as the bands and its error is
+    taken as independent of theirs, so it counts the glacier mean twice; with
+    the covariance above the bands already give a glacier-mean error close
+    to the published one. The model counterpart is the mean modelled dh/dt
+    over the start ice mask.
 
     Authors: Oskar Herrmann
 
@@ -137,7 +157,8 @@ class ObservationProvider:
 
         self.observation = self.band_mean(self.dhdt)
         self.model_error = model_error
-        self.covariance = (self.band_covariance(self.dhdt_err[self.valid])
+        self.data_covariance = self.band_covariance(self.dhdt_err[self.valid])
+        self.covariance = (self.data_covariance
                            + model_error ** 2 * np.eye(self.num_bins))
 
         # Glacier-wide dh/dt as a last observable (bands stay 0..num_bins-1)
@@ -164,29 +185,40 @@ class ObservationProvider:
                   f'+- {self.glacier_mean_sigma():.2f}')
 
     def glacier_mean_sigma(self):
-        """1-sigma of the area-weighted mean of the band observations."""
+        """1-sigma of the area-weighted mean of the band observations
+        (data error only, without the model error)."""
         counts = np.bincount(self.pixel_band, minlength=self.num_bins)
         weights = counts / counts.sum()
-        bands = self.covariance[:self.num_bins, :self.num_bins]
-        return float(np.sqrt(weights @ bands @ weights))
+        return float(np.sqrt(weights @ self.data_covariance @ weights))
 
     def band_mean(self, field):
         """Mean of a field over the valid pixels of every band."""
         return self.averaging @ field[self.valid]
 
     def band_covariance(self, sigma):
-        """C = A S A^T for pixel errors sigma. The pixels lie on a regular
-        grid and rho depends only on the lag, so S w is a convolution of the
-        map w with rho: C_bc = <w_b, rho * w_c> with w_c = sigma a_c, by FFT
-        in O(bands N log N) instead of O(pixels^2)."""
+        """C = A S A^T for pixel errors sigma (see the class docstring): the
+        150 m part with the pixel errors left after the long ranges, plus
+        the long ranges with their absolute sills."""
+        long_range_variance = long_range_covariance(0.0, self.period)
+        sigma_short = np.sqrt(np.clip(sigma ** 2 - long_range_variance, 0, None))
+        return (self.averaged_covariance(sigma_short, short_range_correlation)
+                + self.averaged_covariance(
+                    np.ones_like(sigma),
+                    lambda d: long_range_covariance(d, self.period)))
+
+    def averaged_covariance(self, sigma, covariance_function):
+        """A S A^T with S_pq = sigma_p sigma_q k(d_pq). The pixels lie on a
+        regular grid and k depends only on the lag, so S w is a convolution
+        of the map w with k: C_bc = <w_b, k * w_c> with w_c = sigma a_c, by
+        FFT in O(bands N log N) instead of O(pixels^2)."""
         rows, cols = np.nonzero(self.valid)
         ny, nx = self.valid.shape
         dx, dy = abs(self.x[1] - self.x[0]), abs(self.y[1] - self.y[0])
-        # rho on all lags, wrapped so that lag 0 is at [0, 0]; 2n per axis
+        # k on all lags, wrapped so that lag 0 is at [0, 0]; 2n per axis
         # avoids circular overlap
         lag_y = np.fft.fftfreq(2 * ny, 1 / (2 * ny)) * dy
         lag_x = np.fft.fftfreq(2 * nx, 1 / (2 * nx)) * dx
-        kernel = error_correlation(np.hypot(lag_y[:, None], lag_x[None, :]))
+        kernel = covariance_function(np.hypot(lag_y[:, None], lag_x[None, :]))
         kernel_hat = np.fft.rfft2(kernel)
         weights = np.zeros((self.num_bins, ny, nx))
         weights[self.pixel_band, rows, cols] = (
