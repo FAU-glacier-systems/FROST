@@ -19,7 +19,8 @@ def main(rgi_id, rgi_id_dir, smb_model, synthetic, ensemble_size, inflation,
          iterations, seed, init_offset, elev_band_height, forward_parallel,
          synth_obs_std=None, smb_reference_mean=None, smb_reference_std=None,
          dark_monitor=True, monitor_plots='latest', method='esmda',
-         model_error=0.0, max_velbar=0.0, forward_workers=0):
+         model_error=0.0, max_velbar=0.0, forward_workers=0,
+         glacier_wide_dhdt=False):
     """
     main function to run the calibration, handles the interaction between
     observation, ensemble and visualization. It saves the results in the experiment
@@ -60,6 +61,9 @@ def main(rgi_id, rgi_id_dir, smb_model, synthetic, ensemble_size, inflation,
            forward_workers(int)  - parallel forward runs: worker processes
                                    that keep IGM loaded (0: one per core of
                                    the job, at most one per member)
+           glacier_wide_dhdt(bool) - also assimilate the glacier-wide dh/dt
+                                   of Hugonnet et al. (2021) with its
+                                   published error
 
     Returns:
            none
@@ -77,6 +81,7 @@ def main(rgi_id, rgi_id_dir, smb_model, synthetic, ensemble_size, inflation,
           f'Elevation step: {elev_band_height}',
           f'Observation uncertainty: {synth_obs_std}',
           f'Model error: {model_error}',
+          f'Glacier-wide dh/dt: {glacier_wide_dhdt}',
           f'Synthetic: {synthetic}',
           f'Initial offset: {init_offset}',
           f'Results directory: {rgi_id_dir}',
@@ -89,7 +94,8 @@ def main(rgi_id, rgi_id_dir, smb_model, synthetic, ensemble_size, inflation,
                                        elevation_step=int(elev_band_height),
                                        obs_uncertainty=synth_obs_std,
                                        synthetic=synthetic,
-                                       model_error=model_error)
+                                       model_error=model_error,
+                                       glacier_wide_dhdt=glacier_wide_dhdt)
     print("Initializing start surface")
     year, usurf_ensemble = obs_provider.initial_usurf(num_samples=ensemble_size)
 

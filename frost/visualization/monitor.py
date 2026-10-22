@@ -125,15 +125,22 @@ class Monitor:
                               uncertainty_matrix, noise_samples):
         """Log the mean over all bands and two single bands (third from the
         bottom and from the top) of the observation and every member; the
-        observation uncertainty (1 sigma) follows from its covariance."""
-        size = ensemble_observables.shape[1]
-        band1, band2 = (0, -1) if size < 5 else (2, -3)
+        observation uncertainty (1 sigma) follows from its covariance. With
+        a glacier-wide dh/dt observable (the last one), the mean panel shows
+        it instead of the band mean."""
+        size = self.obs_provider.num_bins
+        glacier_wide = len(new_observables) > size
+        band1, band2 = (0, size - 1) if size < 5 else (2, size - 3)
         band_std = np.sqrt(np.diagonal(uncertainty_matrix))
-        mean_std = np.sqrt(np.sum(uncertainty_matrix)) / size
+        if glacier_wide:
+            mean = (new_observables[-1], band_std[-1], ensemble_observables[:, -1])
+        else:
+            mean = (np.mean(new_observables),
+                    np.sqrt(np.sum(uncertainty_matrix)) / size,
+                    np.mean(ensemble_observables, axis=1))
 
         for key, obs, std, members in [
-                ('mean_usurf', np.mean(new_observables), mean_std,
-                 np.mean(ensemble_observables, axis=1)),
+                ('mean_usurf', *mean),
                 ('point1', new_observables[band1], band_std[band1],
                  ensemble_observables[:, band1]),
                 ('point2', new_observables[band2], band_std[band2],

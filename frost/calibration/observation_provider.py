@@ -6,6 +6,30 @@ import numpy as np
 import os
 from netCDF4 import Dataset
 
+# Glacier-wide elevation change of every RGI7 glacier (Hugonnet et al.,
+# 2021), 5, 10 and 20 year periods, with its 1-sigma error; OGGM's copy
+GEODETIC_RATES_URL = ('https://cluster.klima.uni-bremen.de/~oggm/geodetic_ref_mb/'
+                      'rgi7_per_glacier_5yr_10yr_20yr_rates.csv')
+
+
+def glacier_wide_rate(rgi_id, start_year, end_year):
+    """Glacier-wide dh/dt (m/yr) and its 1-sigma error of an RGI7 glacier
+    from Hugonnet et al. (2021) for start_year-01-01 to end_year-01-01."""
+    from oggm import utils
+
+    path = utils.file_downloader(GEODETIC_RATES_URL)
+    if path is None:
+        raise RuntimeError(f'Download failed: {GEODETIC_RATES_URL}')
+    key = f'{rgi_id},{start_year}-01-01_{end_year}-01-01,'
+    with open(path) as f:  # 185 MB: scan the lines instead of parsing all
+        for line in f:
+            if line.startswith(key):
+                # rgiid, period, area, dhdt, err_dhdt, dmdt, err_dmdt
+                fields = line.strip().split(',')
+                return float(fields[3]), float(fields[4])
+    raise ValueError(f'No glacier-wide dh/dt for {rgi_id}, '
+                     f'{start_year}-{end_year} in {path}')
+
 # Spatial correlation of dh/dt errors (Hugonnet et al., 2021): sum of
 # exponential models with these ranges (m) and partial sills (sum 1)
 VARIOGRAM_RANGES = [150, 2000, 5000, 20000, 50000, 500000]
@@ -41,6 +65,14 @@ class ObservationProvider:
     averaging over many pixels does not shrink it. The model counterpart is the band mean
     of (usurf_end - usurf_start) / period over the same pixels.
 
+    With glacier_wide_dhdt, the glacier-wide dh/dt of Hugonnet et al. (2021)
+    for the same period is appended as a last observable, with its published
+    1-sigma error: the band covariance constrains the glacier mean only
+    loosely (its long-range correlation), the published glacier-wide error is
+    several times smaller. Its error is taken as independent of the band
+    errors (an approximation: both come from the same DEMs). The model
+    counterpart is the mean modelled dh/dt over the start ice mask.
+
     Authors: Oskar Herrmann
 
     Args:
@@ -50,10 +82,12 @@ class ObservationProvider:
         synthetic (bool)          - synthetic observations
         model_error (float)       - 1-sigma model error of the band-mean
                                     dh/dt (m/yr)
+        glacier_wide_dhdt (bool)  - append the glacier-wide dh/dt of
+                                    Hugonnet et al. (2021) as an observable
     """
 
     def __init__(self, rgi_id_dir, rgi_id, elevation_step, obs_uncertainty,
-                 synthetic, model_error=0.0):
+                 synthetic, model_error=0.0, glacier_wide_dhdt=False):
         observation_file = os.path.join(rgi_id_dir, 'observations.nc')
         with Dataset(observation_file, 'r') as ds:
             self.usurf = np.array(ds['usurf'][:], dtype=np.float64)
@@ -106,6 +140,36 @@ class ObservationProvider:
         self.covariance = (self.band_covariance(self.dhdt_err[self.valid])
                            + model_error ** 2 * np.eye(self.num_bins))
 
+        # Glacier-wide dh/dt as a last observable (bands stay 0..num_bins-1)
+        self.glacier_wide_dhdt = glacier_wide_dhdt
+        if glacier_wide_dhdt:
+            if synthetic:
+                raise ValueError('glacier_wide_dhdt needs real observations')
+            rate, error = glacier_wide_rate(rgi_id, self.time_period[0],
+                                            self.time_period[-1])
+            if not (np.isfinite(rate) and np.isfinite(error) and error > 0):
+                # 482 of 4079 region-11 glaciers have no value (NaN)
+                print(f'No glacier-wide dh/dt for {rgi_id} in the Hugonnet '
+                      'table; calibrating on the bands only')
+                self.glacier_wide_dhdt = glacier_wide_dhdt = False
+        if glacier_wide_dhdt:
+            self.glacier_wide = (rate, error)
+            self.observation = np.append(self.observation, rate)
+            covariance = np.zeros((self.num_bins + 1, self.num_bins + 1))
+            covariance[:-1, :-1] = self.covariance
+            covariance[-1, -1] = error ** 2
+            self.covariance = covariance
+            print(f'Glacier-wide dh/dt (Hugonnet et al. 2021): '
+                  f'{rate:.2f} +- {error:.2f} m/yr; band covariance gives '
+                  f'+- {self.glacier_mean_sigma():.2f}')
+
+    def glacier_mean_sigma(self):
+        """1-sigma of the area-weighted mean of the band observations."""
+        counts = np.bincount(self.pixel_band, minlength=self.num_bins)
+        weights = counts / counts.sum()
+        bands = self.covariance[:self.num_bins, :self.num_bins]
+        return float(np.sqrt(weights @ bands @ weights))
+
     def band_mean(self, field):
         """Mean of a field over the valid pixels of every band."""
         return self.averaging @ field[self.valid]
@@ -141,7 +205,7 @@ class ObservationProvider:
         """Band-mean dh/dt over the period, its covariance, noise samples
         drawn from it, and the dh/dt and velocity maps (for plots)."""
         noise_samples = np.random.multivariate_normal(
-            np.zeros(self.num_bins), self.covariance, size=num_samples)
+            np.zeros(len(self.observation)), self.covariance, size=num_samples)
         return (int(self.time_period[-1]), self.observation, self.covariance,
                 noise_samples, self.dhdt, self.velsurf_mag)
 
@@ -151,9 +215,16 @@ class ObservationProvider:
         return int(self.time_period[0]), ensemble_usurf
 
     def get_ensemble_observables(self, EnKF_object):
-        """Band-mean modelled dh/dt of every member over the period."""
-        return np.array([self.band_mean((usurf - self.usurf) / self.period)
-                         for usurf in EnKF_object.ensemble_usurf])
+        """Band-mean modelled dh/dt of every member over the period, and
+        with glacier_wide_dhdt its mean over the start ice mask."""
+        observables = []
+        for usurf in EnKF_object.ensemble_usurf:
+            dhdt = (usurf - self.usurf) / self.period
+            bands = self.band_mean(dhdt)
+            if self.glacier_wide_dhdt:
+                bands = np.append(bands, np.mean(dhdt[self.icemask]))
+            observables.append(bands)
+        return np.array(observables)
 
     def vector_to_map(self, values):
         """Map of per-band values (NaN outside the observed pixels)."""
