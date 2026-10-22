@@ -58,7 +58,8 @@ def run_frost_pipeline(cfg):
                                'thickness_product', 'iceboost'),
                            velocity_product=cfg['download'].get(
                                'velocity_product', 'itslive'),
-                           velocity_year=cfg['download'].get('velocity_year'))
+                           velocity_year=cfg['download'].get('velocity_year'),
+                           min_resolution=cfg['download'].get('min_resolution'))
 
     if cfg['pipeline_steps']['inversion']:
         #####################################

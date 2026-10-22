@@ -70,6 +70,73 @@ def thickness_at_2000(input_file, product_year=None):
                            '2000 with the observed dh/dt')
 
 
+def velocity_year(input_file):
+    """Year of the surface velocities of input.nc (velocity_source_year): an
+    annual mosaic's year, the middle of a composite or period
+    ('2014-2022 composite' -> 2018, Millan '2017-2018' -> 2017.5)."""
+    import re
+    with Dataset(input_file, 'r') as ds:
+        label = str(ds.getncattr('velocity_source_year'))
+    years = [int(year) for year in re.findall(r'\d{4}', label)]
+    if not years:
+        raise ValueError(f'No year in velocity_source_year "{label}" of '
+                         f'{input_file}')
+    return (min(years) + max(years)) / 2
+
+
+def geometry_at(input_file, year):
+    """Move the start geometry of input.nc (surface of 2000, thickness of
+    2000 from thickness_at_2000) to 'year' with the observed dh/dt, bed
+    unchanged: thk = max(thk_2000 + dhdt * (year - 2000), 0) on the ice,
+    usurf = bed + thk. The inversion then fits tau_ref to velocities on the
+    geometry of their own epoch instead of the thicker 2000 geometry (on
+    Aletsch the 2000 geometry gave a tau_ref too high and a starving tongue).
+    Keeps the 2000 fields as usurf_2000 and thk_2000 for restore_2000."""
+    with Dataset(input_file, 'r+') as ds:
+        # usurf is overwritten below, so keep the 2000 surface of the first
+        # call; thk was just reset to 2000 by thickness_at_2000
+        if 'usurf_2000' not in ds.variables:
+            ds.createVariable('usurf_2000', 'f4', ('y', 'x'))
+            ds['usurf_2000'][:] = ds['usurf'][:]
+        if 'thk_2000' not in ds.variables:
+            ds.createVariable('thk_2000', 'f4', ('y', 'x'))
+        ds['thk_2000'][:] = ds['thk'][:]
+        usurf_2000 = np.array(ds['usurf_2000'][:], dtype=float)
+        thk_2000 = np.array(ds['thk_2000'][:], dtype=float)
+        icemask = np.array(ds['icemask'][:]) > 0.5
+        dhdt = np.array(ds['dhdt'][:], dtype=float)
+        dhdt = np.where(np.isfinite(dhdt), dhdt, 0.0)
+        cell_area = abs(float(ds['x'][1] - ds['x'][0])) ** 2
+
+        bed = usurf_2000 - thk_2000
+        thk = np.where(icemask,
+                       np.maximum(thk_2000 + dhdt * (year - 2000), 0.0), 0.0)
+        ds['thk'][:] = thk
+        ds['usurf'][:] = bed + thk
+        ds['thkprior'][:] = np.where(icemask, thk, np.nan)
+        ds['thkprior'].setncattr(
+            'description', f'thickness of 2000 moved to {year:g} with the '
+                           'observed dh/dt (inversion geometry)')
+    print(f'Inversion geometry of {year:g}: ice volume '
+          f'{np.sum(thk_2000) * cell_area * 1e-9:.3f} -> '
+          f'{np.sum(thk) * cell_area * 1e-9:.3f} km3, mean thickness change '
+          f'{np.mean((thk - thk_2000)[icemask]):.1f} m')
+
+
+def restore_2000(output_file, input_file, year):
+    """Put the 2000 surface and thickness back into the inversion result,
+    which the forward runs start from (bed and tau_ref unchanged); the
+    inversion geometry is kept as usurf_inversion and thk_inversion."""
+    with Dataset(input_file, 'r') as src, Dataset(output_file, 'r+') as out:
+        for name in ('usurf', 'thk'):
+            kept = out.createVariable(f'{name}_inversion', 'f4', ('y', 'x'))
+            kept[:] = out[name][:]
+            kept.setncattr('description', f'{name} of the inversion ({year:g})')
+            out[name][:] = src[f'{name}_2000'][:]
+        out['topg'][:] = out['usurf'][:] - out['thk'][:]
+        out.setncattr('inversion_year', float(year))
+
+
 def main(rgi_id_dir, params_inversion_path, min_velocity_p99=0.0):
     """
     Generates params.json for IGM inversion and runs igm_run.
@@ -136,6 +203,23 @@ def main(rgi_id_dir, params_inversion_path, min_velocity_p99=0.0):
     frost_options = inv_params.pop('frost', None) or {}
     if frost_options.get('thk_start') == 'product_2000':
         thickness_at_2000(input_file, frost_options.get('thk_product_year'))
+
+    # Inversion on the geometry of another year (inversion_year: 'velocity'
+    # for the year of the velocity product, or a year); the forward runs
+    # still start from 2000 (restore_2000 below)
+    inversion_year = frost_options.get('inversion_year')
+    if inversion_year is not None:
+        if frost_options.get('thk_start') != 'product_2000':
+            raise ValueError('inversion_year needs thk_start: product_2000 '
+                             '(fixed thickness of 2000)')
+        inversion_year = velocity_year(input_file) \
+            if inversion_year == 'velocity' else float(inversion_year)
+        geometry_at(input_file, inversion_year)
+    else:
+        # a previous run with inversion_year moved usurf; take 2000 again
+        with Dataset(input_file, 'r+') as ds:
+            if 'usurf_2000' in ds.variables:
+                ds['usurf'][:] = ds['usurf_2000'][:]
 
     # Drop the velsurf misfit term if no usable velocity observations are available
     if not flag_velsurfobs:
@@ -232,6 +316,10 @@ def main(rgi_id_dir, params_inversion_path, min_velocity_p99=0.0):
         output.setncattr('pyproj_srs', pyproj_srs)
 
     os.chdir(original_dir)
+
+    if inversion_year is not None:
+        restore_2000(os.path.join(preprocess_dir, 'outputs', 'output.nc'),
+                     input_file, inversion_year)
 
     # Independent check against thickness observations, where there are any
     validate_thickness(rgi_id_dir)

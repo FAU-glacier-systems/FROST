@@ -33,7 +33,8 @@ def main(rgi_id,
          oggm_shop,
          thickness_product='iceboost',
          velocity_product='itslive',
-         velocity_year=None):  # Parse command-line arguments
+         velocity_year=None,
+         min_resolution=None):  # Parse command-line arguments
 
     # Create output folder
     os.makedirs(rgi_id_dir, exist_ok=True)
@@ -153,9 +154,22 @@ def main(rgi_id,
             "--target resolution is not a float. Standard OGGM resolution is taken.")
         target_resolution_float = False
 
-    if target_resolution_float:
+    input_nc = os.path.join(rgi_id_dir, 'Preprocess', 'data', 'input.nc')
 
-        input_nc = os.path.join(rgi_id_dir, 'Preprocess', 'data', 'input.nc')
+    # Without a target resolution: coarsen to min_resolution if OGGM's grid
+    # is finer (OGGM gives small glaciers 25 m, which forces short time steps;
+    # the Hugonnet dh/dt is on a 100 m grid anyway). Coarser grids are kept.
+    if not target_resolution_float and min_resolution is not None:
+        with Dataset(input_nc, 'r') as ds:
+            x = ds.variables['x'][:]
+            resolution = abs(x[1] - x[2])
+        if resolution < float(min_resolution):
+            print(f"  OGGM resolution {resolution:.0f} m is finer than "
+                  f"min_resolution {float(min_resolution):.0f} m")
+            target_resolution = float(min_resolution)
+            target_resolution_float = True
+
+    if target_resolution_float:
 
         with Dataset(input_nc, 'r') as ds:
             x = ds.variables['x'][:]
@@ -193,9 +207,13 @@ def scale_raster(input_file, output_file, scale_factor):
 
     # Load the NetCDF file
     with Dataset(input_file, 'r') as input_dataset:
-        # Downscale coordinates
-        new_x = zoom(input_dataset.variables['x'][:], scale_factor, order=1)
-        new_y = zoom(input_dataset.variables['y'][:], scale_factor, order=1)
+        # Downscale coordinates: same end points, the number of cells of
+        # zoom. Not zoom itself: it can map the last coordinate just past
+        # the end and fill it with 0 (Gietro 25 -> 50 m: x ended at 0)
+        x = np.array(input_dataset.variables['x'][:], dtype=np.float64)
+        y = np.array(input_dataset.variables['y'][:], dtype=np.float64)
+        new_x = np.linspace(x[0], x[-1], int(round(len(x) * scale_factor)))
+        new_y = np.linspace(y[0], y[-1], int(round(len(y) * scale_factor)))
 
         # Create output NetCDF file
         with Dataset(output_file, 'w') as scaled_dataset:
@@ -253,7 +271,9 @@ def scale_raster(input_file, output_file, scale_factor):
                         scale_factor if dim in ['y', 'x'] else 1
                         for dim in dims
                     ]
-                    scaled_data = zoom(var[:], scale_factors, order=0)
+                    # 'nearest': the edge cells take the edge values, not 0
+                    scaled_data = zoom(var[:], scale_factors, order=0,
+                                       mode='nearest')
                     scaled_var[:] = scaled_data
                 else:
                     scaled_var[:] = var[:]
