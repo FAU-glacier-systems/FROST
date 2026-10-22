@@ -1,0 +1,5 @@
+glacier	velocities	tau_ref_p10	tau_ref_median	tau_ref_p90	at_upper_bound_pct	at_lower_bound_pct	sliding_median	obs_speed_median	speed_median	speed_bias	speed_rms
+Rhone	millan	0.2239	0.4132	0.6244	0	0.06378	0.4563	13.14	11.5	-0.6492	7.343
+Rhone	itslive	0.2573	0.5182	0.6828	0	0.01276	0.3398	2.528	6.311	2.77	5.94
+Aletsch	millan	0.1177	0.3707	0.7002	0	0.2817	0.5648	37.89	38.4	1.443	7.595
+Aletsch	itslive	0.1663	0.4371	0.7527	0	0.2341	0.4517	9.764	19.54	3.758	9.502

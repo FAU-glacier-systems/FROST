@@ -1,0 +1,16 @@
+iceboost RGI2000-v7.0-G-11-01706 Rhone
+iceboost RGI2000-v7.0-G-11-02596 Aletsch
+consensus RGI2000-v7.0-G-11-01706 Rhone
+consensus RGI2000-v7.0-G-11-02596 Aletsch
+iceboost_lam1e10 RGI2000-v7.0-G-11-01706 Rhone
+iceboost_lam1e10 RGI2000-v7.0-G-11-02596 Aletsch
+iceboost_lam1e12 RGI2000-v7.0-G-11-01706 Rhone
+iceboost_lam1e12 RGI2000-v7.0-G-11-02596 Aletsch
+iceboost_itslive RGI2000-v7.0-G-11-01706 Rhone
+iceboost_itslive RGI2000-v7.0-G-11-02596 Aletsch
+iceboost_lam1e10_me05 RGI2000-v7.0-G-11-01706 Rhone
+iceboost_lam1e10_me05 RGI2000-v7.0-G-11-02596 Aletsch
+iceboost_itslive_lam1e10_me05 RGI2000-v7.0-G-11-01706 Rhone
+iceboost_itslive_lam1e10_me05 RGI2000-v7.0-G-11-02596 Aletsch
+iceboost_lam1e10_me05_gw RGI2000-v7.0-G-11-01706 Rhone
+iceboost_lam1e10_me05_gw RGI2000-v7.0-G-11-02596 Aletsch
