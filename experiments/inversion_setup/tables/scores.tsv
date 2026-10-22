@@ -1,0 +1,9 @@
+variant	rgi_id	volume_km3	thk_mean	product_thk_mean	vel_obs_median	vel_median	vel_rms	tau_ref_median	tau_ref_p10	tau_ref_p90	tau_ref_roughness	glathida_n	glathida_mean	glathida_bias	glathida_rms
+central_europe	RGI2000-v7.0-G-11-01706	0.761	47.9	127	13.1	5.16	21.4	0.213	0.213	0.213	0	515	162	-115	131
+central_europe	RGI2000-v7.0-G-11-02596	7.68	93.8	210	37.9	15.9	41.1	0.213	0.213	0.213	0	1103	197	-88.9	122
+central_europe_local	RGI2000-v7.0-G-11-01706	1.02	64.1	127	13.1	8.97	8.04	0.213	0.213	0.213	0	515	162	-91.4	104
+central_europe_local	RGI2000-v7.0-G-11-02596	7.83	95.7	210	37.9	16	36.5	0.213	0.213	0.213	0	1103	197	-84.3	119
+igm_guess	RGI2000-v7.0-G-11-01706	1.2	75.3	127	13.1	9.1	8	0.213	0.213	0.213	0	515	162	-76.7	88.8
+igm_guess	RGI2000-v7.0-G-11-02596	9.58	117	210	37.9	23.4	24.9	0.213	0.213	0.213	0	1103	197	-53.6	94.6
+slide_only_tau1e11	RGI2000-v7.0-G-11-01706	2.24	141	127	13.1	13.1	7.62	0.472	0.232	0.707	0.0385	515	162	41.2	70.4
+slide_only_tau1e11	RGI2000-v7.0-G-11-02596	18.4	225	210	37.9	42.6	8.04	0.418	0.21	0.698	0.0787	1103	197	90.8	141

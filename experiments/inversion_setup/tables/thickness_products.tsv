@@ -1,0 +1,7 @@
+product	correction	glaciers	cells	bias	mae	rms	median_glacier_bias	median_glacier_rms
+consensus	none	23	9674	12.18	32.77	43.42	11.49	34.09
+consensus	product_year	23	9674	1.232	30.42	41.13	5.838	32.72
+iceboost	none	23	9674	5.536	32.96	47.89	-7.493	31.59
+iceboost	product_year	23	9674	7.714	31.47	45.6	-0.3665	28.49
+millan	none	23	9674	59.34	76.61	111	18.01	48.7
+millan	product_year	23	9674	68.81	81.22	115.2	35.21	48.7
