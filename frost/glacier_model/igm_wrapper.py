@@ -327,10 +327,13 @@ def forward(exp, output1D, output2D_3D, member_id, smb_model, usurf, smb,
         output_file = os.path.join(workdir, 'outputs', 'output.nc')
         with Dataset(output_file, 'r') as new_ds:
             new_usurf = np.array(new_ds['usurf'][-1])  # Final surface elevation
-            new_smb = np.mean(np.array(new_ds['smb']), axis=0)  # Final SMB values
             init_usurf = np.array(new_ds['usurf'][0])
             new_velsurf_mag = np.array(new_ds['velsurf_mag'][0])
-            new_divflux = np.array(new_ds['divflux'][1])
+            # SMB and flux divergence averaged over the same yearly outputs
+            # after the start (the first is the initial state), so that
+            # dh/dt = smb - divflux over the period
+            new_smb = np.mean(np.array(new_ds['smb'][1:]), axis=0)
+            new_divflux = np.mean(np.array(new_ds['divflux'][1:]), axis=0)
 
         return member_id, new_usurf, new_smb, init_usurf, new_velsurf_mag, new_divflux
     else:
