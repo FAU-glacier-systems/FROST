@@ -20,7 +20,7 @@ def main(rgi_id, rgi_id_dir, smb_model, synthetic, ensemble_size, inflation,
          synth_obs_std=None, smb_reference_mean=None, smb_reference_std=None,
          dark_monitor=True, monitor_plots='latest', method='esmda',
          model_error=0.0, max_velbar=0.0, forward_workers=0,
-         glacier_wide_dhdt=False):
+         glacier_wide_dhdt=False, ice_flow='igm'):
     """
     main function to run the calibration, handles the interaction between
     observation, ensemble and visualization. It saves the results in the experiment
@@ -64,6 +64,11 @@ def main(rgi_id, rgi_id_dir, smb_model, synthetic, ensemble_size, inflation,
            glacier_wide_dhdt(bool) - also assimilate the glacier-wide dh/dt
                                    of Hugonnet et al. (2021) with its
                                    published error
+           ice_flow(str)         - 'igm' (default): IGM forward runs from
+                                   the inversion; 'none': no ice flow,
+                                   dh/dt = smb with melt-out
+                                   (glacier_model/no_flow.py), for glaciers
+                                   that barely move
 
     Returns:
            none
@@ -82,6 +87,7 @@ def main(rgi_id, rgi_id_dir, smb_model, synthetic, ensemble_size, inflation,
           f'Observation uncertainty: {synth_obs_std}',
           f'Model error: {model_error}',
           f'Glacier-wide dh/dt: {glacier_wide_dhdt}',
+          f'Ice flow: {ice_flow}',
           f'Synthetic: {synthetic}',
           f'Initial offset: {init_offset}',
           f'Results directory: {rgi_id_dir}',
@@ -116,7 +122,8 @@ def main(rgi_id, rgi_id_dir, smb_model, synthetic, ensemble_size, inflation,
                                       smb_reference_std=smb_reference_std,
                                       obs_provider=obs_provider,
                                       max_velbar=max_velbar,
-                                      forward_workers=forward_workers)
+                                      forward_workers=forward_workers,
+                                      ice_flow=ice_flow)
 
     # Initialise a monitor for visualising the process
     monitor = Monitor(EnKF_object=ensembleKF,

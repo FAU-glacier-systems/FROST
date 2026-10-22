@@ -6,6 +6,7 @@ import yaml
 import argparse
 import frost.preprocess.download_data as download_data
 import frost.preprocess.igm_inversion as igm_inversion
+import frost.preprocess.no_flow_setup as no_flow_setup
 import frost.preprocess.create_observation as create_observation
 import frost_calibration
 
@@ -68,8 +69,12 @@ def run_frost_pipeline(cfg):
         #         (ice dynamics, ...)       #
         #                                   #
         #####################################
-        igm_inversion.main(rgi_id_dir=rgi_id_dir,
-                           params_inversion_path=params_inversion_path)
+        # EnKF ice_flow none: no inversion, only the start geometry
+        if cfg['EnKF'].get('ice_flow', 'igm') == 'none':
+            no_flow_setup.main(rgi_id_dir=rgi_id_dir)
+        else:
+            igm_inversion.main(rgi_id_dir=rgi_id_dir,
+                               params_inversion_path=params_inversion_path)
 
 
     if cfg['pipeline_steps']['calibrate']:

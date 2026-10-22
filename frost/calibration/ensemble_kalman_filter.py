@@ -8,6 +8,7 @@ from netCDF4 import Dataset
 import numpy as np
 from concurrent.futures import ThreadPoolExecutor
 import frost.glacier_model.igm_wrapper as IGM_wrapper
+import frost.glacier_model.no_flow as no_flow
 from frost.preprocess.igm_inversion import emulator_path
 import shutil
 import concurrent.futures
@@ -47,7 +48,8 @@ class EnsembleKalmanFilter:
     def __init__(self, rgi_id, rgi_id_dir, smb_model, ensemble_size, inflation,
                  seed, start_year, smb_prior_mean, smb_prior_std,
                  smb_reference_mean, smb_reference_std, usurf_ensemble, obs_provider,
-                 init_offset=0, max_velbar=0.0, forward_workers=0):
+                 init_offset=0, max_velbar=0.0, forward_workers=0,
+                 ice_flow='igm'):
         """
         Initializes the Ensemble Kalman Filter by loading required data and setting up
         the initial ensemble.
@@ -61,6 +63,8 @@ class EnsembleKalmanFilter:
             start_year (int)     - Start year for the simulation
             output_dir (str)     - Path to output directory
             usurf_ensemble (list) - Initial surface elevation ensemble
+            ice_flow (str)       - 'igm': IGM forward runs; 'none': SMB
+                                   only, no flow (glacier_model/no_flow.py)
 
         Returns:
             None
@@ -82,6 +86,11 @@ class EnsembleKalmanFilter:
         self.forward_workers = forward_workers or min(
             ensemble_size, len(os.sched_getaffinity(0)))
         self.executor = None
+        if ice_flow not in ('igm', 'none'):
+            raise ValueError(f"ice_flow must be 'igm' or 'none', not {ice_flow}")
+        if ice_flow == 'none' and str(smb_model) != 'ELA':
+            raise ValueError('ice_flow none is implemented for the ELA SMB model only')
+        self.ice_flow = ice_flow
 
         # Create ensemble directory if not existing
         ensemble_dir = os.path.join(self.rgi_id_dir, 'Ensemble')
@@ -93,12 +102,14 @@ class EnsembleKalmanFilter:
         # Same iceflow network as the inversion, so the members start from
         # the inverted velocities
         self.emulator_path = os.path.abspath(emulator_path(self.rgi_id_dir))
-        if not os.path.exists(self.emulator_path):
+        if ice_flow == 'igm' and not os.path.exists(self.emulator_path):
             raise FileNotFoundError(
                 f"{self.emulator_path} not found; rerun the inversion step.")
         with Dataset(inversion_file, 'r') as geology_dataset:
             self.icemask_init = np.array(geology_dataset['icemask'])
             self.bedrock = np.array(geology_dataset['topg'])
+            self.x = np.array(geology_dataset['x'][:])
+            self.y = np.array(geology_dataset['y'][:])
             # field_inversion (IGM >= 3.2) cannot save divflux
             if 'divflux' in geology_dataset.variables:
                 init_divflux = np.array(geology_dataset['divflux'])
@@ -175,6 +186,8 @@ class EnsembleKalmanFilter:
             exp_dir = os.path.join(member_dir, 'experiment')
             os.makedirs(exp_dir, exist_ok=True)
 
+            if ice_flow == 'none':
+                continue
             # Copy geology file as the initial input.nc
             data_dir = os.path.join(member_dir, 'data')
             os.makedirs(data_dir, exist_ok=True)
@@ -249,6 +262,12 @@ class EnsembleKalmanFilter:
         output1D = False
         output2D_3D = True
 
+        if self.ice_flow == 'none':
+            self.forward_no_flow(year_start, year_end)
+            print(f"--- forward {self.ensemble_size} members {year_start}-"
+                  f"{year_end} without ice flow: {time.time() - t0:.1f} s")
+            return
+
         if forward_parallel:
             from concurrent.futures import as_completed
 
@@ -316,6 +335,31 @@ class EnsembleKalmanFilter:
         self.ensemble_divflux_raster = new_divflux_ensemble
         self.ensemble_usurf_log.append(new_usurf_ensemble)
         self.current_year = int(year)
+
+    def forward_no_flow(self, year_start, year_end):
+        """Forward run of all members without ice flow (no_flow.forward):
+        dh/dt = smb, with melt-out; writes every member's output.nc as the
+        IGM runs do."""
+        smb = self.ensemble_smb
+        years, usurf, thk, smb_raster = no_flow.forward(
+            self.ensemble_usurf, self.bedrock, self.icemask_init > 0.5,
+            np.array([m['ela'] for m in smb]),
+            np.array([m['abl_grad'] for m in smb]) / 1000,
+            np.array([m['acc_grad'] for m in smb]) / 1000,
+            year_start, year_end)
+        for member_id in range(self.ensemble_size):
+            no_flow.write_member(
+                os.path.join(self.rgi_id_dir, 'Ensemble', f'Member_{member_id}',
+                             'outputs', 'output.nc'),
+                self.x, self.y, years, usurf[member_id], thk[member_id],
+                smb_raster[member_id], self.bedrock, self.icemask_init)
+        self.ensemble_init_surf_raster = usurf[:, 0]
+        self.ensemble_usurf = usurf[:, -1]
+        self.ensemble_smb_raster = smb_raster[:, 1:].mean(1)
+        self.ensemble_velsurf_mag_raster = np.zeros_like(self.ensemble_usurf)
+        self.ensemble_divflux_raster = np.zeros_like(self.ensemble_usurf)
+        self.ensemble_usurf_log.append(self.ensemble_usurf)
+        self.current_year = int(year_end)
 
     def update(self, new_observation, noise_matrix, noise_samples,
                modeled_observables, obs_error_factor=1.0):
