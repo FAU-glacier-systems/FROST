@@ -49,7 +49,9 @@ def main(rgi_id, rgi_id_dir, smb_model, synthetic, ensemble_size, inflation,
                                    data count once in total;
                                    'enkf': every iteration assimilates the
                                    observations with their full error
-                                   (posterior too narrow by ~sqrt(iterations))
+                                   (posterior too narrow by ~sqrt(iterations));
+                                   both draw centred perturbed observations
+                                   from the seeded generator
            model_error(float)    - 1-sigma model error of the band-mean
                                    dh/dt (m/yr), added to the observation
                                    error of every band
@@ -137,12 +139,14 @@ def main(rgi_id, rgi_id_dir, smb_model, synthetic, ensemble_size, inflation,
             = obs_provider.get_next_observation(
             current_year=ensembleKF.current_year,
             num_samples=ensembleKF.ensemble_size)
-        if method == 'esmda':
-            update_noise = rng.multivariate_normal(
-                np.zeros_like(new_observation), alpha * noise_matrix,
-                size=ensembleKF.ensemble_size)
-        else:
-            update_noise = noise_samples
+        # Perturbed observations of the update, from the seeded generator;
+        # centred so that their sample mean does not shift the ensemble
+        # mean, and rescaled to keep the variance alpha * R
+        size = ensembleKF.ensemble_size
+        update_noise = rng.multivariate_normal(
+            np.zeros_like(new_observation), alpha * noise_matrix, size=size)
+        update_noise = ((update_noise - update_noise.mean(axis=0))
+                        * np.sqrt(size / (size - 1)))
 
         print(f'Forward pass ensemble to {year}')
         ensembleKF.forward(year=year, forward_parallel=forward_parallel)
