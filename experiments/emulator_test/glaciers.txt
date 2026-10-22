@@ -1,0 +1,4 @@
+RGI2000-v7.0-G-11-02596 Grosser_Aletschgletscher
+RGI2000-v7.0-G-11-03664 Pasterze
+RGI2000-v7.0-G-11-01706 Rhonegletscher
+RGI2000-v7.0-G-11-01976 Jamtalferner

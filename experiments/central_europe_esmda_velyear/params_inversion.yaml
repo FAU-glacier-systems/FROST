@@ -88,3 +88,7 @@ frost:
   # 2014-2022 -> 2018): surface and thickness of 2000 moved with the Hugonnet
   # dh/dt, bed unchanged; the forward runs still start from 2000
   inversion_year: velocity
+  # velocities only where their 99th percentile on the ice exceeds 3 m/yr;
+  # below (ITS_LIVE noise: Careser, Vedretta Lunga, Jamtal, Adler, Basodino,
+  # Malevalle 1.2-2.4 m/yr) tau_ref keeps its default 0.213
+  min_velocity_p99: 3.0

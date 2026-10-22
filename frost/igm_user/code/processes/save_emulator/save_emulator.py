@@ -6,9 +6,10 @@
 """
 Saves the iceflow network at the end of an IGM run.
 
-The field_inversion fine-tunes the pretrained emulator on the glacier
-(nbit_init) and then keeps it frozen, so the inverted thickness and the
-surface velocities it produces belong to that fine-tuned network. Forward
+The field_inversion may fine-tune the pretrained emulator on the glacier
+(nbit_init; 0 in central_europe_esmda*, so there it is the pretrained
+network itself), so the inverted fields and the surface velocities they
+produce belong to that network. Forward
 runs have to load the same network (pretrained_path) to start without an
 initialisation shock.
 """

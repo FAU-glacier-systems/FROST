@@ -144,10 +144,17 @@ def main(rgi_id_dir, params_inversion_path, min_velocity_p99=0.0):
     Args:
         rgi_id (str) - Glacier RGI ID
         min_velocity_p99 (float) - velocity observations are used only if
-                                   their 99th percentile exceeds this (m/yr);
-                                   0 (default since 2026-10-22): whenever
-                                   there are any. 10 dropped the slow
-                                   glaciers with ITS_LIVE (p99 1-8 m/yr)
+                                   their 99th percentile on the ice exceeds
+                                   this (m/yr); 0 (default since 2026-10-22):
+                                   whenever there are any. 10 dropped the slow
+                                   glaciers with ITS_LIVE (p99 1-8 m/yr).
+                                   params_inversion.yaml can set it as
+                                   frost: min_velocity_p99. Without usable
+                                   velocities and without another misfit
+                                   term, tau_ref keeps its default (an
+                                   inversion of 0 iterations): ITS_LIVE on
+                                   Jamtal (p99 1.8 m/yr, noise) made the ice
+                                   immobile and the forward runs unstable.
     """
 
     # Check if velocity observations are available
@@ -155,8 +162,14 @@ def main(rgi_id_dir, params_inversion_path, min_velocity_p99=0.0):
     # Define input and output file names
     input_file = os.path.join(rgi_id_dir, 'Preprocess', 'data', 'input.nc')
 
+    with open(params_inversion_path, 'r') as file:
+        min_velocity_p99 = float((yaml.safe_load(file).get('frost') or {})
+                                 .get('min_velocity_p99', min_velocity_p99))
+
     flag_velsurfobs = False
+    velocity_p99 = np.nan
     with Dataset(input_file, 'r') as input_dataset:
+        icemask = np.array(input_dataset['icemask'][:]) > 0.5
 
         #flag_velsurfobs = "uvelsurfobs" in input_dataset.variables and "vvelsurfobs" in input_dataset.variables
         epsg = input_dataset.getncattr('epsg')
@@ -189,10 +202,12 @@ def main(rgi_id_dir, params_inversion_path, min_velocity_p99=0.0):
             # Compute magnitude of vecotr field
             modified_data = np.sqrt(modified_data_v1 ** 2 + modified_data_v2 ** 2)
 
-            # Check if velocity input is meaningful (nonzero, not NaN, percentile check)
-            if np.nansum(np.nansum(modified_data)) != 0 and not (
-                    np.isnan(np.nansum(np.nansum(modified_data)))):
-                if np.nanpercentile(np.abs(modified_data.flatten()), 99) > min_velocity_p99:
+            # Check if velocity input is meaningful (nonzero, not NaN, 99th
+            # percentile on the ice above min_velocity_p99)
+            on_ice = modified_data[icemask]
+            if np.isfinite(on_ice).any() and np.nansum(on_ice) != 0:
+                velocity_p99 = float(np.nanpercentile(np.abs(on_ice), 99))
+                if velocity_p99 > min_velocity_p99:
                     flag_velsurfobs = True
 
     # Load base parameters from params_inversion.yaml
@@ -221,16 +236,23 @@ def main(rgi_id_dir, params_inversion_path, min_velocity_p99=0.0):
             if 'usurf_2000' in ds.variables:
                 ds['usurf'][:] = ds['usurf_2000'][:]
 
-    # Drop the velsurf misfit term if no usable velocity observations are available
+    # Drop the velsurf misfit term if no usable velocity observations are
+    # available; if it is the only term, invert nothing (tau_ref and the
+    # other variables keep their start values)
+    velocity_fit = 'yes'
     if not flag_velsurfobs:
-        misfit = inv_params['assimilations']['field_inversion']['objective']['misfit']
-        misfit = [term for term in misfit if term['name'] != 'velsurf']
-        if not misfit:
-            raise ValueError(
-                f"No usable surface velocity observations for {rgi_id_dir}, "
-                f"and {params_inversion_path} has no other misfit term to "
-                "invert against.")
-        inv_params['assimilations']['field_inversion']['objective']['misfit'] = misfit
+        field_inversion = inv_params['assimilations']['field_inversion']
+        misfit = [term for term in field_inversion['objective']['misfit']
+                  if term['name'] != 'velsurf']
+        if misfit:
+            field_inversion['objective']['misfit'] = misfit
+            velocity_fit = 'dropped'
+        else:
+            field_inversion.setdefault('optimization', {})['nbitmax'] = 0
+            velocity_fit = 'skipped'
+        print(f'No usable surface velocities for {rgi_id_dir} (99th '
+              f'percentile on the ice {velocity_p99:.1f} m/yr, needs > '
+              f'{min_velocity_p99:g}): velocity misfit {velocity_fit}')
 
     # Fixed hydra run dir so reruns overwrite instead of creating
     # outputs/<date>/<time>; params_inversion.yaml may set its own
@@ -314,6 +336,8 @@ def main(rgi_id_dir, params_inversion_path, min_velocity_p99=0.0):
         output['topg'][:] = output['usurf'][:] - output['thk'][:]
         output.setncattr('epsg', epsg)
         output.setncattr('pyproj_srs', pyproj_srs)
+        output.setncattr('velocity_fit', velocity_fit)
+        output.setncattr('velocity_p99_ice', velocity_p99)
 
     os.chdir(original_dir)
 
