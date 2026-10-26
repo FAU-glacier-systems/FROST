@@ -12,6 +12,10 @@ glacier 2000-2020 with three ice-flow settings:
     frozen   pretrained network, never retrained (as the calibration runs)
     retrain  the same network, retrained on the glacier: 300 iterations at
              the start, 5 every 5 time steps (IGM defaults)
+    retrain_1, retrain_1x20  300 at the start, 5 or 20 every time step
+    retrain_2x20, retrain_4x20  300 at the start, 20 every 2 or 4 steps
+    adaptive_1e-3, adaptive_1e-4  every step, each retraining stopped when
+             the velocities change by < tol per iteration (caps 1000 / 50)
     solver   no network: the velocity field solved by L-BFGS (500 iterations
              at the start, 20 per time step)
 
@@ -38,6 +42,23 @@ MEMBER = 'Member_0'
 VARIANTS = {
     'frozen': {'nbit_init': 0, 'retrain_freq': 0},
     'retrain': {'nbit_init': 300, 'nbit': 5, 'retrain_freq': 5},
+    # every time step (slow glaciers take ~1-year steps: 'retrain' updates
+    # them only every ~5 years, Corbassiere's speed jumps; 2026-10-23)
+    'retrain_1': {'nbit_init': 300, 'nbit': 5, 'retrain_freq': 1},
+    'retrain_1x20': {'nbit_init': 300, 'nbit': 20, 'retrain_freq': 1},
+    # 20 every 2 / 4 steps: retraining about every 0.9 yr on Corbassiere
+    # (CFL step ~0.2 yr) instead of every step (2026-10-23)
+    'retrain_2x20': {'nbit_init': 300, 'nbit': 20, 'retrain_freq': 2},
+    'retrain_4x20': {'nbit_init': 300, 'nbit': 20, 'retrain_freq': 4},
+    # adaptive: check every step, but stop each retraining (and the start-up
+    # training) once the velocities change by less than tol per iteration
+    # (IGM halt: rel_tol on u); nbit, nbit_init are only caps
+    'adaptive_1e-3': {'nbit_init': 1000, 'nbit': 50, 'retrain_freq': 1,
+                      'halt': {'success': [{'criterion': 'rel_tol', 'metric': 'u'}],
+                               'criteria': {'rel_tol': {'tol': 1e-3}}}},
+    'adaptive_1e-4': {'nbit_init': 1000, 'nbit': 50, 'retrain_freq': 1,
+                      'halt': {'success': [{'criterion': 'rel_tol', 'metric': 'u'}],
+                               'criteria': {'rel_tol': {'tol': 1e-4}}}},
     'solver': {'mapping': 'identity', 'optimizer': 'lbfgs',
                'nbit_init': 500, 'nbit': 20, 'retrain_freq': 1},
 }

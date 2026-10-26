@@ -15,12 +15,17 @@ the SMB profiles without flow fit GLAMOS / WGMS as well (RMSE 0.77 against
 data/results/central_europe_combined/<rgi_id> is a symbolic link to the
 glacier's folder in the chosen run, so evaluate.py, evaluation.py and
 sanity_report.py run on it as on any experiment. Writes selection.tsv
-(rgi_id, glacier, p99, ice_flow, source).
+(rgi_id, glacier, p99, ice_flow, source) into experiments/<name>.
 
 Run from the repository root:
     python experiments/central_europe_combined/make_combined.py
+With the IGM glaciers from another run, e.g. the emulator retrained in the
+forward runs:
+    python experiments/central_europe_combined/make_combined.py \
+        --igm data/results/central_europe_retrain --name central_europe_combined_retrain
 """
 
+import argparse
 import os
 
 import numpy as np
@@ -30,7 +35,6 @@ from netCDF4 import Dataset
 HERE = os.path.dirname(os.path.abspath(__file__))
 IGM = os.path.join('data', 'results', 'central_europe_esmda_velyear')
 NO_FLOW = os.path.join('data', 'results', 'central_europe_noflow')
-TARGET = os.path.join('data', 'results', 'central_europe_combined')
 MAX_P99 = 10.0  # m/yr
 
 
@@ -46,27 +50,39 @@ def velocity_p99(rgi_dir):
 
 
 def main():
-    os.makedirs(TARGET, exist_ok=True)
+    parser = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
+    parser.add_argument('--igm', default=IGM, help='run of the glaciers with ice flow')
+    parser.add_argument('--name', default='central_europe_combined',
+                        help='data/results/<name> (links), experiments/<name>/selection.tsv')
+    args = parser.parse_args()
+    target = os.path.join('data', 'results', args.name)
+    out = os.path.join('experiments', args.name)
+    os.makedirs(target, exist_ok=True)
+    os.makedirs(out, exist_ok=True)
     rows = []
     with open(os.path.join(HERE, 'glaciers.txt')) as f:
         glaciers = [line.split()[:2] for line in f if line.strip()]
     for rgi_id, name in glaciers:
-        if not os.path.exists(os.path.join(NO_FLOW, rgi_id, 'calibration_results.json')):
+        # p99 from the inputs of the run without flow, or of the IGM run if
+        # that one has none (Gietro: no download in central_europe_noflow)
+        inputs = [os.path.join(run, rgi_id) for run in (NO_FLOW, args.igm)
+                  if os.path.exists(os.path.join(run, rgi_id, 'Preprocess', 'data', 'input.nc'))]
+        if not inputs:
             print(f'{name}: no results, skipped')
             continue
-        p99 = velocity_p99(os.path.join(NO_FLOW, rgi_id))
+        p99 = velocity_p99(inputs[0])
         flow = 'none' if p99 < MAX_P99 else 'igm'
-        source = NO_FLOW if flow == 'none' else IGM
+        source = NO_FLOW if flow == 'none' else args.igm
         if not os.path.exists(os.path.join(source, rgi_id, 'calibration_results.json')):
             print(f'{name}: no results in {source}, skipped')
             continue
-        link = os.path.join(TARGET, rgi_id)
+        link = os.path.join(target, rgi_id)
         if os.path.islink(link):
             os.unlink(link)
-        os.symlink(os.path.relpath(os.path.join(source, rgi_id), TARGET), link)
+        os.symlink(os.path.relpath(os.path.join(source, rgi_id), target), link)
         rows.append(dict(rgi_id=rgi_id, glacier=name, p99=p99, ice_flow=flow, source=source))
     table = pd.DataFrame(rows)
-    table.to_csv(os.path.join(HERE, 'selection.tsv'), sep='\t', index=False, float_format='%.2f')
+    table.to_csv(os.path.join(out, 'selection.tsv'), sep='\t', index=False, float_format='%.2f')
     print(table.to_string(index=False, float_format='%.1f'))
 
 

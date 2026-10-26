@@ -147,10 +147,19 @@ def scores(table):
     return pd.DataFrame(rows)
 
 
-def member_smb(result, elevation):
+def member_smb(result, elevation, climate_file=None):
     """SMB (m w.e./yr) of every posterior member at the elevations: IGM's
-    smb simple with the member's ELA and gradients (m ice per km)."""
+    smb simple with the member's ELA and gradients (m ice per km); for the
+    TI model (members melt_f, prcp_fac, temp_bias) the mean of the calendar
+    years 2000-2019 on the glacier's climate (climate_file), as the forward
+    runs (frost/glacier_model/no_flow.smb_ti)."""
     ensemble = np.array(result['final_ensemble'], dtype=float)
+    if 'melt_f' in result.get('initial_smb', {}):
+        from frost.glacier_model.no_flow import load_climate, smb_ti
+        climate = load_climate(climate_file)
+        z = np.broadcast_to(elevation[None], (len(ensemble), len(elevation)))
+        smb = np.mean([smb_ti(z, climate, year, *ensemble.T) for year in range(2000, 2020)], 0)
+        return ICE_TO_WE * smb
     ela, abl, acc = (ensemble[:, k, None] for k in range(3))
     smb = elevation[None] - ela
     smb = smb * np.where(smb < 0, abl, acc) / 1000
@@ -171,7 +180,8 @@ def profile_rows(glaciers):
             if not os.path.exists(path):
                 continue
             with open(path) as f:
-                smb = member_smb(json.load(f), elevation)
+                smb = member_smb(json.load(f), elevation,
+                                 os.path.join(results, rgi_id, 'climate_historical.nc'))
             mean, std = smb.mean(0), smb.std(0)
             diff = mean - reference.mb.to_numpy()
             rows.append(dict(rgi_id=rgi_id, glacier=name, run=run,

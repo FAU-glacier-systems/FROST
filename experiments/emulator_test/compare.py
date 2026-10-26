@@ -33,7 +33,9 @@ from run_emulator_test import SOURCE, TARGET, VARIANTS
 plt.rcParams.update({**{f'axes.spines.{side}': False for side in ['top', 'right', 'bottom', 'left']},
                      'axes.grid': True, 'axes.axisbelow': True, 'grid.linestyle': '--',
                      'grid.linewidth': 0.5, 'grid.color': '0.75', 'legend.frameon': False})
-COLOURS = {'frozen': 'C3', 'retrain': 'C1', 'solver': 'C0'}
+COLOURS = {'frozen': 'C3', 'retrain': 'C1', 'retrain_1': 'C2', 'retrain_1x20': 'C4',
+           'retrain_2x20': 'C5', 'retrain_4x20': 'C6', 'adaptive_1e-3': 'C8',
+           'adaptive_1e-4': 'C9', 'solver': 'C0'}
 
 
 def regions(rgi_id):

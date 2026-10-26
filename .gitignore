@@ -10,6 +10,7 @@ experiments/**/*.nc
 experiments/**/*.gif
 experiments/**/*.pkl
 experiments/**/*.zip
+experiments/**/band_records.tsv
 frost/visualization/Plots/
 
 # Python cache

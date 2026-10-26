@@ -7,6 +7,7 @@
 # glaciers.txt per array task on one Alex GPU.
 # Submit from an Alex login node, in the repo root:
 #   sbatch --array=1-4 experiments/emulator_test/emulator_test_sbatch.sh
+# Further arguments go to run_emulator_test.py, e.g. --variants retrain_1
 
 #SBATCH --nodes=1
 #SBATCH --partition=a40
@@ -22,4 +23,4 @@ conda activate igm32-frost
 EXPERIMENT=experiments/emulator_test
 read -r RGI_ID NAME <<< "$(sed -n "${SLURM_ARRAY_TASK_ID}p" "$EXPERIMENT/glaciers.txt")"
 echo "Task ${SLURM_ARRAY_TASK_ID}: ${RGI_ID} (${NAME})"
-python "$EXPERIMENT/run_emulator_test.py" --rgi_id "$RGI_ID"
+python "$EXPERIMENT/run_emulator_test.py" --rgi_id "$RGI_ID" "$@"
