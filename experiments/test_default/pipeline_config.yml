@@ -15,14 +15,15 @@ download:
   hugonnet: true                   # Download Hugonnet et al. dh/dt data
   year_interval: 20                # Temporal span for Hugonnet data
   target_resolution: None          # Leave unset to use native resolution
+  min_resolution: 50               # coarsen OGGM grids finer than 50 m (25 m on small glaciers: 6-8x more time steps)
   # Custom path to Hugonnet data
   hugonnet_directory: 'data/raw/hugonnet/11_rgi60_2000-01-01_2020-01-01'
 
 EnKF:
-  seed: 6                          # Random seed for reproducibility
+  seed: 1                          # Random seed for reproducibility
   inflation: 1                     # Ensemble inflation factor
-  ensemble_size: 36                # Number of ensemble members
-  iterations: 6                    # Number of EnKF iterations
+  ensemble_size: 32                # Number of ensemble members (two waves of 16 forward workers)
+  iterations: 4                    # Number of ES-MDA iterations (misfit flat after 2)
   init_offset: 0                   # ELA offset for initialization
   elev_band_height: 50             # Height of elevation bands
   forward_parallel: true           # Enable parallel forward simulation
@@ -30,6 +31,12 @@ EnKF:
   method: esmda                    # ES-MDA: observation error x iterations per iteration
   monitor_plots: latest            # all: png per iteration, latest: overwrite one png, final: last run only
   dark_monitor: true               # Monitor plots on black (true) or white
+  max_velbar: 1000                 # cap of the depth-averaged speed (m/yr) in the forward runs
+  emulator_retrain: true           # retrain the emulator in the forward runs (igm_wrapper.retrain_schedule); the inversion stays frozen
+  forward_workers: 8               # more retraining workers run out of host memory
+  model_error: 0.5                 # m/yr on the band means
+  glacier_wide_dhdt: false         # the band covariance already constrains the glacier mean
+  # ice_flow: none                 # for glaciers with an ITS_LIVE p99 on the ice < 10 m/yr: dh/dt = smb, no IGM (experiments/central_europe_noflow)
 
   smb_prior_mean:
     ela: 3144                      # Prior mean ELA

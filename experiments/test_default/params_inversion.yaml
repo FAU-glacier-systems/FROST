@@ -1,9 +1,9 @@
 # @package _global_
-# Default FROST inversion, chosen in experiments/inversion_setup: the
-# thickness product of the download (thickness_product, default IceBoost
-# v2.0) shifted from its year (2012) to 2000 with the Hugonnet dh/dt and kept
-# fixed; only tau_ref (log10) fitted to the surface velocity,
-# smoothness 1e11. Fixed run dir: reruns overwrite outputs/inversion.
+# Fixed geometry (experiments/inversion_setup): the thickness product of the
+# download (thickness_product, default IceBoost v2.0) shifted from its year
+# to 2000 with the Hugonnet dh/dt and kept fixed; only
+# tau_ref (log10) fitted to the surface velocity, smoothness 1e10, on the
+# geometry of the velocity year (frost: inversion_year below).
 hydra:
   run:
     dir: outputs/inversion
@@ -69,7 +69,7 @@ assimilations:
       regularization:
       - name: tau_ref
         penalty: squared_laplacian
-        lam: 100000000000.0
+        lam: 10000000000.0
     output:
       vars_to_save:
       - usurf
@@ -84,3 +84,11 @@ assimilations:
     use_existing_thk: true
 frost:
   thk_start: product_2000
+  # tau_ref fitted on the geometry of the velocity year (ITS_LIVE composite
+  # 2014-2022 -> 2018): surface and thickness of 2000 moved with the Hugonnet
+  # dh/dt, bed unchanged; the forward runs still start from 2000
+  inversion_year: velocity
+  # velocities only where their 99th percentile on the ice exceeds 3 m/yr;
+  # below (ITS_LIVE noise: Careser, Vedretta Lunga, Jamtal, Adler, Basodino,
+  # Malevalle 1.2-2.4 m/yr) tau_ref keeps its default 0.213
+  min_velocity_p99: 3.0

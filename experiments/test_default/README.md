@@ -5,9 +5,14 @@ OGGM-shop data with the IceBoost v2.0 thickness, invert for sliding, calibrate
 the ELA mass-balance model with ES-MDA against Hugonnet et al. (2021) elevation
 change. The inversion keeps the geometry fixed: IceBoost, shifted from 2012
 (its TanDEM-X surface) to 2000 with the Hugonnet dh/dt; only tau_ref is fitted
-to the surface velocity (Huber misfit, squared-Laplacian smoothness 1e11).
-Chosen in `experiments/inversion_setup` (IceBoost against date-corrected
-GlaThiDa: bias +8 m, RMS 46 m; Millan et al. 2022: +69 m, 115 m).
+to the surface velocity (Huber misfit, squared-Laplacian smoothness 1e10) on
+the geometry of the ITS_LIVE year (2018). Chosen in `experiments/inversion_setup`
+(IceBoost against date-corrected GlaThiDa: bias +8 m, RMS 46 m; Millan et al.
+2022: +69 m, 115 m). The forward runs retrain the iceflow emulator on the
+glacier (`emulator_retrain`). These are the settings of the reference run
+`central_europe_combined_retrain` (see `experiments/README.md`); glaciers that
+barely move (ITS_LIVE p99 on the ice < 10 m/yr) take `EnKF: ice_flow: none`
+instead.
 
 ## Run
 
