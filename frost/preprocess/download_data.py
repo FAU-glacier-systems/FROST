@@ -389,6 +389,13 @@ def download_OGGM_shop(rgi_id, rgi_id_dir, flag_OGGM_climate,
         # In a subprocess: hydra exits the process when igm_run fails
         return subprocess.run(["igm_run", "+experiment=params_oggm_shop"]).returncode
 
+    # OGGM shop builds data/input.nc only if it does not exist; a rerun in
+    # the same folder would keep the processed (possibly rescaled) input.nc
+    # of the previous run and then fail to insert the DEM (Kesselwandferner,
+    # central_europe_retrain, 2026-10-23)
+    if os.path.exists(os.path.join('data', 'input.nc')):
+        os.remove(os.path.join('data', 'input.nc'))
+
     if run_oggm_shop() != 0:
         # OGGM writes no glathida_data.csv for a glacier without GlaThiDa
         # points, but IGM reads it whenever incl_glathida is set

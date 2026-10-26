@@ -49,7 +49,7 @@ class EnsembleKalmanFilter:
                  seed, start_year, smb_prior_mean, smb_prior_std,
                  smb_reference_mean, smb_reference_std, usurf_ensemble, obs_provider,
                  init_offset=0, max_velbar=0.0, forward_workers=0,
-                 ice_flow='igm'):
+                 ice_flow='igm', emulator_retrain=False):
         """
         Initializes the Ensemble Kalman Filter by loading required data and setting up
         the initial ensemble.
@@ -81,6 +81,8 @@ class EnsembleKalmanFilter:
         self.current_year = start_year
         # cap of the depth-averaged speed in the forward runs (m/yr, 0: none)
         self.max_velbar = max_velbar
+        # retrain the emulator in the forward runs instead of keeping it frozen
+        self.emulator_retrain = emulator_retrain
         # parallel forward runs: worker processes that keep IGM loaded
         # (0: one per core of the job, at most one per member)
         self.forward_workers = forward_workers or min(
@@ -88,8 +90,8 @@ class EnsembleKalmanFilter:
         self.executor = None
         if ice_flow not in ('igm', 'none'):
             raise ValueError(f"ice_flow must be 'igm' or 'none', not {ice_flow}")
-        if ice_flow == 'none' and str(smb_model) != 'ELA':
-            raise ValueError('ice_flow none is implemented for the ELA SMB model only')
+        if ice_flow == 'none' and str(smb_model) not in ('ELA', 'TI'):
+            raise ValueError('ice_flow none is implemented for the ELA and TI SMB models only')
         self.ice_flow = ice_flow
 
         # Create ensemble directory if not existing
@@ -116,6 +118,12 @@ class EnsembleKalmanFilter:
             else:
                 init_divflux = np.zeros_like(self.icemask_init)
             init_velsurf_mag = np.array(geology_dataset['velsurf_mag'])
+        # retraining every step only where the time steps are long
+        if self.emulator_retrain and ice_flow == 'igm':
+            self.emulator_retrain = IGM_wrapper.retrain_schedule(inversion_file)
+            print(f"Emulator retraining in the forward runs: {IGM_wrapper.RETRAIN_START} "
+                  f"iterations at the start, "
+                  f"{self.emulator_retrain[1]} every {self.emulator_retrain[0]} time steps")
 
         # Initialize placeholders for observable and hidden variables
         self.ensemble_usurf = np.empty((ensemble_size,) + self.icemask_init.shape)
@@ -289,6 +297,7 @@ class EnsembleKalmanFilter:
                     self.emulator_path,
                     self.max_velbar,
                     True,
+                    self.emulator_retrain,
                 )
                 for member_id, (usurf, smb) in enumerate(zip(self.ensemble_usurf, self.ensemble_smb))
             ]
@@ -300,6 +309,12 @@ class EnsembleKalmanFilter:
                 new_init_surf_ensemble[member_id] = init_usurf
                 new_velsurf_mag_ensemble[member_id] = new_velsurf_mag
                 new_divflux_ensemble[member_id] = new_divflux
+
+            if self.emulator_retrain:
+                # each retraining compiles new graphs that a kept worker never
+                # frees: the workers ran out of memory after 4 forward runs
+                # (central_europe_retrain, 2026-10-23); fresh workers each run
+                self.close()
 
         else:
 
@@ -319,6 +334,7 @@ class EnsembleKalmanFilter:
                         os.path.join(self.rgi_id_dir, "climate_historical.nc"),
                         self.emulator_path,
                         self.max_velbar,
+                        emulator_retrain=self.emulator_retrain,
                     )
                 new_usurf_ensemble[member_id] = new_usurf
                 new_smb_raster_ensemble[member_id] = new_smb_raster
@@ -341,12 +357,21 @@ class EnsembleKalmanFilter:
         dh/dt = smb, with melt-out; writes every member's output.nc as the
         IGM runs do."""
         smb = self.ensemble_smb
-        years, usurf, thk, smb_raster = no_flow.forward(
-            self.ensemble_usurf, self.bedrock, self.icemask_init > 0.5,
-            np.array([m['ela'] for m in smb]),
-            np.array([m['abl_grad'] for m in smb]) / 1000,
-            np.array([m['acc_grad'] for m in smb]) / 1000,
-            year_start, year_end)
+        if str(self.smb_model) == 'TI':
+            ti = {key: np.array([m[key] for m in smb])
+                  for key in ('melt_f', 'prcp_fac', 'temp_bias')}
+            ti['climate'] = no_flow.load_climate(
+                os.path.join(self.rgi_id_dir, 'climate_historical.nc'))
+            years, usurf, thk, smb_raster = no_flow.forward(
+                self.ensemble_usurf, self.bedrock, self.icemask_init > 0.5,
+                year_start=year_start, year_end=year_end, ti=ti)
+        else:
+            years, usurf, thk, smb_raster = no_flow.forward(
+                self.ensemble_usurf, self.bedrock, self.icemask_init > 0.5,
+                np.array([m['ela'] for m in smb]),
+                np.array([m['abl_grad'] for m in smb]) / 1000,
+                np.array([m['acc_grad'] for m in smb]) / 1000,
+                year_start, year_end)
         for member_id in range(self.ensemble_size):
             no_flow.write_member(
                 os.path.join(self.rgi_id_dir, 'Ensemble', f'Member_{member_id}',

@@ -258,6 +258,21 @@ class ObservationProvider:
             observables.append(bands)
         return np.array(observables)
 
+    def melted_out_fraction(self, EnKF_object, min_thk=1.0):
+        """Share of the members in which a band has melted out: most of its
+        observed pixels hold less than min_thk (m) of ice at the end of the
+        period. There the modelled dh/dt is -thickness / period whatever
+        the SMB, so the band carries no information on the parameters."""
+        observed = self.bin_map > 0
+        melted = []
+        for usurf in EnKF_object.ensemble_usurf:
+            ice_free = (usurf - self.topg)[observed] < min_thk
+            share = np.bincount(self.bin_map[observed] - 1, weights=ice_free,
+                                minlength=self.num_bins) / np.bincount(
+                self.bin_map[observed] - 1, minlength=self.num_bins)
+            melted.append(share > 0.5)
+        return np.mean(melted, axis=0)
+
     def vector_to_map(self, values):
         """Map of per-band values (NaN outside the observed pixels)."""
         mapped = np.full(self.bin_map.shape, np.nan, dtype=np.float32)

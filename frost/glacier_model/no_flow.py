@@ -42,15 +42,59 @@ def smb_simple(usurf, icemask, ela, gradabl, gradacc, accmax=100.0):
     return np.where((smb < 0) | icemask, smb, -10.0)
 
 
-def forward(usurf, topg, icemask, ela, gradabl, gradacc, year_start, year_end):
+def load_climate(path):
+    """Monthly OGGM climate (climate_historical.nc, calendar months from
+    January yr_0): temperature and precipitation as (years, 12), the first
+    year and the reference height, as IGM's clim_1D_3D reads them."""
+    with Dataset(path) as ds:
+        temp = np.array(ds['temp'][:], dtype=np.float32).reshape(-1, 12)
+        prcp = np.array(ds['prcp'][:], dtype=np.float32).reshape(-1, 12)
+        return {'temp': temp, 'prcp': prcp, 'yr_0': int(ds.getncattr('yr_0')),
+                'ref_hgt': float(ds.getncattr('ref_hgt'))}
+
+
+# Constants of the TI processes in igm_wrapper.py (clim_1D_3D, smb_1D_3D)
+TEMP_GRADIENT = -0.0065  # K/m
+TEMP_ALL_SOLID, TEMP_ALL_LIQUID, TEMP_MELT = 0.0, 2.0, -1.0  # degree C
+DAYS_PER_YEAR = 365.242198781
+WATER_TO_ICE = 1000.0 / 910.0
+
+
+def smb_ti(usurf, climate, year, melt_f, prcp_fac, temp_bias):
+    """SMB (m ice/yr) of the calendar year `year` for members (leading axis
+    of the parameters): IGM's clim_1D_3D + smb_1D_3D, i.e. OGGM's monthly
+    TI model. Temperature lapsed from the reference height with -6.5 K/km,
+    solid precipitation below 0 degC (linear to none at 2 degC), melt
+    melt_f (mm w.e. per degC day) above -1 degC; no ice-mask rule."""
+    shape = (-1,) + (1,) * (usurf.ndim - 1)
+    melt_f, prcp_fac, temp_bias = (np.reshape(p, shape).astype(np.float32)
+                                   for p in (melt_f, prcp_fac, temp_bias))
+    index = year - climate['yr_0']
+    lapse = TEMP_GRADIENT * (usurf - climate['ref_hgt'])
+    smb = np.zeros(np.broadcast_shapes(usurf.shape, melt_f.shape), np.float32)
+    for month in range(12):
+        temp = climate['temp'][index, month] + temp_bias + lapse
+        prcp = climate['prcp'][index, month] * prcp_fac  # kg m-2 per month
+        solid = np.clip((TEMP_ALL_LIQUID - temp) / (TEMP_ALL_LIQUID - TEMP_ALL_SOLID), 0, 1)
+        melt = melt_f * np.maximum(temp - TEMP_MELT, 0) * DAYS_PER_YEAR / 12 / 1000
+        smb += prcp * solid / 1000 - melt  # m w.e.
+    return smb * WATER_TO_ICE
+
+
+def forward(usurf, topg, icemask, ela=None, gradabl=None, gradacc=None,
+            year_start=2000, year_end=2020, ti=None):
     """Yearly steps from year_start to year_end for all members at once.
 
     Args:
         usurf (ndarray)   - start surface, (members, y, x)
         topg (ndarray)    - bed, (y, x)
         icemask (ndarray) - ice of the start (bool), (y, x)
-        ela, gradabl, gradacc (ndarray) - SMB parameters per member
+        ela, gradabl, gradacc (ndarray) - ELA SMB parameters per member
                                           (m, per m, per m)
+        ti (dict)         - instead of the ELA model: TI parameters per
+                            member (melt_f, prcp_fac, temp_bias) and the
+                            climate of load_climate; the step from year t
+                            to t + 1 uses the climate of year t, as IGM
     Returns:
         years (ndarray)  - year_start..year_end
         usurf, thk, smb (ndarray) - (members, years, y, x); smb[t] is the
@@ -63,8 +107,12 @@ def forward(usurf, topg, icemask, ela, gradabl, gradacc, year_start, year_end):
     usurf, topg = usurf.astype(np.float32), topg.astype(np.float32)
     thk = np.maximum(usurf - topg, 0.0)
     surfaces, thicknesses, smbs = [usurf], [thk], []
-    for _ in years[1:]:
-        smb = smb_simple(topg + thk, icemask, ela, gradabl, gradacc)
+    for year in years[:-1]:
+        if ti is None:
+            smb = smb_simple(topg + thk, icemask, ela, gradabl, gradacc)
+        else:
+            smb = smb_ti(topg + thk, ti['climate'], year, ti['melt_f'], ti['prcp_fac'],
+                         ti['temp_bias'])
         thk = np.maximum(thk + smb, 0.0)
         surfaces.append(topg + thk)
         thicknesses.append(thk)

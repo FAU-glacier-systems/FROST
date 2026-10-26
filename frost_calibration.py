@@ -20,7 +20,8 @@ def main(rgi_id, rgi_id_dir, smb_model, synthetic, ensemble_size, inflation,
          synth_obs_std=None, smb_reference_mean=None, smb_reference_std=None,
          dark_monitor=True, monitor_plots='latest', method='esmda',
          model_error=0.0, max_velbar=0.0, forward_workers=0,
-         glacier_wide_dhdt=False, ice_flow='igm'):
+         glacier_wide_dhdt=False, ice_flow='igm', emulator_retrain=False,
+         exclude_melted_out=0.0):
     """
     main function to run the calibration, handles the interaction between
     observation, ensemble and visualization. It saves the results in the experiment
@@ -69,6 +70,18 @@ def main(rgi_id, rgi_id_dir, smb_model, synthetic, ensemble_size, inflation,
                                    dh/dt = smb with melt-out
                                    (glacier_model/no_flow.py), for glaciers
                                    that barely move
+           emulator_retrain(bool) - retrain the iceflow emulator in the
+                                   forward runs (300 iterations at the start,
+                                   then igm_wrapper.retrain_schedule: 20
+                                   every step, or 5 every 5 steps where 5
+                                   steps < 0.9 yr) instead of keeping it
+                                   frozen (experiments/emulator_test)
+           exclude_melted_out(float) - leave a band out of the update and
+                                   the misfit of an iteration when it has
+                                   melted out (most pixels ice-free at the
+                                   end) in at least this share of the
+                                   members; its dh/dt is then -thickness /
+                                   period whatever the SMB. 0: keep all
 
     Returns:
            none
@@ -87,6 +100,7 @@ def main(rgi_id, rgi_id_dir, smb_model, synthetic, ensemble_size, inflation,
           f'Observation uncertainty: {synth_obs_std}',
           f'Model error: {model_error}',
           f'Glacier-wide dh/dt: {glacier_wide_dhdt}',
+          f'Exclude melted-out bands: {exclude_melted_out}',
           f'Ice flow: {ice_flow}',
           f'Synthetic: {synthetic}',
           f'Initial offset: {init_offset}',
@@ -123,7 +137,8 @@ def main(rgi_id, rgi_id_dir, smb_model, synthetic, ensemble_size, inflation,
                                       obs_provider=obs_provider,
                                       max_velbar=max_velbar,
                                       forward_workers=forward_workers,
-                                      ice_flow=ice_flow)
+                                      ice_flow=ice_flow,
+                                      emulator_retrain=emulator_retrain)
 
     # Initialise a monitor for visualising the process
     monitor = Monitor(EnKF_object=ensembleKF,
@@ -167,11 +182,22 @@ def main(rgi_id, rgi_id_dir, smb_model, synthetic, ensemble_size, inflation,
         ensemble_observables = obs_provider.get_ensemble_observables(
             EnKF_object=ensembleKF)
 
+        # Bands that melted out in most members (the glacier-wide dh/dt,
+        # if any, is always kept)
+        keep = np.ones(len(new_observation), dtype=bool)
+        if exclude_melted_out > 0:
+            melted = obs_provider.melted_out_fraction(ensembleKF)
+            keep[:obs_provider.num_bins] = melted < exclude_melted_out
+            if not keep.all():
+                print(f'Melted out, left out: bands {np.flatnonzero(~keep).tolist()}')
+
         # Diagnostics of the ensemble just run
         parameters = ensembleKF.smb_array()
-        misfit = normalised_misfit(new_observation, ensemble_observables,
-                                   noise_matrix)
+        misfit = normalised_misfit(new_observation[keep],
+                                   ensemble_observables[:, keep],
+                                   noise_matrix[np.ix_(keep, keep)])
         record = {'iteration': i, 'posterior': posterior, 'misfit': misfit,
+                  'excluded_bands': np.flatnonzero(~keep).tolist(),
                   'parameter_mean': parameters.mean(0).tolist(),
                   'parameter_std': parameters.std(0).tolist()}
         if diagnostics:
@@ -185,10 +211,10 @@ def main(rgi_id, rgi_id_dir, smb_model, synthetic, ensemble_size, inflation,
 
         if not posterior:
             print("Update")
-            ensembleKF.update(new_observation=new_observation,
-                              noise_matrix=noise_matrix,
-                              noise_samples=update_noise,
-                              modeled_observables=ensemble_observables,
+            ensembleKF.update(new_observation=new_observation[keep],
+                              noise_matrix=noise_matrix[np.ix_(keep, keep)],
+                              noise_samples=update_noise[:, keep],
+                              modeled_observables=ensemble_observables[:, keep],
                               obs_error_factor=alpha)
 
         print("Visualise")

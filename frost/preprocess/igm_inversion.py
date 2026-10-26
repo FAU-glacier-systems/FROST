@@ -236,11 +236,20 @@ def main(rgi_id_dir, params_inversion_path, min_velocity_p99=0.0):
             if 'usurf_2000' in ds.variables:
                 ds['usurf'][:] = ds['usurf_2000'][:]
 
+    # frost: invert: false skips the inversion: 0 iterations, tau_ref keeps
+    # its start value everywhere (params_inversion.yaml: iceflow sliding
+    # tau_ref); the forward runs start from the 2000 geometry as usual
+    velocity_fit = 'yes'
+    if not frost_options.get('invert', True):
+        inv_params['assimilations']['field_inversion'].setdefault(
+            'optimization', {})['nbitmax'] = 0
+        velocity_fit = 'skipped'
+        print(f'Inversion skipped for {rgi_id_dir} (frost: invert: false): '
+              'uniform tau_ref')
     # Drop the velsurf misfit term if no usable velocity observations are
     # available; if it is the only term, invert nothing (tau_ref and the
     # other variables keep their start values)
-    velocity_fit = 'yes'
-    if not flag_velsurfobs:
+    elif not flag_velsurfobs:
         field_inversion = inv_params['assimilations']['field_inversion']
         misfit = [term for term in field_inversion['objective']['misfit']
                   if term['name'] != 'velsurf']

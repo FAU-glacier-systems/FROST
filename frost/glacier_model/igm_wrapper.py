@@ -71,10 +71,36 @@ def warm_up():
     import igm.igm_run  # noqa: F401
 
 
+# IGM time step: min(CFL * dx / fastest speed, STEP_MAX) (IGM time defaults)
+CFL, STEP_MAX = 0.3, 1.0
+# longest time between two retrainings of the emulator in the forward runs
+MAX_RETRAIN_INTERVAL = 0.9  # yr
+# retraining iterations at the start of a forward run (IGM default); on
+# Corbassiere they leave the speed of 2000 low (8.9 m/yr, solver 12.4),
+# from the first step on it follows the solver (emulator_test)
+RETRAIN_START = 300
+
+
+def retrain_schedule(inversion_output):
+    """(retrain_freq, nbit) of the forward runs: IGM's 5 iterations every 5
+    time steps where 5 steps take less than MAX_RETRAIN_INTERVAL (fast
+    glaciers, short steps; every-step retraining costs 4-6x there), else 20
+    every step: on slow glaciers with long steps the speed jumped at each
+    rare retraining (Corbassiere, experiments/emulator_test). The step is
+    estimated with IGM's CFL rule from the fastest surface speed on the ice
+    of the inversion."""
+    with Dataset(inversion_output) as ds:
+        dx = abs(float(ds['x'][1] - ds['x'][0]))
+        ice = np.array(ds['thk'][:]) > 1
+        fastest = float(np.nanmax(np.array(ds['velsurf_mag'][:])[ice]))
+    step = min(CFL * dx / max(fastest, 1e-6), STEP_MAX)
+    return (5, 5) if 5 * step < MAX_RETRAIN_INTERVAL else (1, 20)
+
+
 def forward(exp, output1D, output2D_3D, member_id, smb_model, usurf, smb,
             year_start, year_end, workdir, climate_file,
             emulator_path="dahunet_mini.keras", max_velbar=0.0,
-            in_process=False):
+            in_process=False, emulator_retrain=False):
     '''
     Runs a single forward model simulation for an ensemble member.
 
@@ -101,6 +127,14 @@ def forward(exp, output1D, output2D_3D, member_id, smb_model, usurf, smb,
                                 none; keeps single cells at a retreating ice
                                 cliff from forcing tiny time steps
         in_process (bool)     - run IGM in this process (run_igm)
+        emulator_retrain (tuple) - (retrain_freq, nbit) of retrain_schedule:
+                                retrain the emulator on the glacier's
+                                physics (RETRAIN_START iterations at the
+                                start, then nbit every retrain_freq steps) instead
+                                of keeping it frozen (False); removes the
+                                start-up speed shock on geometries the
+                                pretrained network extrapolates
+                                (emulator_test)
 
     Returns:
         member_id (int)         - Ensemble member ID
@@ -155,8 +189,9 @@ def forward(exp, output1D, output2D_3D, member_id, smb_model, usurf, smb,
                 "unified": {
                     "mapping": "network",
                     "inputs": ["thk", "usurf", "arrhenius", "tau_ref", "dX"],
-                    "nbit_init": 0,
-                    "retrain_freq": 0,
+                    "nbit_init": RETRAIN_START if emulator_retrain else 0,
+                    "nbit": emulator_retrain[1] if emulator_retrain else 0,
+                    "retrain_freq": emulator_retrain[0] if emulator_retrain else 0,
                     "network": {
                         "pretrained_path": str(emulator_path),
                         "pretrained": True,
