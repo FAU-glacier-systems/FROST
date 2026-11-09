@@ -1,0 +1,10 @@
+RGI2000-v7.0-G-11-03124 Vernagtferner
+RGI2000-v7.0-G-11-03116 Hintereisferner
+RGI2000-v7.0-G-11-01289 Glacier_de_la_Plaine_Morte
+RGI2000-v7.0-G-11-02438 Griesgletscher
+RGI2000-v7.0-G-11-01084 Schwarzberggletscher
+RGI2000-v7.0-G-11-03803 Zettalunitzkees
+RGI2000-v7.0-G-11-04025 Hallstätter_Gletscher
+RGI2000-v7.0-G-11-01303 Glacier_de_Tsanfleuron
+RGI2000-v7.0-G-11-01949 Silvrettagletscher
+RGI2000-v7.0-G-11-01838 Claridenfirn

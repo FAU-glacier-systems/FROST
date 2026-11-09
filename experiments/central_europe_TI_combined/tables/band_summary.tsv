@@ -1,0 +1,12 @@
+quantity	variant	glaciers	records	bias	rmse	r_median	inside_2std_pct
+band annual	ELA	17	4272	0.244	1.18	0.915	79.4
+band annual	TI	17	4272	0.416	1.09	0.935	53
+band annual	TI calendar year	17	4272	0.423	1.15	0.909	48.5
+band summer	TI	15	3322	0.51	1.14	0.938	51.6
+band winter	TI	15	3322	-0.117	0.524	0.593	56.7
+glacier-wide annual	ELA	17	293	-0.0375	0.58	0.096	
+glacier-wide annual	TI	17	293	0.0586	0.406	0.754	
+glacier-wide annual	TI calendar year	17	293	0.0677	0.496	0.639	
+mean profile	ELA	17	239	0.264	0.923	0.984	
+mean profile	TI	17	239	0.437	0.957	0.969	
+mean profile	TI calendar year	17	239	0.443	0.959	0.969	

@@ -1,0 +1,184 @@
+rgi_id	glacier	source	variant	quantity	n	bias	rmse	r	inside_2std_pct
+RGI2000-v7.0-G-11-02596	Grosser_Aletschgletscher	GLAMOS	TI	band annual	505	1.09	3.09	0.944	9.31
+RGI2000-v7.0-G-11-02596	Grosser_Aletschgletscher	GLAMOS	TI	glacier-wide annual	20	-0.302	0.589	0.581	
+RGI2000-v7.0-G-11-02596	Grosser_Aletschgletscher	GLAMOS	TI	mean profile	25	1.12	2.95	0.975	
+RGI2000-v7.0-G-11-02596	Grosser_Aletschgletscher	GLAMOS	TI calendar year	band annual	505	1.09	3.09	0.943	10.1
+RGI2000-v7.0-G-11-02596	Grosser_Aletschgletscher	GLAMOS	TI calendar year	glacier-wide annual	20	-0.297	0.563	0.628	
+RGI2000-v7.0-G-11-02596	Grosser_Aletschgletscher	GLAMOS	TI calendar year	mean profile	25	1.13	2.95	0.975	
+RGI2000-v7.0-G-11-02596	Grosser_Aletschgletscher	GLAMOS	ELA	band annual	505	1.69	3.42	0.904	13.5
+RGI2000-v7.0-G-11-02596	Grosser_Aletschgletscher	GLAMOS	ELA	glacier-wide annual	20	-0.0621	0.561	0.0988	
+RGI2000-v7.0-G-11-02596	Grosser_Aletschgletscher	GLAMOS	ELA	mean profile	25	1.71	3.29	0.923	
+RGI2000-v7.0-G-11-02596	Grosser_Aletschgletscher	GLAMOS	TI	band winter	505	0.0814	0.663	0.83	46.3
+RGI2000-v7.0-G-11-02596	Grosser_Aletschgletscher	GLAMOS	TI	band summer	505	1.01	2.92	0.944	7.33
+RGI2000-v7.0-G-11-03664	Pasterze	WGMS	TI	band annual	240	0.217	0.908	0.925	53.8
+RGI2000-v7.0-G-11-03664	Pasterze	WGMS	TI	glacier-wide annual	15	0.0218	0.43	0.556	
+RGI2000-v7.0-G-11-03664	Pasterze	WGMS	TI	mean profile	16	0.217	0.669	0.958	
+RGI2000-v7.0-G-11-03664	Pasterze	WGMS	TI calendar year	band annual	240	0.251	0.954	0.918	51.7
+RGI2000-v7.0-G-11-03664	Pasterze	WGMS	TI calendar year	glacier-wide annual	15	0.0576	0.52	0.317	
+RGI2000-v7.0-G-11-03664	Pasterze	WGMS	TI calendar year	mean profile	16	0.251	0.682	0.958	
+RGI2000-v7.0-G-11-03664	Pasterze	WGMS	ELA	band annual	240	0.269	0.816	0.938	72.9
+RGI2000-v7.0-G-11-03664	Pasterze	WGMS	ELA	glacier-wide annual	15	0.0531	0.301	0.0381	
+RGI2000-v7.0-G-11-03664	Pasterze	WGMS	ELA	mean profile	16	0.269	0.654	0.962	
+RGI2000-v7.0-G-11-00823	Glacier_de_Corbassière	GLAMOS	TI	band annual	432	0.39	0.667	0.967	43.1
+RGI2000-v7.0-G-11-00823	Glacier_de_Corbassière	GLAMOS	TI	glacier-wide annual	20	0.244	0.396	0.715	
+RGI2000-v7.0-G-11-00823	Glacier_de_Corbassière	GLAMOS	TI	mean profile	22	0.379	0.568	0.982	
+RGI2000-v7.0-G-11-00823	Glacier_de_Corbassière	GLAMOS	TI calendar year	band annual	432	0.407	0.721	0.959	42.1
+RGI2000-v7.0-G-11-00823	Glacier_de_Corbassière	GLAMOS	TI calendar year	glacier-wide annual	20	0.264	0.48	0.523	
+RGI2000-v7.0-G-11-00823	Glacier_de_Corbassière	GLAMOS	TI calendar year	mean profile	22	0.396	0.577	0.982	
+RGI2000-v7.0-G-11-00823	Glacier_de_Corbassière	GLAMOS	ELA	band annual	432	0.0896	0.518	0.964	80.8
+RGI2000-v7.0-G-11-00823	Glacier_de_Corbassière	GLAMOS	ELA	glacier-wide annual	20	0.067	0.459	-0.159	
+RGI2000-v7.0-G-11-00823	Glacier_de_Corbassière	GLAMOS	ELA	mean profile	22	0.0808	0.293	0.989	
+RGI2000-v7.0-G-11-00823	Glacier_de_Corbassière	GLAMOS	TI	band winter	432	-0.124	0.692	0.131	32.4
+RGI2000-v7.0-G-11-00823	Glacier_de_Corbassière	GLAMOS	TI	band summer	432	0.514	0.747	0.98	48.1
+RGI2000-v7.0-G-11-01706	Rhonegletscher	GLAMOS	TI	band annual	182	0.05	0.769	0.967	48.4
+RGI2000-v7.0-G-11-01706	Rhonegletscher	GLAMOS	TI	glacier-wide annual	13	-0.149	0.39	0.662	
+RGI2000-v7.0-G-11-01706	Rhonegletscher	GLAMOS	TI	mean profile	14	0.05	0.595	0.989	
+RGI2000-v7.0-G-11-01706	Rhonegletscher	GLAMOS	TI calendar year	band annual	182	-0.0316	0.742	0.966	44.5
+RGI2000-v7.0-G-11-01706	Rhonegletscher	GLAMOS	TI calendar year	glacier-wide annual	13	-0.214	0.461	0.558	
+RGI2000-v7.0-G-11-01706	Rhonegletscher	GLAMOS	TI calendar year	mean profile	14	-0.0316	0.529	0.989	
+RGI2000-v7.0-G-11-01706	Rhonegletscher	GLAMOS	ELA	band annual	182	-0.0481	0.834	0.973	51.1
+RGI2000-v7.0-G-11-01706	Rhonegletscher	GLAMOS	ELA	glacier-wide annual	13	-0.254	0.503	0.257	
+RGI2000-v7.0-G-11-01706	Rhonegletscher	GLAMOS	ELA	mean profile	14	-0.0481	0.654	0.992	
+RGI2000-v7.0-G-11-01706	Rhonegletscher	GLAMOS	TI	band winter	182	-0.493	0.633	0.77	52.7
+RGI2000-v7.0-G-11-01706	Rhonegletscher	GLAMOS	TI	band summer	182	0.543	1.02	0.94	61
+RGI2000-v7.0-G-11-02216	Vadret_Pers	GLAMOS	TI	band annual	294	0.674	1.43	0.916	27.6
+RGI2000-v7.0-G-11-02216	Vadret_Pers	GLAMOS	TI	glacier-wide annual	18	0.492	0.639	0.69	
+RGI2000-v7.0-G-11-02216	Vadret_Pers	GLAMOS	TI	mean profile	16	0.649	1.33	0.968	
+RGI2000-v7.0-G-11-02216	Vadret_Pers	GLAMOS	TI calendar year	band annual	294	0.714	1.47	0.899	28.2
+RGI2000-v7.0-G-11-02216	Vadret_Pers	GLAMOS	TI calendar year	glacier-wide annual	18	0.529	0.715	0.705	
+RGI2000-v7.0-G-11-02216	Vadret_Pers	GLAMOS	TI calendar year	mean profile	16	0.688	1.34	0.968	
+RGI2000-v7.0-G-11-02216	Vadret_Pers	GLAMOS	ELA	band annual	294	0.543	1.46	0.915	36.1
+RGI2000-v7.0-G-11-02216	Vadret_Pers	GLAMOS	ELA	glacier-wide annual	18	0.292	0.492	0.321	
+RGI2000-v7.0-G-11-02216	Vadret_Pers	GLAMOS	ELA	mean profile	16	0.513	1.33	0.957	
+RGI2000-v7.0-G-11-02216	Vadret_Pers	GLAMOS	TI	band winter	294	-0.195	0.611	0.324	45.9
+RGI2000-v7.0-G-11-02216	Vadret_Pers	GLAMOS	TI	band summer	294	0.869	1.72	0.942	34.7
+RGI2000-v7.0-G-11-01189	Findelgletscher	GLAMOS	TI	band annual	225	0.396	0.864	0.967	45.3
+RGI2000-v7.0-G-11-01189	Findelgletscher	GLAMOS	TI	glacier-wide annual	15	-0.0488	0.304	0.704	
+RGI2000-v7.0-G-11-01189	Findelgletscher	GLAMOS	TI	mean profile	15	0.396	0.75	0.984	
+RGI2000-v7.0-G-11-01189	Findelgletscher	GLAMOS	TI calendar year	band annual	225	0.404	0.885	0.962	43.6
+RGI2000-v7.0-G-11-01189	Findelgletscher	GLAMOS	TI calendar year	glacier-wide annual	15	-0.0291	0.41	0.5	
+RGI2000-v7.0-G-11-01189	Findelgletscher	GLAMOS	TI calendar year	mean profile	15	0.404	0.734	0.984	
+RGI2000-v7.0-G-11-01189	Findelgletscher	GLAMOS	ELA	band annual	225	0.266	0.756	0.981	85.3
+RGI2000-v7.0-G-11-01189	Findelgletscher	GLAMOS	ELA	glacier-wide annual	15	-0.0566	0.335	0.214	
+RGI2000-v7.0-G-11-01189	Findelgletscher	GLAMOS	ELA	mean profile	15	0.266	0.626	0.993	
+RGI2000-v7.0-G-11-01189	Findelgletscher	GLAMOS	TI	band winter	225	0.0763	0.305	0.687	63.1
+RGI2000-v7.0-G-11-01189	Findelgletscher	GLAMOS	TI	band summer	225	0.32	0.763	0.972	64
+RGI2000-v7.0-G-11-01182	Allalingletscher	GLAMOS	TI	band annual	324	0.246	0.606	0.938	64.8
+RGI2000-v7.0-G-11-01182	Allalingletscher	GLAMOS	TI	glacier-wide annual	20	0.291	0.505	0.742	
+RGI2000-v7.0-G-11-01182	Allalingletscher	GLAMOS	TI	mean profile	16	0.25	0.368	0.987	
+RGI2000-v7.0-G-11-01182	Allalingletscher	GLAMOS	TI calendar year	band annual	324	0.24	0.676	0.918	62.3
+RGI2000-v7.0-G-11-01182	Allalingletscher	GLAMOS	TI calendar year	glacier-wide annual	20	0.285	0.559	0.611	
+RGI2000-v7.0-G-11-01182	Allalingletscher	GLAMOS	TI calendar year	mean profile	16	0.243	0.369	0.987	
+RGI2000-v7.0-G-11-01182	Allalingletscher	GLAMOS	ELA	band annual	324	-0.0493	0.726	0.882	84.3
+RGI2000-v7.0-G-11-01182	Allalingletscher	GLAMOS	ELA	glacier-wide annual	20	0.0129	0.612	-0.0926	
+RGI2000-v7.0-G-11-01182	Allalingletscher	GLAMOS	ELA	mean profile	16	-0.0467	0.243	0.984	
+RGI2000-v7.0-G-11-01182	Allalingletscher	GLAMOS	TI	band winter	324	-0.173	0.495	0.317	63.9
+RGI2000-v7.0-G-11-01182	Allalingletscher	GLAMOS	TI	band summer	324	0.419	0.677	0.943	59.9
+RGI2000-v7.0-G-11-03116	Hintereisferner	WGMS	TI	band annual	528	0.87	1.31	0.9	29.7
+RGI2000-v7.0-G-11-03116	Hintereisferner	WGMS	TI	glacier-wide annual	20	0.419	0.545	0.814	
+RGI2000-v7.0-G-11-03116	Hintereisferner	WGMS	TI	mean profile	27	0.89	1.19	0.947	
+RGI2000-v7.0-G-11-03116	Hintereisferner	WGMS	TI calendar year	band annual	528	0.873	1.32	0.897	30.7
+RGI2000-v7.0-G-11-03116	Hintereisferner	WGMS	TI calendar year	glacier-wide annual	20	0.418	0.571	0.756	
+RGI2000-v7.0-G-11-03116	Hintereisferner	WGMS	TI calendar year	mean profile	27	0.893	1.19	0.946	
+RGI2000-v7.0-G-11-03116	Hintereisferner	WGMS	ELA	band annual	528	0.229	0.858	0.936	97
+RGI2000-v7.0-G-11-03116	Hintereisferner	WGMS	ELA	glacier-wide annual	20	0.165	0.587	-0.236	
+RGI2000-v7.0-G-11-03116	Hintereisferner	WGMS	ELA	mean profile	27	0.229	0.48	0.991	
+RGI2000-v7.0-G-11-03116	Hintereisferner	WGMS	TI	band winter	181	0.0303	0.349	0.589	56.4
+RGI2000-v7.0-G-11-03116	Hintereisferner	WGMS	TI	band summer	181	0.838	1.17	0.932	34.3
+RGI2000-v7.0-G-11-01289	Glacier_de_la_Plaine_Morte	GLAMOS	TI	band annual	59	-0.529	1.17	0.822	54.2
+RGI2000-v7.0-G-11-01289	Glacier_de_la_Plaine_Morte	GLAMOS	TI	glacier-wide annual	10	0.0784	0.565	0.818	
+RGI2000-v7.0-G-11-01289	Glacier_de_la_Plaine_Morte	GLAMOS	TI	mean profile	5	-0.654	1.12	0.774	
+RGI2000-v7.0-G-11-01289	Glacier_de_la_Plaine_Morte	GLAMOS	TI calendar year	band annual	59	-0.555	1.14	0.802	61
+RGI2000-v7.0-G-11-01289	Glacier_de_la_Plaine_Morte	GLAMOS	TI calendar year	glacier-wide annual	10	0.043	0.454	0.817	
+RGI2000-v7.0-G-11-01289	Glacier_de_la_Plaine_Morte	GLAMOS	TI calendar year	mean profile	5	-0.69	1.15	0.778	
+RGI2000-v7.0-G-11-01289	Glacier_de_la_Plaine_Morte	GLAMOS	ELA	band annual	59	-0.265	0.726	0.7	100
+RGI2000-v7.0-G-11-01289	Glacier_de_la_Plaine_Morte	GLAMOS	ELA	glacier-wide annual	10	0.164	0.684	0.674	
+RGI2000-v7.0-G-11-01289	Glacier_de_la_Plaine_Morte	GLAMOS	ELA	mean profile	5	-0.206	0.408	0.773	
+RGI2000-v7.0-G-11-01289	Glacier_de_la_Plaine_Morte	GLAMOS	TI	band winter	59	-0.163	0.495	0.478	74.6
+RGI2000-v7.0-G-11-01289	Glacier_de_la_Plaine_Morte	GLAMOS	TI	band summer	59	-0.365	0.889	0.821	67.8
+RGI2000-v7.0-G-11-02438	Griesgletscher	GLAMOS	TI	band annual	201	0.77	1.02	0.9	48.8
+RGI2000-v7.0-G-11-02438	Griesgletscher	GLAMOS	TI	glacier-wide annual	20	0.695	0.882	0.674	
+RGI2000-v7.0-G-11-02438	Griesgletscher	GLAMOS	TI	mean profile	10	0.777	0.827	0.979	
+RGI2000-v7.0-G-11-02438	Griesgletscher	GLAMOS	TI calendar year	band annual	201	0.789	1.05	0.89	43.8
+RGI2000-v7.0-G-11-02438	Griesgletscher	GLAMOS	TI calendar year	glacier-wide annual	20	0.711	0.9	0.655	
+RGI2000-v7.0-G-11-02438	Griesgletscher	GLAMOS	TI calendar year	mean profile	10	0.794	0.845	0.979	
+RGI2000-v7.0-G-11-02438	Griesgletscher	GLAMOS	ELA	band annual	201	-0.000815	0.751	0.847	92.5
+RGI2000-v7.0-G-11-02438	Griesgletscher	GLAMOS	ELA	glacier-wide annual	20	-0.133	0.667	0.096	
+RGI2000-v7.0-G-11-02438	Griesgletscher	GLAMOS	ELA	mean profile	10	0.00223	0.312	0.968	
+RGI2000-v7.0-G-11-02438	Griesgletscher	GLAMOS	TI	band winter	201	-0.272	0.718	0.447	47.8
+RGI2000-v7.0-G-11-02438	Griesgletscher	GLAMOS	TI	band summer	201	1.04	1.19	0.929	26.4
+RGI2000-v7.0-G-11-00879	Glacier_du_Giétro	GLAMOS	TI	band annual	261	0.529	0.935	0.963	64
+RGI2000-v7.0-G-11-00879	Glacier_du_Giétro	GLAMOS	TI	glacier-wide annual	20	0.326	0.583	0.606	
+RGI2000-v7.0-G-11-00879	Glacier_du_Giétro	GLAMOS	TI	mean profile	13	0.538	0.797	0.993	
+RGI2000-v7.0-G-11-00879	Glacier_du_Giétro	GLAMOS	TI calendar year	band annual	261	0.54	0.95	0.96	62.1
+RGI2000-v7.0-G-11-00879	Glacier_du_Giétro	GLAMOS	TI calendar year	glacier-wide annual	20	0.339	0.579	0.637	
+RGI2000-v7.0-G-11-00879	Glacier_du_Giétro	GLAMOS	TI calendar year	mean profile	13	0.55	0.804	0.993	
+RGI2000-v7.0-G-11-00879	Glacier_du_Giétro	GLAMOS	ELA	band annual	261	0.506	1.18	0.952	89.7
+RGI2000-v7.0-G-11-00879	Glacier_du_Giétro	GLAMOS	ELA	glacier-wide annual	20	0.243	0.658	-0.14	
+RGI2000-v7.0-G-11-00879	Glacier_du_Giétro	GLAMOS	ELA	mean profile	13	0.506	0.996	0.993	
+RGI2000-v7.0-G-11-00879	Glacier_du_Giétro	GLAMOS	TI	band winter	261	-0.221	0.502	0.615	67.4
+RGI2000-v7.0-G-11-00879	Glacier_du_Giétro	GLAMOS	TI	band summer	261	0.75	1.23	0.971	58.6
+RGI2000-v7.0-G-11-01084	Schwarzberggletscher	GLAMOS	TI	band annual	200	0.245	0.65	0.95	68.5
+RGI2000-v7.0-G-11-01084	Schwarzberggletscher	GLAMOS	TI	glacier-wide annual	20	0.235	0.499	0.769	
+RGI2000-v7.0-G-11-01084	Schwarzberggletscher	GLAMOS	TI	mean profile	10	0.245	0.415	0.995	
+RGI2000-v7.0-G-11-01084	Schwarzberggletscher	GLAMOS	TI calendar year	band annual	200	0.227	0.649	0.951	69.5
+RGI2000-v7.0-G-11-01084	Schwarzberggletscher	GLAMOS	TI calendar year	glacier-wide annual	20	0.211	0.488	0.732	
+RGI2000-v7.0-G-11-01084	Schwarzberggletscher	GLAMOS	TI calendar year	mean profile	10	0.227	0.389	0.995	
+RGI2000-v7.0-G-11-01084	Schwarzberggletscher	GLAMOS	ELA	band annual	200	-0.293	0.972	0.942	82
+RGI2000-v7.0-G-11-01084	Schwarzberggletscher	GLAMOS	ELA	glacier-wide annual	20	-0.204	0.607	0.188	
+RGI2000-v7.0-G-11-01084	Schwarzberggletscher	GLAMOS	ELA	mean profile	10	-0.293	0.766	0.99	
+RGI2000-v7.0-G-11-01084	Schwarzberggletscher	GLAMOS	TI	band winter	200	0.145	0.559	0.645	42.5
+RGI2000-v7.0-G-11-01084	Schwarzberggletscher	GLAMOS	TI	band summer	200	0.1	0.739	0.944	52.5
+RGI2000-v7.0-G-11-03119	Kesselwandferner	WGMS	TI	band annual	273	0.676	1.23	0.892	56.8
+RGI2000-v7.0-G-11-03119	Kesselwandferner	WGMS	TI	glacier-wide annual	19	0.0974	0.375	0.81	
+RGI2000-v7.0-G-11-03119	Kesselwandferner	WGMS	TI	mean profile	15	0.752	1.13	0.97	
+RGI2000-v7.0-G-11-03119	Kesselwandferner	WGMS	TI calendar year	band annual	273	0.673	1.24	0.889	55.7
+RGI2000-v7.0-G-11-03119	Kesselwandferner	WGMS	TI calendar year	glacier-wide annual	19	0.0981	0.41	0.751	
+RGI2000-v7.0-G-11-03119	Kesselwandferner	WGMS	TI calendar year	mean profile	15	0.749	1.13	0.97	
+RGI2000-v7.0-G-11-03119	Kesselwandferner	WGMS	ELA	band annual	273	0.595	1.37	0.844	71.4
+RGI2000-v7.0-G-11-03119	Kesselwandferner	WGMS	ELA	glacier-wide annual	19	-0.0636	0.609	-0.375	
+RGI2000-v7.0-G-11-03119	Kesselwandferner	WGMS	ELA	mean profile	15	0.673	1.17	0.956	
+RGI2000-v7.0-G-11-04025	Hallstätter_Gletscher	WGMS	TI	band annual	189	0.639	0.993	0.938	84.7
+RGI2000-v7.0-G-11-04025	Hallstätter_Gletscher	WGMS	TI	glacier-wide annual	13	0.457	0.59	0.795	
+RGI2000-v7.0-G-11-04025	Hallstätter_Gletscher	WGMS	TI	mean profile	14	0.597	0.78	0.995	
+RGI2000-v7.0-G-11-04025	Hallstätter_Gletscher	WGMS	TI calendar year	band annual	189	0.683	0.991	0.947	85.2
+RGI2000-v7.0-G-11-04025	Hallstätter_Gletscher	WGMS	TI calendar year	glacier-wide annual	13	0.503	0.588	0.869	
+RGI2000-v7.0-G-11-04025	Hallstätter_Gletscher	WGMS	TI calendar year	mean profile	14	0.642	0.811	0.995	
+RGI2000-v7.0-G-11-04025	Hallstätter_Gletscher	WGMS	ELA	band annual	189	0.212	1.24	0.931	100
+RGI2000-v7.0-G-11-04025	Hallstätter_Gletscher	WGMS	ELA	glacier-wide annual	13	-0.125	0.619	-0.577	
+RGI2000-v7.0-G-11-04025	Hallstätter_Gletscher	WGMS	ELA	mean profile	14	0.129	0.974	0.988	
+RGI2000-v7.0-G-11-04025	Hallstätter_Gletscher	WGMS	TI	band winter	99	-0.198	0.604	0.491	42.4
+RGI2000-v7.0-G-11-04025	Hallstätter_Gletscher	WGMS	TI	band summer	99	0.936	1.1	0.912	78.8
+RGI2000-v7.0-G-11-01303	Glacier_de_Tsanfleuron	GLAMOS	TI	band annual	53	0.471	0.65	0.941	75.5
+RGI2000-v7.0-G-11-01303	Glacier_de_Tsanfleuron	GLAMOS	TI	glacier-wide annual	10	0.453	0.579	0.923	
+RGI2000-v7.0-G-11-01303	Glacier_de_Tsanfleuron	GLAMOS	TI	mean profile	5	0.513	0.525	0.992	
+RGI2000-v7.0-G-11-01303	Glacier_de_Tsanfleuron	GLAMOS	TI calendar year	band annual	53	0.395	0.701	0.886	77.4
+RGI2000-v7.0-G-11-01303	Glacier_de_Tsanfleuron	GLAMOS	TI calendar year	glacier-wide annual	10	0.38	0.63	0.839	
+RGI2000-v7.0-G-11-01303	Glacier_de_Tsanfleuron	GLAMOS	TI calendar year	mean profile	5	0.441	0.46	0.992	
+RGI2000-v7.0-G-11-01303	Glacier_de_Tsanfleuron	GLAMOS	ELA	band annual	53	0.037	0.943	0.723	100
+RGI2000-v7.0-G-11-01303	Glacier_de_Tsanfleuron	GLAMOS	ELA	glacier-wide annual	10	-0.0962	0.859	0.537	
+RGI2000-v7.0-G-11-01303	Glacier_de_Tsanfleuron	GLAMOS	ELA	mean profile	5	0.0243	0.346	0.992	
+RGI2000-v7.0-G-11-01303	Glacier_de_Tsanfleuron	GLAMOS	TI	band winter	53	-0.287	0.529	0.49	56.6
+RGI2000-v7.0-G-11-01303	Glacier_de_Tsanfleuron	GLAMOS	TI	band summer	53	0.757	0.921	0.926	73.6
+RGI2000-v7.0-G-11-01949	Silvrettagletscher	GLAMOS	TI	band annual	140	0.256	0.704	0.884	62.9
+RGI2000-v7.0-G-11-01949	Silvrettagletscher	GLAMOS	TI	glacier-wide annual	20	0.261	0.558	0.695	
+RGI2000-v7.0-G-11-01949	Silvrettagletscher	GLAMOS	TI	mean profile	7	0.256	0.398	0.987	
+RGI2000-v7.0-G-11-01949	Silvrettagletscher	GLAMOS	TI calendar year	band annual	140	0.271	0.76	0.862	62.9
+RGI2000-v7.0-G-11-01949	Silvrettagletscher	GLAMOS	TI calendar year	glacier-wide annual	20	0.272	0.634	0.612	
+RGI2000-v7.0-G-11-01949	Silvrettagletscher	GLAMOS	TI calendar year	mean profile	7	0.271	0.407	0.987	
+RGI2000-v7.0-G-11-01949	Silvrettagletscher	GLAMOS	ELA	band annual	140	-0.206	0.742	0.798	100
+RGI2000-v7.0-G-11-01949	Silvrettagletscher	GLAMOS	ELA	glacier-wide annual	20	-0.331	0.709	0.144	
+RGI2000-v7.0-G-11-01949	Silvrettagletscher	GLAMOS	ELA	mean profile	7	-0.206	0.336	0.976	
+RGI2000-v7.0-G-11-01949	Silvrettagletscher	GLAMOS	TI	band winter	140	-0.564	0.802	0.406	34.3
+RGI2000-v7.0-G-11-01949	Silvrettagletscher	GLAMOS	TI	band summer	140	0.819	0.956	0.891	37.1
+RGI2000-v7.0-G-11-01838	Claridenfirn	GLAMOS	TI	band annual	166	0.61	2.27	0.737	64.5
+RGI2000-v7.0-G-11-01838	Claridenfirn	GLAMOS	TI	glacier-wide annual	20	-0.188	0.497	0.653	
+RGI2000-v7.0-G-11-01838	Claridenfirn	GLAMOS	TI	mean profile	9	0.872	2.2	0.854	
+RGI2000-v7.0-G-11-01838	Claridenfirn	GLAMOS	TI calendar year	band annual	166	0.627	2.3	0.724	65.1
+RGI2000-v7.0-G-11-01838	Claridenfirn	GLAMOS	TI calendar year	glacier-wide annual	20	-0.175	0.53	0.658	
+RGI2000-v7.0-G-11-01838	Claridenfirn	GLAMOS	TI calendar year	mean profile	9	0.891	2.22	0.85	
+RGI2000-v7.0-G-11-01838	Claridenfirn	GLAMOS	ELA	band annual	166	0.577	2.69	0.723	93.4
+RGI2000-v7.0-G-11-01838	Claridenfirn	GLAMOS	ELA	glacier-wide annual	20	-0.309	0.591	-0.172	
+RGI2000-v7.0-G-11-01838	Claridenfirn	GLAMOS	ELA	mean profile	9	0.884	2.8	0.822	
+RGI2000-v7.0-G-11-01838	Claridenfirn	GLAMOS	TI	band winter	166	-0.245	0.731	0.221	62
+RGI2000-v7.0-G-11-01838	Claridenfirn	GLAMOS	TI	band summer	166	0.855	2.44	0.735	73.5
