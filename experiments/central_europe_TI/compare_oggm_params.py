@@ -28,7 +28,7 @@ import pandas as pd
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.getcwd())
-from frost.visualization.plot_style import DARK_THEME  # noqa: E402
+from frost.visualization.plot_style import COLORS as PALETTE, DARK_THEME  # noqa: E402
 
 PARAMS = ['melt_f', 'prcp_fac', 'temp_bias']
 LABELS = {'melt_f': 'melt_f (mm w.e. / (°C day))', 'prcp_fac': 'prcp_fac (-)',
@@ -64,7 +64,7 @@ def glacier_row(results_dir, rgi_id, name, ice_flow):
 
 def plot(table, path):
     fig, axes = plt.subplots(1, 4, figsize=(17, 4.4))
-    colors = np.where(table.ice_flow, 'tab:blue', 'tab:red')
+    colors = np.where(table.ice_flow, PALETTE['blue'], PALETTE['red'])
     for ax, p in zip(axes, PARAMS):
         x, y = table[f'oggm_{p}'], table[p]
         lo, hi = min(x.min(), (y - table[f'{p}_std']).min()), max(x.max(), (y + table[f'{p}_std']).max())
@@ -91,13 +91,13 @@ def plot(table, path):
     for i, (col, label) in enumerate(pairs):
         ax.scatter(np.full(len(table), i) + np.random.default_rng(i).uniform(-0.15, 0.15, len(table)),
                    table[col], c=colors, s=18)
-    ax.axhline(0, color='k', lw=0.8)
+    ax.axhline(0, color=plt.rcParams['text.color'], lw=0.8)
     ax.set_xticks(range(len(pairs)), [label for _, label in pairs], fontsize=8)
     ax.set_ylim(-1, 1)
     ax.set_ylabel('posterior correlation between members')
     ax.set_title('trade-offs between the parameters', fontsize=10)
     handles = [plt.Line2D([], [], marker='o', ls='', color=c, label=l)
-               for c, l in [('tab:red', 'no ice flow'), ('tab:blue', 'IGM (ice flow)')]]
+               for c, l in [(PALETTE['red'], 'no ice flow'), (PALETTE['blue'], 'IGM (ice flow)')]]
     fig.legend(handles=handles, loc='upper center', ncol=2, frameon=False)
     fig.tight_layout(rect=(0, 0, 1, 0.93))
     os.makedirs(os.path.dirname(path), exist_ok=True)

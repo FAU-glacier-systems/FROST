@@ -155,11 +155,14 @@ def member_smb(result, elevation, climate_file=None):
     runs (frost/glacier_model/no_flow.smb_ti)."""
     ensemble = np.array(result['final_ensemble'], dtype=float)
     if 'melt_f' in result.get('initial_smb', {}):
-        from frost.glacier_model.no_flow import load_climate, smb_ti
-        climate = load_climate(climate_file)
-        z = np.broadcast_to(elevation[None], (len(ensemble), len(elevation)))
-        smb = np.mean([smb_ti(z, climate, year, *ensemble.T) for year in range(2000, 2020)], 0)
-        return ICE_TO_WE * smb
+        from frost.glacier_model import no_flow
+        climate = no_flow.load_climate(climate_file)
+        ti = no_flow.ti_from_results(result)
+        params = no_flow.ti_params(ti, 2)
+        monthly = no_flow.ti_months(elevation[None], climate, params, 2000, 2019,
+                                    ti['snow_ratio'])
+        first = (2000 - climate['yr_0']) * 12
+        return monthly[:, first:first + 240].sum(1) / 20
     ela, abl, acc = (ensemble[:, k, None] for k in range(3))
     smb = elevation[None] - ela
     smb = smb * np.where(smb < 0, abl, acc) / 1000

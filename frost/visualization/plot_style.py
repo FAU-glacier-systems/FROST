@@ -16,21 +16,66 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+from cycler import cycler
+from matplotlib import font_manager
 
-DARK_THEME = {
-    "figure.facecolor": "black",
-    "axes.facecolor": "black",
-    "savefig.facecolor": "black",
-    "text.color": "white",
-    "axes.labelcolor": "white",
-    "axes.titlecolor": "white",
-    "xtick.color": "white",
-    "ytick.color": "white",
-    "axes.edgecolor": "white",
-    "legend.facecolor": "black",
-    "legend.edgecolor": "black",
-    "legend.labelcolor": "white",
+# Inter for text, JetBrains Mono for tables where the columns must line up
+# (SIL Open Font License, fonts/Inter-OFL.txt and fonts/OFL.txt)
+FONT_DIR = Path(__file__).parent / "fonts"
+FONT = "Inter"
+MONO = "JetBrains Mono"
+
+# Slide palette: ice flow blue, dh/dt red, mass balance yellow, calving
+# green; observations in the foreground colour, old runs grey
+COLORS = {
+    "bg": "#0A0A0A", "fg": "#EDEDED", "muted": "#C8C8C8", "grid": "#4A4A4A",
+    "blue": "#4FA3E0", "red": "#E5484D", "yellow": "#F2C230",
+    "green": "#4CC38A", "grey": "#B4B4B4",
 }
+
+for _path in FONT_DIR.glob("*.ttf"):
+    font_manager.fontManager.addfont(str(_path))
+
+# Black background, Inter, no frame and no ticks, dashed grey grid;
+# no text darker than the muted grey (readable on weak projectors)
+DARK_THEME = {
+    "figure.facecolor": COLORS["bg"],
+    "axes.facecolor": COLORS["bg"],
+    "savefig.facecolor": COLORS["bg"],
+    "font.family": [FONT, "sans-serif"],
+    "text.color": COLORS["fg"],
+    "axes.labelcolor": COLORS["fg"],
+    "axes.titlecolor": COLORS["fg"],
+    "xtick.color": COLORS["muted"],
+    "ytick.color": COLORS["muted"],
+    "axes.edgecolor": COLORS["grid"],
+    "axes.spines.left": False,
+    "axes.spines.right": False,
+    "axes.spines.top": False,
+    "axes.spines.bottom": False,
+    "xtick.major.size": 0,
+    "ytick.major.size": 0,
+    "xtick.minor.size": 0,
+    "ytick.minor.size": 0,
+    "axes.grid": True,
+    "axes.axisbelow": True,
+    "grid.color": COLORS["grid"],
+    "grid.linestyle": "--",
+    "grid.linewidth": 0.6,
+    "legend.facecolor": COLORS["bg"],
+    "legend.edgecolor": COLORS["bg"],
+    "legend.labelcolor": COLORS["fg"],
+    "legend.frameon": False,
+    "axes.prop_cycle": cycler(color=[COLORS[c] for c in ["blue", "yellow", "red", "green", "grey"]]),
+}
+
+
+def use_font():
+    """Register the fonts and make Inter the default font (falls back to
+    the generic sans-serif font if the files are missing). Tables: MONO."""
+    for path in FONT_DIR.glob("*.ttf"):
+        font_manager.fontManager.addfont(str(path))
+    plt.rcParams["font.family"] = [FONT, "sans-serif"]
 
 
 def fg() -> str:

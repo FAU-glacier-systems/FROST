@@ -68,7 +68,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(os.path.dirname(HERE)))
 from frost.calibration.observation_provider import ObservationProvider
 from frost.preprocess.thickness_validation import read_field, thkobs_at_year
-from frost.visualization.plot_style import DARK_THEME, bg, fg
+from frost.visualization.plot_style import DARK_THEME, MONO, bg, fg
 sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(os.path.dirname(HERE), 'validation'))
 
@@ -656,7 +656,7 @@ def plot_glacier(g, stats, path, name, rgi_id):
         'speed': f'Forward surface speed in {year:.0f} (mean of the members that still have ice) minus '
                  'ITS_LIVE 2014-2022. Red: the model is too fast.',
         'observed_speed': f'ITS_LIVE 2014-2022 surface speed; p99 on the ice '
-                          f'{stats["velocity_p99_ice"]:.1f} m/yr < 10 m/yr, hence no ice flow.',
+                          f'{stats["velocity_p99_ice"]:.1f} m/yr < 5 m/yr, hence no ice flow.',
     }
     if g['no_flow']:
         page_header(fig, name, rgi_id,
@@ -695,7 +695,7 @@ def labels(summary):
     return [f'{n} *' if flag else n for n, flag in zip(names, no_flow(summary))]
 
 
-NO_FLOW_NOTE = '* without ice flow (ITS_LIVE p99 on the ice < 10 m/yr): dh/dt = SMB'
+NO_FLOW_NOTE = '* without ice flow (ITS_LIVE p99 on the ice < 5 m/yr): dh/dt = SMB'
 
 # Glacier identity on every page: matplotlib tab10, then a lighter and a
 # darker shade of each colour (30 colours), in the order of glaciers.txt;
@@ -882,13 +882,17 @@ def smb_scatter(ax, summary, profiles, colors, markers):
 
 # ------------------------------------------------------------ title page
 
-def run_configuration(experiment):
+def run_configuration(experiment, flow=True):
     """EnKF block of pipeline_config.yaml and params_inversion.yaml of
-    experiments/<experiment> (empty where missing)."""
+    experiments/<experiment> (empty where missing). Experiments with both
+    kinds of glaciers (central_europe_TI) have pipeline_config_igm.yaml and
+    pipeline_config_noflow.yaml instead."""
     folder = os.path.join('experiments', experiment)
+    config = os.path.join(folder, 'pipeline_config.yaml')
+    if not os.path.exists(config):
+        config = os.path.join(folder, f'pipeline_config_{"igm" if flow else "noflow"}.yaml')
     loaded = []
-    for name in ('pipeline_config.yaml', 'params_inversion.yaml'):
-        path = os.path.join(folder, name)
+    for path in (config, os.path.join(folder, 'params_inversion.yaml')):
         content = {}
         if os.path.exists(path):
             with open(path) as f:
@@ -954,7 +958,7 @@ def setup_items(summary, results):
     left.append(('t', f'{len(summary)} glaciers with GLAMOS / WGMS mass balance{area}'))
     if (~flat).any():
         left.append(('t', f'IGM ice flow on {(~flat).sum()}'
-                     + (' (ITS_LIVE p99 on the ice >= 10 m/yr)' if flat.any() else '') + ': '
+                     + (' (ITS_LIVE p99 on the ice >= 5 m/yr)' if flat.any() else '') + ': '
                      + ', '.join(n for n, f in zip(plain, flat) if not f)))
     if flat.any():
         left.append(('t', f'No ice flow on {flat.sum()} (dh/dt = SMB until the ice melts out): '
@@ -982,7 +986,7 @@ def setup_items(summary, results):
             right += [('t', line) for line in
                       ([f'IGM {version}'] if version else []) + igm_text(enkf, inversion)]
         for experiment in summary[flat].experiment.unique():
-            enkf, _ = run_configuration(experiment)
+            enkf, _ = run_configuration(experiment, flow=False)
             right.append(('h', f'Without ice flow: {experiment}'))
             right.append(('t', f'Calibration: {calibration_text(enkf)}'))
         prior, std = enkf.get('smb_prior_mean', {}), enkf.get('smb_prior_std', {})
@@ -1179,7 +1183,7 @@ def velocity_page(summary, data):
     year = summary.inversion_year.iloc[0]
     inverted = summary.get('inverted', pd.Series(True, index=summary.index)).all()
     page_title(fig, 'Velocity', f'{len(summary)} glaciers with ice flow' + (
-        f'; the {n_flat} without (ITS_LIVE p99 on the ice < 10 m/yr) are left out' if n_flat else '')
+        f'; the {n_flat} without (ITS_LIVE p99 on the ice < 5 m/yr) are left out' if n_flat else '')
         + f'. Forward runs of the posterior members 2000-2020, compared with ITS_LIVE 2014-2022 in '
           f'{year:g}, the {"inversion" if inverted else "velocity"} year.')
     grid = fig.add_gridspec(2, 2, left=0.16, right=0.96, top=0.9, bottom=0.17, hspace=0.42,
@@ -1500,6 +1504,7 @@ def table_page(summary):
             cell.set_facecolor(TABLE_COLOURS['header'])
         # the glacier's own colour for its name, as on every other page
         cell.get_text().set_color(colors[r - 1] if r > 0 and c == 0 else fg())
+        cell.get_text().set_family(MONO)  # numbers line up in the columns
         if c == 0:
             cell.get_text().set_ha('left')
             cell.get_text().set_weight('bold' if r > 0 else 'normal')

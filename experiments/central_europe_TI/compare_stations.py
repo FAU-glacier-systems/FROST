@@ -44,7 +44,7 @@ import xarray as xr
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.getcwd())
 from frost.glacier_model import no_flow  # noqa: E402
-from frost.visualization.plot_style import DARK_THEME  # noqa: E402
+from frost.visualization.plot_style import COLORS as PALETTE, DARK_THEME  # noqa: E402
 
 RAW = os.path.join('data', 'raw', 'stations')
 METEOSWISS = 'https://data.geo.admin.ch/ch.meteoschweiz.ogd-smn/{s}/ogd-smn_{s}_m.csv'
@@ -175,8 +175,8 @@ def plot_series(table, series, variable, path):
                 values = values[full]
             else:
                 values = both.groupby(both.index.month).mean()
-            ax.plot(values.index, values.obs, 'k-o', ms=2.5, lw=1, label='station')
-            ax.plot(values.index, values.model, '-o', color='tab:red', ms=2.5, lw=1,
+            ax.plot(values.index, values.obs, '-o', color=plt.rcParams['text.color'], ms=2.5, lw=1, label='station')
+            ax.plot(values.index, values.model, '-o', color=PALETTE['red'], ms=2.5, lw=1,
                     label='W5E5 (calibration)')
             station = r.t_station if temperature else r.p_station
             z = r.t_station_z if temperature else r.p_station_z
@@ -211,7 +211,7 @@ def plot(table, path):
         ax.scatter(table.t_bias, table[col], marker=marker, s=24, label=label)
     lim = [min(table.t_bias.min(), table.oggm_temp_bias.min()) - 0.5,
            max(table.t_bias.max(), table.frost_temp_bias.max()) + 0.5]
-    ax.plot(lim, lim, 'k--', lw=0.8)
+    ax.plot(lim, lim, '--', color=plt.rcParams['text.color'], lw=0.8)
     ax.set_xlim(lim)
     ax.set_ylim(lim)
     ax.set_xlabel('station - W5E5 temperature (°C)')
@@ -223,8 +223,8 @@ def plot(table, path):
     months = list(SEASONS)
     for _, r in table.iterrows():
         ax.plot(months, [r[f't_bias_{s}'] for s in months], color='grey', lw=0.7, alpha=0.6)
-    ax.plot(months, [table[f't_bias_{s}'].median() for s in months], 'k-o', lw=2, label='median')
-    ax.axhline(0, color='k', lw=0.8)
+    ax.plot(months, [table[f't_bias_{s}'].median() for s in months], '-o', color=plt.rcParams['text.color'], lw=2, label='median')
+    ax.axhline(0, color=plt.rcParams['text.color'], lw=0.8)
     ax.set_ylabel('station - W5E5 temperature (°C)')
     ax.legend(fontsize=8)
     ax.set_title('temperature offset per season', fontsize=10)
@@ -233,7 +233,7 @@ def plot(table, path):
     for col, marker, label in [('oggm_prcp_fac', 'o', 'OGGM'), ('frost_prcp_fac', 's', 'FROST posterior')]:
         ax.scatter(table.p_ratio, table[col], marker=marker, s=24, label=label)
     lim = [0, max(table.p_ratio.max(), table.oggm_prcp_fac.max()) + 0.3]
-    ax.plot(lim, lim, 'k--', lw=0.8)
+    ax.plot(lim, lim, '--', color=plt.rcParams['text.color'], lw=0.8)
     ax.set_xlim(lim)
     ax.set_ylim(lim)
     ax.set_xlabel('station / W5E5 precipitation (-)')

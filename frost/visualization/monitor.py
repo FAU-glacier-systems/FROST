@@ -11,7 +11,8 @@ import copy
 import pyproj
 from itertools import product, accumulate
 import json
-plt.rcParams["font.family"] = "monospace"
+from frost.visualization.plot_style import COLORS, use_font
+use_font()
 
 
 class Monitor:
@@ -35,7 +36,6 @@ class Monitor:
         self.max_iterations = max_iterations
         self.max_iteration_axis = range(max_iterations + 1)
         self.synthetic = synthetic
-        self.colorscale = plt.get_cmap('tab20')
 
         # plots: 'all' writes one png per iteration, 'latest' overwrites one
         # png, 'final' plots only the last iteration (max_iterations)
@@ -45,8 +45,10 @@ class Monitor:
 
         # dark: black background with white text, else white with black
         self.dark = dark
-        self.fg = 'white' if dark else 'black'
-        self.bg = 'black' if dark else 'white'
+        self.fg = COLORS['fg'] if dark else '#1A1A1A'
+        self.bg = COLORS['bg'] if dark else 'white'
+        self.muted = COLORS['muted'] if dark else '#555555'
+        self.grid = COLORS['grid'] if dark else '#CCCCCC'
 
         # Maps show the glacier's bounding box plus a margin of ice-free
         # cells, in km from its lower-left corner
@@ -86,9 +88,11 @@ class Monitor:
 
         else:
             if str(self.smb_model) == "ELA":
+                # GLAMOS gradients are in w.e., the model's in ice (910 kg/m3),
+                # as in the evaluation (experiments/central_europe_esmda)
                 self.density_factor = {'ela': 1,
                                        'abl_grad': 0.91,
-                                       'acc_grad': 0.55,
+                                       'acc_grad': 0.91,
                                        }
             elif str(self.smb_model) == "TI":
                 self.density_factor = {'melt_f': 1,
@@ -111,6 +115,7 @@ class Monitor:
             melt_f=dict(y_label='Melt Factor OGGM\n( mm w.e. / (C day) )'),
             prcp_fac=dict(y_label='Precipitation Factor \n( - )'),
             temp_bias=dict(y_label='Temperature Bias ( C )'),
+            temp_gradient=dict(y_label='Temperature Lapse Rate\n( C / km )'),
         )
 
     def plot_now(self, iteration):
@@ -160,7 +165,10 @@ class Monitor:
         if not self.plot_now(iteration):
             return
 
-        fig, ax = plt.subplots(2, 3, figsize=(12, 6), facecolor=self.bg)
+        ncols = max(3, len(ensemble_smb_log))
+        fig, ax = plt.subplots(2, ncols, figsize=(4 * ncols, 6), facecolor=self.bg)
+        for empty in ax[0, 3:]:
+            empty.axis('off')
 
         iteration_axis = range(iteration + 1)
         iteration_axis_repeat = np.repeat(iteration_axis, 2)[1:-1]
@@ -173,14 +181,12 @@ class Monitor:
             if show_x:
                 ax.set_xlabel("Iteration", color=self.fg)
             ax.set_xlim(-0.2, self.max_iterations + 0.2)
-            ax.spines['top'].set_visible(False)
-            ax.spines['right'].set_visible(False)
-            ax.spines['bottom'].set_visible(False)
-            ax.spines['left'].set_visible(False)
-            ax.grid(axis="y", color="lightgray", linestyle="-", zorder=0)
-            ax.grid(axis="x", color="lightgray", linestyle="-", zorder=0)
-            ax.xaxis.set_tick_params(bottom=False, colors=self.fg)
-            ax.yaxis.set_tick_params(left=False, colors=self.fg)
+            for spine in ax.spines.values():
+                spine.set_visible(False)
+            ax.grid(color=self.grid, linestyle="--", linewidth=0.8, zorder=0)
+            ax.set_axisbelow(True)
+            ax.xaxis.set_tick_params(bottom=False, colors=self.muted)
+            ax.yaxis.set_tick_params(left=False, colors=self.muted)
             ax.xaxis.set_major_locator(MaxNLocator(integer=True))
             ax.set_facecolor(self.bg)
 
@@ -191,7 +197,7 @@ class Monitor:
                 observable_log_repeat = np.repeat(observable_log_values, 2)
                 ax[0, i].plot(iteration_axis_repeat,
                               observable_log_repeat,
-                              color=self.colorscale(5), marker='o', markersize=10,
+                              color=COLORS['red'], alpha=0.6, marker='o', markersize=6,
                               markevery=[-1], zorder=2, label='Ensemble Member')
 
             observable_log_values = self.observation_log[key]
@@ -202,7 +208,7 @@ class Monitor:
                 label = 'Observation [Hugonnet21]'
             ax[0, i].plot(iteration_axis_repeat,
                           observation_log_repeat,
-                          color=self.colorscale(0), marker='o', markersize=10,
+                          color=self.fg, marker='o', markersize=8,
                           markevery=[-1], zorder=5, label=label,
                           )
 
@@ -220,7 +226,7 @@ class Monitor:
                                   std_minus,
                                   std_plus,
                                   zorder=3,
-                                  color=self.colorscale(1), alpha=0.5,
+                                  color=self.fg, alpha=0.2, lw=0,
                                   label=label)
             set_axis_style(ax[0, i], show_x=False)
 
@@ -245,7 +251,7 @@ class Monitor:
                 # Plot each ensemble member's time series
                 ax[1, i].plot(range(len(smb_log_values)),
                               smb_log_values,
-                              color='gold', marker='o', markersize=10,
+                              color=COLORS['yellow'], alpha=0.6, marker='o', markersize=6,
                               markevery=[-1], zorder=2, label='Ensemble Member')
             # ax[1, i].plot(iteration_axis,
             #               key_mean_smb, color='orange', marker='o', markersize=10,
@@ -260,7 +266,7 @@ class Monitor:
                     label = 'Reference Mean [GLAMOS]'
                 ax[1, i].plot(self.max_iteration_axis,
                               referenc_smb_line,
-                              color=self.colorscale(8), zorder=5, label=label
+                              color=self.fg, lw=2, zorder=5, label=label
                               )
 
                 std_plus = referenc_smb_line + self.reference_variability[key]
@@ -271,7 +277,7 @@ class Monitor:
                                           std_minus,
                                           std_plus,
                                           zorder=2,
-                                          color=self.colorscale(8), alpha=0.2,
+                                          color=self.fg, alpha=0.15, lw=0,
                                           label='Annual Variability [GLAMOS]')
 
             set_axis_style(ax[1, i], show_x=True)
@@ -298,13 +304,13 @@ class Monitor:
 
         for ax, label in zip(axes, labels_subplot):
             # Add label to lower-left corner (relative coordinates)
-            ax.text(-0.3, 0.95, label, transform=ax.transAxes,
-                    fontsize=12, va='bottom', ha='left', fontweight='bold',
+            ax.text(-0.02, 1.04, label, transform=ax.transAxes,
+                    fontsize=12, va='bottom', ha='right', fontweight='bold',
                     color=self.fg)
 
         # FINISH AND SAVE
         fig.tight_layout()
-        fig.subplots_adjust(top=0.92, bottom=0.15)
+        fig.subplots_adjust(top=0.89, bottom=0.15)
 
         fig.savefig(
             os.path.join(self.monitor_dir,
@@ -342,13 +348,14 @@ class Monitor:
         # Colorbar
         cbar = plt.colorbar(img, ax=ax, orientation="vertical")
         cbar.set_label(colorlabel, color=self.fg)
-        cbar.ax.tick_params(colors=self.fg)
+        cbar.ax.tick_params(colors=self.muted, length=0)
+        cbar.outline.set_visible(False)
 
         ax.set_facecolor(self.bg)
-        ax.tick_params(axis="both", colors=self.fg)
-        ax.grid(color=self.fg, linestyle="--", zorder=4, alpha=.3)
+        ax.tick_params(axis="both", colors=self.muted, length=0)
+        ax.grid(color=self.grid, linestyle="--", linewidth=0.8, zorder=4)
         for spine in ax.spines.values():
-            spine.set_linewidth(0)
+            spine.set_visible(False)
 
         # Title
         mean_val = np.nanmean(data_map[mask])

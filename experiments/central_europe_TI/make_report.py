@@ -6,8 +6,10 @@
 """
 PDF-Report (deutsch) der TI-Kalibrierung central_europe_TI aus den Tabellen
 und Grafiken von evaluate_bands.py, compare_oggm_params.py und
-compare_stations.py (diese zuerst laufen lassen). Braucht reportlab (nicht in
-environment.yml: pip install reportlab, oder PYTHONPATH auf eine Kopie).
+compare_stations.py (diese zuerst mit --dark laufen lassen: der Report nutzt
+die *_dark-Grafiken). Schwarzer Hintergrund, Inter (Tabellen JetBrains Mono), DIN A4 hoch.
+Braucht reportlab (nicht in environment.yml: pip install reportlab, oder
+PYTHONPATH auf eine Kopie).
 
 Run from the repository root:
     python experiments/central_europe_TI/make_report.py
@@ -24,6 +26,8 @@ from reportlab.lib.enums import TA_CENTER
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import cm
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import (Image as RLImage, KeepTogether, PageBreak, Paragraph,
                                 SimpleDocTemplate, Spacer, Table, TableStyle)
 
@@ -32,15 +36,35 @@ TABLES = os.path.join(HERE, 'tables')
 PLOTS = os.path.join(HERE, 'plots')
 WIDTH = A4[0] - 3.6 * cm
 
+# Theme of the slides: black, Inter for text, JetBrains Mono for the tables
+# (frost/visualization/fonts), no text darker than the muted grey
+FONTS = os.path.join(HERE, '..', '..', 'frost', 'visualization', 'fonts')
+for name, file in [('IN', 'Inter-Regular'), ('IN-B', 'Inter-Bold'),
+                   ('JB', 'JetBrainsMono-Regular'), ('JB-B', 'JetBrainsMono-Bold')]:
+    pdfmetrics.registerFont(TTFont(name, os.path.join(FONTS, f'{file}.ttf')))
+pdfmetrics.registerFontFamily('IN', normal='IN', bold='IN-B', italic='IN', boldItalic='IN-B')
+pdfmetrics.registerFontFamily('JB', normal='JB', bold='JB-B', italic='JB', boldItalic='JB-B')
+BG = colors.HexColor('#0A0A0A')
+FG = colors.HexColor('#EDEDED')
+MUTED = colors.HexColor('#C8C8C8')
+GRID = colors.HexColor('#4A4A4A')
+SHADE = colors.HexColor('#141414')
+YELLOW = colors.HexColor('#F2C230')
+
 styles = getSampleStyleSheet()
-H1 = ParagraphStyle('h1', parent=styles['Heading1'], fontSize=15, spaceBefore=10, spaceAfter=6)
-H2 = ParagraphStyle('h2', parent=styles['Heading2'], fontSize=12, spaceBefore=8, spaceAfter=4)
-BODY = ParagraphStyle('body', parent=styles['BodyText'], fontSize=9.5, leading=13)
-BULLET = ParagraphStyle('bullet', parent=BODY, leftIndent=12, bulletIndent=2)
-CAPTION = ParagraphStyle('caption', parent=BODY, fontSize=8.5, leading=11,
-                         textColor=colors.HexColor('#444444'), spaceAfter=8)
-SMALL = ParagraphStyle('small', parent=BODY, fontSize=7.5, leading=9)
-TITLE = ParagraphStyle('title', parent=styles['Title'], fontSize=19, alignment=TA_CENTER)
+BODY = ParagraphStyle('body', parent=styles['BodyText'], fontName='IN', fontSize=8.8, leading=12.5,
+                      textColor=FG)
+H1 = ParagraphStyle('h1', parent=BODY, fontName='IN-B', fontSize=14, leading=18, spaceBefore=10,
+                    spaceAfter=6)
+H2 = ParagraphStyle('h2', parent=BODY, fontName='IN-B', fontSize=11, leading=14, spaceBefore=8,
+                    spaceAfter=4)
+BULLET = ParagraphStyle('bullet', parent=BODY, leftIndent=12, bulletIndent=2, bulletColor=YELLOW,
+                        bulletFontName='IN')
+CAPTION = ParagraphStyle('caption', parent=BODY, fontSize=7.8, leading=10.5, textColor=MUTED,
+                         spaceAfter=8)
+SMALL = ParagraphStyle('small', parent=BODY, fontSize=7.2, leading=9, textColor=MUTED)
+TITLE = ParagraphStyle('title', parent=BODY, fontName='IN-B', fontSize=18, leading=23,
+                       alignment=TA_CENTER)
 
 
 def p(text, style=BODY):
@@ -52,7 +76,7 @@ def bullets(items):
 
 
 def figure(name, caption, width=WIDTH, max_height=19 * cm):
-    path = os.path.join(PLOTS, f'{name}.png')
+    path = os.path.join(PLOTS, f'{name}.png')  # the *_dark plots
     w, h = Image.open(path).size
     width = min(width, max_height * w / h)
     return KeepTogether([RLImage(path, width=width, height=width * h / w), p(caption, CAPTION)])
@@ -61,14 +85,15 @@ def figure(name, caption, width=WIDTH, max_height=19 * cm):
 def table(rows, widths, header_rows=1, font=8):
     t = Table(rows, colWidths=widths, repeatRows=header_rows)
     t.setStyle(TableStyle([
-        ('FONT', (0, 0), (-1, -1), 'Helvetica', font),
-        ('FONT', (0, 0), (-1, header_rows - 1), 'Helvetica-Bold', font),
-        ('LINEABOVE', (0, 0), (-1, 0), 0.8, colors.black),
-        ('LINEBELOW', (0, header_rows - 1), (-1, header_rows - 1), 0.5, colors.black),
-        ('LINEBELOW', (0, -1), (-1, -1), 0.8, colors.black),
+        ('FONT', (0, 0), (-1, -1), 'JB', font),
+        ('FONT', (0, 0), (-1, header_rows - 1), 'JB-B', font),
+        ('TEXTCOLOR', (0, 0), (-1, -1), FG),
+        ('TEXTCOLOR', (0, 0), (-1, header_rows - 1), MUTED),
+        ('LINEBELOW', (0, header_rows - 1), (-1, header_rows - 1), 0.5, GRID),
+        ('LINEBELOW', (0, -1), (-1, -1), 0.5, GRID),
         ('ALIGN', (1, 0), (-1, -1), 'RIGHT'),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('ROWBACKGROUNDS', (0, header_rows), (-1, -1), [colors.white, colors.HexColor('#f2f2f2')]),
+        ('ROWBACKGROUNDS', (0, header_rows), (-1, -1), [BG, SHADE]),
         ('TOPPADDING', (0, 0), (-1, -1), 2), ('BOTTOMPADDING', (0, 0), (-1, -1), 2)]))
     return t
 
@@ -197,8 +222,8 @@ def story(summary, scores, params, stations):
     out += [table(rows, [8.5 * cm, 2.6 * cm, 2.6 * cm, 2.0 * cm], font=8.5),
             p(f'Mittel der Werte je Gletscher über {n["glaciers"]} Gletscher (tables/band_summary.tsv). '
               'Die r-Werte des ELA-Modells sind bedeutungslos klein, da seine SMB konstant ist.', CAPTION)]
-    out += [figure('band_timeseries', 'Abb. 1: Gletscherweite Jahresbilanz je Messjahr: gemessen '
-                   '(schwarz), TI über die Messperiode (rot), TI im Kalenderjahr (orange gestrichelt), '
+    out += [figure('band_timeseries_dark', 'Abb. 1: Gletscherweite Jahresbilanz je Messjahr: gemessen '
+                   '(weiß), TI über die Messperiode (gelb), TI im Kalenderjahr (orange gestrichelt), '
                    'ELA (grau).')]
     out += [p('Auffällige Gletscher', H2)]
     out += bullets([
@@ -207,7 +232,7 @@ def story(summary, scores, params, stations):
         'Zettalunitzkees, Vedretta Lunga: Modell zu negativ; Hintereisferner ab 2005 zu positiv; '
         'Plaine Morte verfehlt 2015-2019.',
         'Rhone, Vadret Pers, Findel (IGM): Jahresgang getroffen, aber teils deutlicher Offset.'])
-    out += [figure('band_scatter', 'Abb. 2: Gemessene gegen modellierte Bandwerte (alle Band-Jahre '
+    out += [figure('band_scatter_dark', 'Abb. 2: Gemessene gegen modellierte Bandwerte (alle Band-Jahre '
                    'zusammen; daher weichen die Zahlen in den Titeln von den Mittelwerten je Gletscher '
                    'ab). Jahresbilanz TI, TI im Kalenderjahr, ELA; Winter- und Sommerbilanz TI.')]
     out += bullets([
@@ -218,7 +243,7 @@ def story(summary, scores, params, stations):
         f'lose Wolke (r = {n["winter_r"]:.2f}).'])
 
     out += [PageBreak(), p('3  Kalibrierte Parameter gegenüber OGGM', H1)]
-    out += [figure('params_vs_oggm', 'Abb. 3: FROST-Posterior (Mittel +- Standardabweichung) gegen '
+    out += [figure('params_vs_oggm_dark', 'Abb. 3: FROST-Posterior (Mittel +- Standardabweichung) gegen '
                    'OGGMs Kalibrierung (= Priori-Mittel). Grau: +-1 und +-2 Priori-Standardabweichungen. '
                    'Rechts: Korrelation der Parameter zwischen den Membern je Gletscher. Rot ohne, blau mit '
                    'Eisfluss.')]
@@ -250,9 +275,9 @@ def story(summary, scores, params, stations):
               'Niederschlagsmesser). W5E5-Temperatur mit -6,5 K/km auf Stationshöhe verschoben. Für die '
               'italienischen Gletscher Careser und Vedretta Lunga gibt es nur Sta. Maria (Val Müstair, '
               '21-27 km, anderes Tal).')]
-    out += [figure('stations', 'Abb. 4: Links: Temperaturdifferenz Station - W5E5 gegen den kalibrierten '
+    out += [figure('stations_dark', 'Abb. 4: Links: Temperaturdifferenz Station - W5E5 gegen den kalibrierten '
                    'temp_bias (OGGM, FROST). Mitte: Temperaturdifferenz je Jahreszeit (grau je Gletscher, '
-                   'schwarz Median). Rechts davon: Niederschlagsverhältnis Station / W5E5 gegen prcp_fac; '
+                   'weiß Median). Rechts davon: Niederschlagsverhältnis Station / W5E5 gegen prcp_fac; '
                    'Korrelation der monatlichen Anomalien.')]
     out += [p('Sind die FROST-Werte plausibel?', H2)]
     out += bullets([
@@ -277,14 +302,14 @@ def story(summary, scores, params, stations):
         'zu warm, melt_f niedrig) sieht nach Kompensation aus. Für Projektionen ist das relevant: die '
         'Reaktion auf Erwärmung hängt an melt_f und könnte zu schwach sein.'])
     out += [PageBreak(),
-            figure('stations_temperature_annual', 'Abb. 5: Jahresmitteltemperatur je Gletscher: Station '
-                   '(schwarz) und W5E5 auf Stationshöhe (rot). Jahre mit fehlenden Monaten fehlen.',
+            figure('stations_temperature_dark_annual', 'Abb. 5: Jahresmitteltemperatur je Gletscher: Station '
+                   '(weiß) und W5E5 auf Stationshöhe (rot). Jahre mit fehlenden Monaten fehlen.',
                    max_height=21 * cm),
-            figure('stations_temperature_seasonal', 'Abb. 6: Mittlerer Jahresgang der Temperatur '
+            figure('stations_temperature_dark_seasonal', 'Abb. 6: Mittlerer Jahresgang der Temperatur '
                    '2000-2019.', max_height=21 * cm),
-            figure('stations_precipitation_annual', 'Abb. 7: Jahresniederschlag je Gletscher: Station '
-                   '(schwarz) und W5E5 (rot).', max_height=21 * cm),
-            figure('stations_precipitation_seasonal', 'Abb. 8: Mittlerer Jahresgang des Niederschlags '
+            figure('stations_precipitation_dark_annual', 'Abb. 7: Jahresniederschlag je Gletscher: Station '
+                   '(weiß) und W5E5 (rot).', max_height=21 * cm),
+            figure('stations_precipitation_dark_seasonal', 'Abb. 8: Mittlerer Jahresgang des Niederschlags '
                    '2000-2019. Auf den österreichischen Gletschern zeigen die Stationen ein starkes '
                    'Sommermaximum, das W5E5 unterschätzt; im Wallis ist W5E5 nasser als die Talstationen.',
                    max_height=21 * cm)]
@@ -313,7 +338,10 @@ def story(summary, scores, params, stations):
 
 def footer(canvas, doc):
     canvas.saveState()
-    canvas.setFont('Helvetica', 7.5)
+    canvas.setFillColor(BG)
+    canvas.rect(0, 0, A4[0], A4[1], fill=1, stroke=0)
+    canvas.setFillColor(MUTED)
+    canvas.setFont('JB', 7.5)
     canvas.drawString(1.8 * cm, 1.0 * cm, 'FROST central_europe_TI')
     canvas.drawRightString(A4[0] - 1.8 * cm, 1.0 * cm, f'Seite {doc.page}')
     canvas.restoreState()

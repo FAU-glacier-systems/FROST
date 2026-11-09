@@ -58,7 +58,7 @@ sys.path.insert(0, os.getcwd())
 sys.path.insert(0, os.path.join(os.path.dirname(HERE), 'validation'))
 import reference_profiles as rp  # noqa: E402
 from frost.glacier_model import no_flow  # noqa: E402
-from frost.visualization.plot_style import DARK_THEME  # noqa: E402
+from frost.visualization.plot_style import COLORS as PALETTE, DARK_THEME  # noqa: E402
 
 RUNS = {'TI': os.path.join('data', 'results', 'central_europe_TI'),
         'ELA': os.path.join('data', 'results', 'central_europe_combined_retrain')}
@@ -161,25 +161,15 @@ def month_weights(start, end, yr_0, n_months):
     return weights
 
 
-def ti_period(climate, z, members, start, end):
-    """Balance (m w.e.) of [start, end) at the elevations z for every member
-    (rows: melt_f, prcp_fac, temp_bias): the monthly terms of no_flow.smb_ti,
-    weighted by month_weights."""
-    temp = climate['temp'].ravel()
-    prcp = climate['prcp'].ravel()
-    weights = month_weights(start, end, climate['yr_0'], temp.size)
+def ti_period(climate, monthly, start, end):
+    """Balance (m w.e.) of [start, end) for every member: the monthly
+    balances of no_flow.ti_months (members, months) weighted by
+    month_weights; None outside the climate or the modelled months."""
+    weights = month_weights(start, end, climate['yr_0'], monthly.shape[1])
     if weights is None:
         return None
-    melt_f, prcp_fac, temp_bias = (members[:, k, None] for k in range(3))
-    lapse = no_flow.TEMP_GRADIENT * (z[None] - climate['ref_hgt'])
-    balance = np.zeros((len(members), len(z)))
-    for index, w in weights.items():
-        t = temp[index] + temp_bias + lapse
-        solid = np.clip((no_flow.TEMP_ALL_LIQUID - t)
-                        / (no_flow.TEMP_ALL_LIQUID - no_flow.TEMP_ALL_SOLID), 0, 1)
-        melt = melt_f * np.maximum(t - no_flow.TEMP_MELT, 0) * no_flow.DAYS_PER_YEAR / 12 / 1000
-        balance += w * (prcp[index] * prcp_fac * solid / 1000 - melt)
-    return balance
+    balance = sum(w * monthly[:, index] for index, w in weights.items())
+    return None if np.isnan(balance).any() else balance[:, None]
 
 
 def ela_annual(members, z):
@@ -191,30 +181,43 @@ def ela_annual(members, z):
     return ICE_TO_WE * np.clip(smb, -100, 100)
 
 
-def final_ensemble(results, rgi_id):
+def calibration(results, rgi_id):
     path = os.path.join(results, rgi_id, 'calibration_results.json')
     if not os.path.exists(path):
         return None
     with open(path) as f:
-        return np.array(json.load(f)['final_ensemble'], dtype=float)
+        return json.load(f)
+
+
+def final_ensemble(results, rgi_id):
+    result = calibration(results, rgi_id)
+    return None if result is None else np.array(result['final_ensemble'], dtype=float)
 
 
 def model_records(records, ti, ela, climate):
-    """Model mean and std of the members for every record and variant."""
+    """Model mean and std of the members for every record and variant;
+    ti: the TI members (no_flow.ti_from_results)."""
     out = records.copy()
     z = ((records.z_min + records.z_max) / 2).to_numpy()
     for column in ['TI_ba', 'TI_bw', 'TI_bs', 'TI calendar year_ba', 'ELA_ba']:
         out[column] = np.nan
         out[column + '_std'] = np.nan
+    if ti is not None:
+        # monthly balance of every member at every band elevation, from
+        # January 1999 (the first measured periods start in autumn 1999)
+        levels, where = np.unique(z, return_inverse=True)
+        monthly = no_flow.ti_months(levels[None], climate, no_flow.ti_params(ti, 2),
+                                    YEARS[0] - 1, YEARS[1], ti['snow_ratio'])
     for i, r in enumerate(records.itertuples()):
         zi = z[i:i + 1]
         values = {}
         if ti is not None:
-            values['TI_ba'] = ti_period(climate, zi, ti, r.start, r.end) if r.start else None
+            band = monthly[:, :, where[i]]
+            values['TI_ba'] = ti_period(climate, band, r.start, r.end) if r.start else None
             if r.start and r.winter_end and r.start < r.winter_end < r.end:
-                values['TI_bw'] = ti_period(climate, zi, ti, r.start, r.winter_end)
-                values['TI_bs'] = ti_period(climate, zi, ti, r.winter_end, r.end)
-            values['TI calendar year_ba'] = ti_period(climate, zi, ti, date(r.year, 1, 1),
+                values['TI_bw'] = ti_period(climate, band, r.start, r.winter_end)
+                values['TI_bs'] = ti_period(climate, band, r.winter_end, r.end)
+            values['TI calendar year_ba'] = ti_period(climate, band, date(r.year, 1, 1),
                                                       date(r.year + 1, 1, 1))
         if ela is not None:
             days = (r.end - r.start).days if r.start else 365.25
@@ -293,7 +296,8 @@ def summary_table(scores):
 
 # ----------------------------------------------------------------- plots
 
-COLORS = {'obs': None, 'TI': '#ff6b6b', 'TI calendar year': '#f4a261', 'ELA': '0.6'}
+# mass balance yellow (slide palette); the ELA model grey
+COLORS = {'obs': None, 'TI': PALETTE['yellow'], 'TI calendar year': '#F39C3D', 'ELA': PALETTE['grey']}
 
 
 def plot_timeseries(records_by_glacier, path):
@@ -338,7 +342,7 @@ def plot_scatter(records, path):
     for ax, (obs, mod, title) in zip(axes, panels):
         ok = records[obs].notna() & records[mod].notna()
         x, y = records.loc[ok, obs], records.loc[ok, mod]
-        ax.plot(x, y, '.', ms=1.5, alpha=0.4, color=COLORS['TI'] if 'TI' in mod else '0.6',
+        ax.plot(x, y, '.', ms=1.5, alpha=0.4, color=COLORS['TI'] if 'TI' in mod else COLORS['ELA'],
                 rasterized=False)
         # a few bins far below the rest (e.g. -10 to -20 m w.e. at retreating
         # tongues) would squeeze the cloud: limits from the 0.5-99.5 %
@@ -385,7 +389,8 @@ def main():
     all_records, scores, by_glacier = [], [], {}
     for rgi_id, name in glaciers:
         records, source = reference_records(rgi_id, names)
-        ti = final_ensemble(args.ti, rgi_id)
+        result = calibration(args.ti, rgi_id)
+        ti = None if result is None else no_flow.ti_from_results(result)
         if records is None or ti is None:
             print(f'{name}: {"no reference" if records is None else "no TI result"}, skipped')
             continue
