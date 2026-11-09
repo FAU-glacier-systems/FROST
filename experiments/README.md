@@ -10,12 +10,12 @@ WGMS glaciers with IGM 3.2.1 and ES-MDA. Report:
 `central_europe_combined_retrain/sanity_report/report_dark.pdf`.
 
 "Combined" means each glacier takes the calibration that suits it, chosen by
-the ITS_LIVE speed on the ice (99th percentile, 10 m/yr):
+the ITS_LIVE speed on the ice (99th percentile, 5 m/yr; 10 until 2026-10-29):
 
 | | Glaciers | Run (data in `data/results/`) |
 |---|---|---|
-| With ice flow, p99 >= 10 m/yr | 9 (Aletsch, Pasterze, Rhone, ...) | `central_europe_retrain` |
-| Without, p99 < 10 m/yr: dh/dt = SMB | 16 | `central_europe_noflow` |
+| With ice flow, p99 >= 5 m/yr | 17 (Aletsch, Pasterze, Rhone, ...) | `central_europe_retrain` |
+| Without, p99 < 5 m/yr: dh/dt = SMB | 8 | `central_europe_noflow` |
 
 `data/results/central_europe_combined_retrain/` only holds links to these
 two runs.
@@ -33,18 +33,27 @@ Settings (also in `test_default`, the default for new experiments):
   band covariance, model error 0.5 m/yr.
 
 Against the submitted Brief Communication run (`central_europe`): SMB
-profile MAE 0.86 m w.e./yr (1.13), 90 % of the bins within 2 sigma (72 %),
-ablation gradient MAE 2.6 (3.6), accumulation 0.9 (1.7); ELA about as good
-(r 0.62, MAE 139 m vs 0.68, 120 m) with honest spreads.
+profile MAE 0.90 m w.e./yr (1.13), 88 % of the bins within 2 sigma (72 %),
+ablation gradient MAE 2.6 (3.6), accumulation 0.9 (1.7); ELA better
+(r 0.80, MAE 113 m vs 0.68, 120 m) with honest spreads. With the 10 m/yr
+split it was ELA r 0.62 / MAE 139 m, profile MAE 0.86, 90 % within 2 sigma.
 
 ## Open
 
 1. Aletsch: ELA still too high (3355 vs 3034 m), ablation gradient too low.
 2. Selection rule for ice flow (p99 10 m/yr, or flux divergence against the
    band error); no-flow has no ice export, so its upper areas are biased.
+   Lowered to 5 m/yr on 2026-10-29 (`central_europe_TI_slowflow`: flow
+   improves the dh/dt bands on 8 of 10 slow glaciers, GLAMOS / WGMS
+   unchanged); ELA runs of the 8 glaciers with p99 5-10 m/yr in
+   `central_europe_retrain` (job 4790530); combined run and reports
+   rebuilt 2026-11-03, the numbers above are the 5 m/yr split.
 3. Then all 409 glaciers of `central_europe`.
 4. TI instead of the ELA model: `central_europe_TI` (first look, not
-   finished; next step in its STATUS.md).
+   finished; next step in its STATUS.md). The main reason for TI: it is
+   driven by the climate, so it can project under different climate
+   scenarios; the constant ELA SMB cannot. Report (German, dark):
+   `central_europe_TI/report_central_europe_TI.pdf`.
 5. `alps_TI_projections`: next steps in its STATUS.md (branch
    `alps-ti-projections`).
 

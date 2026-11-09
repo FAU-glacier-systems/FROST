@@ -23,6 +23,11 @@ With the IGM glaciers from another run, e.g. the emulator retrained in the
 forward runs:
     python experiments/central_europe_combined/make_combined.py \
         --igm data/results/central_europe_retrain --name central_europe_combined_retrain
+Several IGM runs: the first that has the glacier. The TI calibration (slow
+glaciers from central_europe_TI_slowflow, the others from central_europe_TI):
+    python experiments/central_europe_combined/make_combined.py \
+        --igm data/results/central_europe_TI_slowflow data/results/central_europe_TI \
+        --no_flow data/results/central_europe_TI --name central_europe_TI_combined
 """
 
 import argparse
@@ -35,7 +40,7 @@ from netCDF4 import Dataset
 HERE = os.path.dirname(os.path.abspath(__file__))
 IGM = os.path.join('data', 'results', 'central_europe_esmda_velyear')
 NO_FLOW = os.path.join('data', 'results', 'central_europe_noflow')
-MAX_P99 = 10.0  # m/yr
+MAX_P99 = 5.0  # m/yr; was 10 until 2026-10-29 (central_europe_TI_slowflow)
 
 
 def velocity_p99(rgi_dir):
@@ -51,7 +56,9 @@ def velocity_p99(rgi_dir):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
-    parser.add_argument('--igm', default=IGM, help='run of the glaciers with ice flow')
+    parser.add_argument('--igm', nargs='+', default=[IGM],
+                        help='runs of the glaciers with ice flow (the first that has the glacier)')
+    parser.add_argument('--no_flow', default=NO_FLOW, help='run of the glaciers without ice flow')
     parser.add_argument('--name', default='central_europe_combined',
                         help='data/results/<name> (links), experiments/<name>/selection.tsv')
     args = parser.parse_args()
@@ -65,15 +72,18 @@ def main():
     for rgi_id, name in glaciers:
         # p99 from the inputs of the run without flow, or of the IGM run if
         # that one has none (Gietro: no download in central_europe_noflow)
-        inputs = [os.path.join(run, rgi_id) for run in (NO_FLOW, args.igm)
+        inputs = [os.path.join(run, rgi_id) for run in [args.no_flow] + args.igm
                   if os.path.exists(os.path.join(run, rgi_id, 'Preprocess', 'data', 'input.nc'))]
         if not inputs:
             print(f'{name}: no results, skipped')
             continue
         p99 = velocity_p99(inputs[0])
         flow = 'none' if p99 < MAX_P99 else 'igm'
-        source = NO_FLOW if flow == 'none' else args.igm
-        if not os.path.exists(os.path.join(source, rgi_id, 'calibration_results.json')):
+        sources = [args.no_flow] if flow == 'none' else args.igm
+        found = [run for run in sources
+                 if os.path.exists(os.path.join(run, rgi_id, 'calibration_results.json'))]
+        source = found[0] if found else sources[0]
+        if not found:
             print(f'{name}: no results in {source}, skipped')
             continue
         link = os.path.join(target, rgi_id)

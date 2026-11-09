@@ -7,3 +7,11 @@ RGI2000-v7.0-G-11-01189 Findelgletscher
 RGI2000-v7.0-G-11-01182 Allalingletscher
 RGI2000-v7.0-G-11-03119 Kesselwandferner
 RGI2000-v7.0-G-11-00879 Glacier_du_Giétro
+RGI2000-v7.0-G-11-01084 Schwarzberggletscher
+RGI2000-v7.0-G-11-02438 Griesgletscher
+RGI2000-v7.0-G-11-04025 Hallstätter_Gletscher
+RGI2000-v7.0-G-11-01838 Claridenfirn
+RGI2000-v7.0-G-11-03116 Hintereisferner
+RGI2000-v7.0-G-11-01289 Glacier_de_la_Plaine_Morte
+RGI2000-v7.0-G-11-01303 Glacier_de_Tsanfleuron
+RGI2000-v7.0-G-11-01949 Silvrettagletscher
