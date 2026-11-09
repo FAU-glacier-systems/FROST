@@ -21,7 +21,7 @@ def main(rgi_id, rgi_id_dir, smb_model, synthetic, ensemble_size, inflation,
          dark_monitor=True, monitor_plots='latest', method='esmda',
          model_error=0.0, max_velbar=0.0, forward_workers=0,
          glacier_wide_dhdt=False, ice_flow='igm', emulator_retrain=False,
-         exclude_melted_out=0.0):
+         exclude_melted_out=0.0, snow_ratio=None):
     """
     main function to run the calibration, handles the interaction between
     observation, ensemble and visualization. It saves the results in the experiment
@@ -138,7 +138,8 @@ def main(rgi_id, rgi_id_dir, smb_model, synthetic, ensemble_size, inflation,
                                       max_velbar=max_velbar,
                                       forward_workers=forward_workers,
                                       ice_flow=ice_flow,
-                                      emulator_retrain=emulator_retrain)
+                                      emulator_retrain=emulator_retrain,
+                                      snow_ratio=snow_ratio)
 
     # Initialise a monitor for visualising the process
     monitor = Monitor(EnKF_object=ensembleKF,
@@ -284,6 +285,7 @@ if __name__ == '__main__':
     enkf = dict(cfg['EnKF'])
     if enkf.pop('prior_from_oggm', False):
         from frost_pipeline import oggm_prior
-        enkf['smb_prior_mean'] = oggm_prior(rgi_id_dir, cfg['rgi_id'])
+        enkf['smb_prior_mean'] = {**enkf.get('smb_prior_mean', {}),
+                                  **oggm_prior(rgi_id_dir, cfg['rgi_id'])}
     main(rgi_id=cfg['rgi_id'], rgi_id_dir=rgi_id_dir,
          smb_model=cfg['smb_model'], **enkf)

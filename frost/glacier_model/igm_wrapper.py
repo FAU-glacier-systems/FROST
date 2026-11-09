@@ -11,6 +11,7 @@ import os
 import subprocess
 from netCDF4 import Dataset
 import numpy as np
+from frost.glacier_model.no_flow import SNOW_SPINUP_YEARS
 
 # Suppress warnings and optimize TensorFlow execution
 
@@ -100,7 +101,7 @@ def retrain_schedule(inversion_output):
 def forward(exp, output1D, output2D_3D, member_id, smb_model, usurf, smb,
             year_start, year_end, workdir, climate_file,
             emulator_path="dahunet_mini.keras", max_velbar=0.0,
-            in_process=False, emulator_retrain=False):
+            in_process=False, emulator_retrain=False, snow_ratio=None):
     '''
     Runs a single forward model simulation for an ensemble member.
 
@@ -135,6 +136,10 @@ def forward(exp, output1D, output2D_3D, member_id, smb_model, usurf, smb,
                                 start-up speed shock on geometries the
                                 pretrained network extrapolates
                                 (emulator_test)
+        snow_ratio (float)    - TI: melt factor of snow and firn over that of
+                                ice (no_flow.ti_month); None: one melt
+                                factor. smb['temp_gradient'] (K/km), if
+                                there, replaces the -6.5 K/km lapse rate
 
     Returns:
         member_id (int)         - Ensemble member ID
@@ -225,7 +230,8 @@ def forward(exp, output1D, output2D_3D, member_id, smb_model, usurf, smb,
         igm_params['processes']['clim_1D_3D']['prcp_fac'] = prcp_fac
         igm_params['processes']['clim_1D_3D'][
             'prcp_gradient'] = 0.00035  # https://hess.copernicus.org/articles/24/5355/2020/
-        igm_params['processes']['clim_1D_3D']['temp_default_gradient'] = -0.0065
+        igm_params['processes']['clim_1D_3D']['temp_default_gradient'] = \
+            float(smb.get('temp_gradient', -6.5)) / 1000
         igm_params['processes']['clim_1D_3D']['update_freq'] = 1
         igm_params['processes']['clim_1D_3D']['climate_file'] = os.path.abspath(climate_file)
         # IGM >= 3.2 does not merge user/conf defaults, so set every key
@@ -242,6 +248,8 @@ def forward(exp, output1D, output2D_3D, member_id, smb_model, usurf, smb,
         igm_params['processes']['smb_1D_3D']['ice_density'] = 910.0
         igm_params['processes']['smb_1D_3D']['melt_enhancer'] = 1
         igm_params['processes']['smb_1D_3D']['update_freq'] = 1
+        igm_params['processes']['smb_1D_3D']['snow_ratio'] = float(snow_ratio or 0.0)
+        igm_params['processes']['smb_1D_3D']['snow_spinup'] = SNOW_SPINUP_YEARS
 
     elif str(smb_model) == 'ELA':
 

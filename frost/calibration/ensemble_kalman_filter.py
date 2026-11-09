@@ -49,7 +49,7 @@ class EnsembleKalmanFilter:
                  seed, start_year, smb_prior_mean, smb_prior_std,
                  smb_reference_mean, smb_reference_std, usurf_ensemble, obs_provider,
                  init_offset=0, max_velbar=0.0, forward_workers=0,
-                 ice_flow='igm', emulator_retrain=False):
+                 ice_flow='igm', emulator_retrain=False, snow_ratio=None):
         """
         Initializes the Ensemble Kalman Filter by loading required data and setting up
         the initial ensemble.
@@ -65,6 +65,9 @@ class EnsembleKalmanFilter:
             usurf_ensemble (list) - Initial surface elevation ensemble
             ice_flow (str)       - 'igm': IGM forward runs; 'none': SMB
                                    only, no flow (glacier_model/no_flow.py)
+            snow_ratio (float)   - TI: melt factor of snow and firn over
+                                   that of ice (no_flow.ti_month); None:
+                                   one melt factor
 
         Returns:
             None
@@ -93,6 +96,7 @@ class EnsembleKalmanFilter:
         if ice_flow == 'none' and str(smb_model) not in ('ELA', 'TI'):
             raise ValueError('ice_flow none is implemented for the ELA and TI SMB models only')
         self.ice_flow = ice_flow
+        self.snow_ratio = snow_ratio
 
         # Create ensemble directory if not existing
         ensemble_dir = os.path.join(self.rgi_id_dir, 'Ensemble')
@@ -298,6 +302,7 @@ class EnsembleKalmanFilter:
                     self.max_velbar,
                     True,
                     self.emulator_retrain,
+                    self.snow_ratio,
                 )
                 for member_id, (usurf, smb) in enumerate(zip(self.ensemble_usurf, self.ensemble_smb))
             ]
@@ -335,6 +340,7 @@ class EnsembleKalmanFilter:
                         self.emulator_path,
                         self.max_velbar,
                         emulator_retrain=self.emulator_retrain,
+                        snow_ratio=self.snow_ratio,
                     )
                 new_usurf_ensemble[member_id] = new_usurf
                 new_smb_raster_ensemble[member_id] = new_smb_raster
@@ -359,9 +365,10 @@ class EnsembleKalmanFilter:
         smb = self.ensemble_smb
         if str(self.smb_model) == 'TI':
             ti = {key: np.array([m[key] for m in smb])
-                  for key in ('melt_f', 'prcp_fac', 'temp_bias')}
+                  for key in no_flow.TI_PARAMETERS if key in smb[0]}
             ti['climate'] = no_flow.load_climate(
                 os.path.join(self.rgi_id_dir, 'climate_historical.nc'))
+            ti['snow_ratio'] = self.snow_ratio
             years, usurf, thk, smb_raster = no_flow.forward(
                 self.ensemble_usurf, self.bedrock, self.icemask_init > 0.5,
                 year_start=year_start, year_end=year_end, ti=ti)
@@ -472,6 +479,8 @@ class EnsembleKalmanFilter:
         self.params['final_ensemble'] = [list(sigma) for sigma in ensemble_smb]
 
         # information
+        self.params['parameters'] = list(self.initial_smb)
+        self.params['snow_ratio'] = self.snow_ratio
         self.params['initial_smb'] = self.initial_smb
         self.params['initial_spread'] = self.initial_spread
         self.params['reference_smb'] = self.reference_smb

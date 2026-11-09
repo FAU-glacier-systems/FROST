@@ -58,27 +58,88 @@ TEMP_GRADIENT = -0.0065  # K/m
 TEMP_ALL_SOLID, TEMP_ALL_LIQUID, TEMP_MELT = 0.0, 2.0, -1.0  # degree C
 DAYS_PER_YEAR = 365.242198781
 WATER_TO_ICE = 1000.0 / 910.0
+# TI parameters per member; temp_gradient (K/km) only when calibrated
+TI_PARAMETERS = ('melt_f', 'prcp_fac', 'temp_bias', 'temp_gradient')
+# With snow_ratio: years before the start that build up the snow and firn
+# cover on the start surface (forward and evaluate_bands.py alike)
+SNOW_SPINUP_YEARS = 10
 
 
-def smb_ti(usurf, climate, year, melt_f, prcp_fac, temp_bias):
-    """SMB (m ice/yr) of the calendar year `year` for members (leading axis
-    of the parameters): IGM's clim_1D_3D + smb_1D_3D, i.e. OGGM's monthly
-    TI model. Temperature lapsed from the reference height with -6.5 K/km,
-    solid precipitation below 0 degC (linear to none at 2 degC), melt
-    melt_f (mm w.e. per degC day) above -1 degC; no ice-mask rule."""
-    shape = (-1,) + (1,) * (usurf.ndim - 1)
-    melt_f, prcp_fac, temp_bias = (np.reshape(p, shape).astype(np.float32)
-                                   for p in (melt_f, prcp_fac, temp_bias))
+def ti_month(z, temp, prcp, ref_hgt, params, snow=None, snow_ratio=None):
+    """Balance (m w.e.) of one climate month at the surface z for the
+    members (params: TI_PARAMETERS reshaped to broadcast against z): OGGM's
+    monthly TI model. Temperature lapsed from the reference height with
+    temp_gradient (default -6.5 K/km), solid precipitation below 0 degC
+    (linear to none at 2 degC), melt melt_f (mm w.e. per degC day) above
+    -1 degC.
+
+    snow_ratio: snow and firn melt with snow_ratio * melt_f, ice with melt_f
+    once they are gone (the kink of the profile at the snow line). snow (m
+    w.e., the shape of the balance) carries the snow and firn cover from
+    month to month and year to year and is updated in place."""
+    gradient = params['temp_gradient'] / 1000 if 'temp_gradient' in params else TEMP_GRADIENT
+    t = temp + params['temp_bias'] + gradient * (z - ref_hgt)
+    solid = prcp * params['prcp_fac'] / 1000 * np.clip(
+        (TEMP_ALL_LIQUID - t) / (TEMP_ALL_LIQUID - TEMP_ALL_SOLID), 0, 1)
+    melt = params['melt_f'] * np.maximum(t - TEMP_MELT, 0) * DAYS_PER_YEAR / 12 / 1000
+    if snow_ratio is None:
+        return solid - melt
+    snow += solid
+    snow_melt = np.minimum(snow, snow_ratio * melt)
+    snow -= snow_melt
+    # the melt energy left once the snow is gone melts ice at the full factor
+    return solid - snow_melt - (melt - snow_melt / snow_ratio)
+
+
+def ti_params(ti, ndim):
+    """The TI parameters of `ti` (one value per member) shaped to broadcast
+    against fields with ndim - 1 trailing axes."""
+    shape = (-1,) + (1,) * (ndim - 1)
+    return {key: np.reshape(ti[key], shape).astype(np.float32)
+            for key in TI_PARAMETERS if key in ti}
+
+
+def ti_from_results(result):
+    """Posterior TI members of a calibration_results.json (loaded): the
+    parameters by name (one value per member) and snow_ratio, as forward
+    takes them in `ti`."""
+    names = result.get('parameters') or list(result['initial_smb'])
+    members = np.array(result['final_ensemble'], dtype=float)
+    ti = {name: members[:, k] for k, name in enumerate(names)}
+    ti['snow_ratio'] = result.get('snow_ratio')
+    return ti
+
+
+def smb_ti(usurf, climate, year, params, snow=None, snow_ratio=None):
+    """SMB (m ice/yr) of the calendar year `year` for members (params of
+    ti_params): IGM's clim_1D_3D + smb_1D_3D, i.e. OGGM's monthly TI model
+    (ti_month); no ice-mask rule."""
     index = year - climate['yr_0']
-    lapse = TEMP_GRADIENT * (usurf - climate['ref_hgt'])
-    smb = np.zeros(np.broadcast_shapes(usurf.shape, melt_f.shape), np.float32)
+    smb = np.zeros(np.broadcast_shapes(usurf.shape, params['melt_f'].shape), np.float32)
     for month in range(12):
-        temp = climate['temp'][index, month] + temp_bias + lapse
-        prcp = climate['prcp'][index, month] * prcp_fac  # kg m-2 per month
-        solid = np.clip((TEMP_ALL_LIQUID - temp) / (TEMP_ALL_LIQUID - TEMP_ALL_SOLID), 0, 1)
-        melt = melt_f * np.maximum(temp - TEMP_MELT, 0) * DAYS_PER_YEAR / 12 / 1000
-        smb += prcp * solid / 1000 - melt  # m w.e.
+        smb += ti_month(usurf, climate['temp'][index, month], climate['prcp'][index, month],
+                        climate['ref_hgt'], params, snow, snow_ratio)
     return smb * WATER_TO_ICE
+
+
+def ti_months(z, climate, params, start_year, end_year, snow_ratio=None):
+    """Monthly balance (m w.e.) at the fixed elevations z (last axis) for the
+    members, as (members, months, z) for every climate month from January
+    yr_0; NaN outside start_year..end_year. With snow_ratio the snow cover
+    builds up from SNOW_SPINUP_YEARS before start_year, as in forward."""
+    months = climate['temp'].size
+    first = start_year - (SNOW_SPINUP_YEARS if snow_ratio else 0)
+    shape = np.broadcast_shapes(np.shape(z), params['melt_f'].shape)
+    out = np.full((shape[0], months) + shape[1:], np.nan, np.float32)
+    snow = np.zeros(shape, np.float32) if snow_ratio else None
+    temp, prcp = climate['temp'].ravel(), climate['prcp'].ravel()
+    for index in range((first - climate['yr_0']) * 12,
+                       min((end_year + 1 - climate['yr_0']) * 12, months)):
+        balance = ti_month(z, temp[index], prcp[index], climate['ref_hgt'], params,
+                           snow, snow_ratio)
+        if index >= (start_year - climate['yr_0']) * 12:
+            out[:, index] = balance
+    return out
 
 
 def forward(usurf, topg, icemask, ela=None, gradabl=None, gradacc=None,
@@ -92,8 +153,9 @@ def forward(usurf, topg, icemask, ela=None, gradabl=None, gradacc=None,
         ela, gradabl, gradacc (ndarray) - ELA SMB parameters per member
                                           (m, per m, per m)
         ti (dict)         - instead of the ELA model: TI parameters per
-                            member (melt_f, prcp_fac, temp_bias) and the
-                            climate of load_climate; the step from year t
+                            member (TI_PARAMETERS), the climate of
+                            load_climate and snow_ratio (None: one melt
+                            factor; see ti_month); the step from year t
                             to t + 1 uses the climate of year t, as IGM
     Returns:
         years (ndarray)  - year_start..year_end
@@ -107,12 +169,21 @@ def forward(usurf, topg, icemask, ela=None, gradabl=None, gradacc=None,
     usurf, topg = usurf.astype(np.float32), topg.astype(np.float32)
     thk = np.maximum(usurf - topg, 0.0)
     surfaces, thicknesses, smbs = [usurf], [thk], []
+    if ti is not None:
+        params = ti_params(ti, usurf.ndim)
+        snow_ratio = ti.get('snow_ratio')
+        snow = None
+        if snow_ratio:
+            # snow and firn cover of the start: spin-up on the start surface
+            snow = np.zeros(np.broadcast_shapes(usurf.shape, params['melt_f'].shape),
+                            np.float32)
+            for year in range(year_start - SNOW_SPINUP_YEARS, year_start):
+                smb_ti(usurf, ti['climate'], year, params, snow, snow_ratio)
     for year in years[:-1]:
         if ti is None:
             smb = smb_simple(topg + thk, icemask, ela, gradabl, gradacc)
         else:
-            smb = smb_ti(topg + thk, ti['climate'], year, ti['melt_f'], ti['prcp_fac'],
-                         ti['temp_bias'])
+            smb = smb_ti(topg + thk, ti['climate'], year, params, snow, snow_ratio)
         thk = np.maximum(thk + smb, 0.0)
         surfaces.append(topg + thk)
         thicknesses.append(thk)

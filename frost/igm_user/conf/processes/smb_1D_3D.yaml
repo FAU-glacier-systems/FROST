@@ -7,3 +7,5 @@ smb_1D_3D:
   temp_all_liquid: 2.0
   temp_melt: -1.0
   melt_f: 6.5
+  snow_ratio: 0.0     # FROST: snow / ice melt factor ratio, 0: one melt factor
+  snow_spinup: 10     # years of snow cover spin-up before the start

@@ -92,7 +92,10 @@ def run_frost_pipeline(cfg):
         #####################################
         enkf = dict(cfg['EnKF'])
         if enkf.pop('prior_from_oggm', False):
-            enkf['smb_prior_mean'] = oggm_prior(rgi_id_dir, cfg['rgi_id'])
+            # OGGM gives melt_f, prcp_fac and temp_bias; further parameters
+            # (temp_gradient) keep the prior of the config
+            enkf['smb_prior_mean'] = {**enkf.get('smb_prior_mean', {}),
+                                      **oggm_prior(rgi_id_dir, cfg['rgi_id'])}
             print(f"Prior mean from OGGM mb_calib.json: {enkf['smb_prior_mean']}")
         frost_calibration.main(
             rgi_id=cfg['rgi_id'],
