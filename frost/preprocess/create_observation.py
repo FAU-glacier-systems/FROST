@@ -1,3 +1,11 @@
+#!/usr/bin/env python3
+
+# Copyright (C) 2024-2026 Oskar Herrmann, Johannes J. Fürst
+# Published under the GNU GPL (Version 3), check the LICENSE file
+# tile_merge_reproject is adapted from OGGM (oggm/shop/hugonnet_maps.py),
+# Copyright (c) 2014-2021, OGGM e.V. and OGGM Contributors, BSD-3-Clause;
+# the license text is in THIRD_PARTY_NOTICES.md.
+
 import os
 from netCDF4 import Dataset
 import numpy as np

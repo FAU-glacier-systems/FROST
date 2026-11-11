@@ -159,3 +159,12 @@ The Cryosphere, 20, pp. 3817–3825. doi:10.5194/tc-20-3817-2026.
 Data used by default: Hugonnet et al. (2021, Nature 592, 726) elevation
 change; IceBoost v2.0 ice thickness (Maffezzoli et al.); ITS_LIVE velocity
 (Gardner et al.); RGI 7.0 outlines and W5E5 climate through the OGGM shop.
+
+---
+
+## ⚖️ License
+
+FROST is free software under the GNU General Public License v3.0 (`LICENSE`).
+Code adapted from IGM (GPL-3.0) and OGGM (BSD-3-Clause), the bundled fonts
+(SIL Open Font License) and the reference data in `data/raw/` keep their own
+licenses: see `THIRD_PARTY_NOTICES.md` and `data/raw/README.md`.
