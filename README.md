@@ -56,61 +56,88 @@ SMB profile. Work on this is in `experiments/inversion_thickness`.
 
 ## 🏗️ Installation
 
-1. Clone the repository
+FROST runs on Linux with Python 3.10; a GPU is recommended for the IGM
+forward runs (CPU works, but slowly).
 
-   ```bash
-   git clone git@github.com:FAU-glacier-systems/FROST.git
-   ```
+```bash
+git clone https://github.com/FAU-glacier-systems/FROST.git
+cd FROST
+conda env create -f environment.yml     # environment igm32-frost
+conda activate igm32-frost
+python -m pytest tests/test_smoke.py    # imports and configs, a few seconds
+```
 
-2. Create the conda environment and install FROST
-
-   ```bash
-   cd FROST
-   conda env create -f environment.yml
-   conda activate igm32-frost
-   pip install -e .
-   ```
+`environment.yml` installs FROST itself (editable, with the test extras) and
+IGM at the commit FROST v2.0 was run with; the other dependencies and their
+versions are listed in `setup.py`. The end-to-end test runs the default setup
+on Rhonegletscher and needs a GPU (`tests/run_end_to_end.sh` on a Slurm
+cluster).
 
 ---
 
 ## 🚀 Pipeline for Calibration
 
-1. Copy `experiments/test_default` to a folder for your experiment, e.g.
-   `experiments/my_run`, and adapt `pipeline_config.yml`: at least
-   `experiment_name` and `rgi_id` (RGI 7.0), and the SMB model and prior.
-2. Download the elevation change product of Hugonnet et al. (2021) and set its
-   path in `pipeline_config.yml` (`download: hugonnet_directory`, e.g.
-   `data/raw/hugonnet/11_rgi60_2000-01-01_2020-01-01`):
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/pipeline_dark.png">
+  <img src="assets/pipeline.png" alt="FROST v2 calibration workflow: download, inversion, observations, ES-MDA">
+</picture>
+
+1. **Set up an experiment.** Copy `experiments/test_default` to
+   `experiments/<experiment-name>` and adapt `pipeline_config.yml`:
+   - `experiment_name`, `rgi_id` (RGI 7.0, e.g. `RGI2000-v7.0-G-11-01706`)
+   - `smb_model`: `ELA` (ELA and two gradients) or `TI` (temperature index;
+     `EnKF: prior_from_oggm: true` takes the prior from OGGM's calibration)
+   - `EnKF`: prior mean and std of the SMB parameters, ensemble size,
+     iterations, model error; `ice_flow: none` for glaciers that barely move
+     (ITS_LIVE 99th percentile on the ice below 5 m/yr)
+   - `params_inversion.yaml`: the sliding inversion (usually unchanged)
+2. **Get the elevation change.** Download the dh/dt tiles of Hugonnet et al.
+   (2021) for your region and period and set `download: hugonnet_directory`,
+   e.g. `data/raw/hugonnet/11_rgi60_2000-01-01_2020-01-01`:
    https://www.sedoo.fr/theia-publication-products/?uuid=c428c5b9-df8f-4f86-9b75-e04c778e29b9
-3. Run the pipeline (download, inversion, calibration)
+   Everything else (outline, DEM, climate, thickness, velocity) is downloaded
+   by the pipeline.
+3. **Run the pipeline.** `pipeline_steps` in the config switches the steps
+   (download, inversion, calibration) on and off.
 
    ```bash
    python frost_pipeline.py --config experiments/<experiment-name>/pipeline_config.yml
+   # another glacier with the same setup
+   python frost_pipeline.py --config experiments/<experiment-name>/pipeline_config.yml --rgi_id <rgi_id>
+   # on a Slurm cluster: one GPU job per glacier
+   sbatch hpc_sbatch.sh experiments/<experiment-name>/pipeline_config.yml <rgi_id>
    ```
 
-   A GPU is recommended for the IGM forward runs; on a Slurm cluster see
-   `hpc_sbatch.sh`. An overview of the pipeline:
-   ![FROST Pipeline](assets/Pipeline.png)
+4. **Look at the results** in `data/results/<experiment-name>/<rgi_id>/`:
+   - `calibration_results.json`: posterior ensemble, mean, std and the misfit
+     of every iteration
+   - `Monitor/status.png`: observations and parameters over the iterations;
+     `Monitor/maps_prognostic.png`: observed and modelled maps of dh/dt,
+     velocity, flux divergence and SMB (`monitor_plots: all` keeps one file
+     per iteration)
+   - `Preprocess/`: inputs and the inversion; `observations.nc`; `Ensemble/`:
+     the runs of the members (large, can be deleted)
 
-4. View the results:
+**Example**: `Monitor/status.png` of Rhonegletscher with the default setup.
+Top: mean dh/dt of the glacier and of two elevation bands, the members (green)
+against the observation and its error (blue); bottom: ELA and the two
+gradients of the members over the four ES-MDA iterations.
 
-   * **Calibration results** (posterior ensemble, mean, std, diagnostics):
-     `data/results/<experiment-name>/<rgi-id>/calibration_results.json`
-   * **Monitor plots** (parameters and fit, prognostic maps):
-     `data/results/<experiment-name>/<rgi-id>/Monitor/status.png` and
-     `maps_prognostic.png` (with `monitor_plots: all` one file per iteration)
-   * **Example**
-     ![Status Example](assets/status_006_2020.png)
+![Monitor status of Rhonegletscher](assets/status_example_dark.png)
 
-`experiments/README.md` describes the reference setup and every experiment
+`experiments/README.md` describes the reference setup and the experiments
 behind the v2 defaults.
 
 ---
 
 ## 🏛️ Architecture
 
-A schematic overview of the FROST calibration workflow:
-![FROST Architecture](assets/FROST_architecture.svg)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/architecture_dark.png">
+  <img src="assets/architecture.png" alt="FROST v2 modules and the files they write">
+</picture>
+
+The diagrams are drawn by `tools/readme_diagrams.py`.
 
 ---
 

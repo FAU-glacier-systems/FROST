@@ -10,5 +10,6 @@ dependencies:
     # truth instead of duplicating it here.
     - -e .[dev]
     # igm is a git source, not a normal PyPI release, so it can't live in
-    # setup.py's install_requires - pinned to the tag FROST is built against.
-    - git+https://github.com/instructed-glacier-model/igm@v3.2.0
+    # setup.py's install_requires - pinned to the commit FROST v2.0 was run
+    # with (v3.2.1 plus 5 commits on main, 2026-10-22).
+    - git+https://github.com/instructed-glacier-model/igm@33c583ca700e1f327eeccb2a9fea4b74252673e0
