@@ -33,10 +33,12 @@ balance (GLAMOS, WGMS) is used for evaluation only.
   temperature-index model (melt factor, precipitation factor, temperature
   bias; optionally snow/ice melt factors and a calibrated lapse rate).
 
-Against v1 (the run of the Brief Communication on the ELAs of 25 glaciers
-in Central Europe), v2 brings the SMB profiles closer to the GLAMOS / WGMS
-elevation-band mass balance: mean RMSE 0.90 instead of 1.13 m w.e./yr, and
-88 % instead of 72 % of the bands within the 2-sigma posterior spread.
+FROST v1 inferred the equilibrium line altitudes of 409 glaciers in the
+European Alps ([Herrmann et al., 2026, The Cryosphere](https://doi.org/10.5194/tc-20-3817-2026)).
+On the 25 of them with GLAMOS / WGMS measurements, v2 brings the SMB profiles
+closer to the elevation-band mass balance: mean RMSE 0.90 instead of
+1.13 m w.e./yr, and 88 % instead of 72 % of the bands within the 2-sigma
+posterior spread.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/smb_profiles_dark.png">
@@ -143,10 +145,16 @@ The diagrams are drawn by `tools/readme_diagrams.py`.
 
 ## 📎 Reference
 
-If you use FROST, please cite:
+If you use FROST, please cite the method paper:
 
 Herrmann, O. et al. (2025) ‘A Kalman filter-based framework for assimilating remote sensing observations into a surface
 mass balance model’, Annals of Glaciology, 66, p. e23. doi:10.1017/aog.2025.10020.
+
+Application to the glaciers of the European Alps (FROST v1):
+
+Herrmann, O., Prasad, V., Zöller, A., Groos, A. R., Cook, S., Sommer, C., and Fürst, J. J. (2026)
+‘Brief communication: Inferring Glacier Equilibrium Line Altitudes in the Europe Alps with FROST’,
+The Cryosphere, 20, pp. 3817–3825. doi:10.5194/tc-20-3817-2026.
 
 Data used by default: Hugonnet et al. (2021, Nature 592, 726) elevation
 change; IceBoost v2.0 ice thickness (Maffezzoli et al.); ITS_LIVE velocity

@@ -31,7 +31,8 @@ Settings (also in `test_default`, the template for new experiments):
   bands with the band error covariance, model error 0.5 m/yr.
 
 Evaluation against GLAMOS / WGMS, compared with FROST v1 (`central_europe`,
-the run of the Brief Communication):
+the run of the Brief Communication, Herrmann et al., 2026, The Cryosphere,
+doi:10.5194/tc-20-3817-2026):
 
 | | v2.0 | v1 |
 |---|---|---|
