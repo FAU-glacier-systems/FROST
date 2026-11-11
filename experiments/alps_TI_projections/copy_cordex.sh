@@ -2,12 +2,13 @@
 # Copyright (C) 2024-2026 Oskar Herrmann
 # Published under the GNU GPL (Version 3), check the LICENSE file
 
-# Copy the CORDEX forcing of every glacier in glacier_selection.csv from
-# Johannes' vault to data/raw/cordex_alps/<last 5 digits of rgi_id>/.
-# Run in the repo root on a node that mounts /home/vault (e.g. Alex login):
-#   bash experiments/alps_TI_projections/copy_cordex.sh
+# Copy the CORDEX forcing of every glacier in glacier_selection.csv from the
+# shared CORDEX archive (CORDEX_DIR: folder with one <last 5 digits of rgi_id>
+# folder per glacier) to data/raw/cordex_alps/<last 5 digits of rgi_id>/.
+# Run in the repo root on a node that mounts the archive:
+#   CORDEX_DIR=<archive>/glacier_ids bash experiments/alps_TI_projections/copy_cordex.sh
 
-SRC=/home/vault/gwgi/gwgifu1h/data/input/11/1/glacier_ids
+SRC=${CORDEX_DIR:?set CORDEX_DIR to the CORDEX archive (folder of glacier ids)}
 DST=data/raw/cordex_alps
 LIST=experiments/alps_TI_projections/glacier_selection.csv
 

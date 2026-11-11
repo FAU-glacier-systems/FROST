@@ -17,8 +17,7 @@ download:
   year_interval: 20                # Temporal span for Hugonnet data
   target_resolution: None          # Leave unset to use native resolution
   # Custom path to Hugonnet data
-  #hugonnet_directory: 'data/raw/hugonnet/11_rgi60_2000-01-01_2020-01-01'
-  hugonnet_directory: "/home/vault/gwgi/gwgi17/projects/FRAGILE/input/dhdt/"
+  hugonnet_directory: 'data/raw/hugonnet/11_rgi60_2000-01-01_2020-01-01'
 
 EnKF:
   seed: 6                          # Random seed for reproducibility

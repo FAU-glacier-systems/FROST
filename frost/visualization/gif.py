@@ -3,13 +3,17 @@
 # Copyright (C) 2024-2026 Oskar Herrmann
 # Published under the GNU GPL (Version 3), check the LICENSE file
 
+# GIF of the per-iteration status plots of a calibration (monitor_plots: all).
+#   python frost/visualization/gif.py data/results/<experiment>/<rgi_id>/Monitor
+
+import argparse
 import os
 from PIL import Image
 import numpy as np
 
-# get file names in correct order
-dir = 'Plots/aletsch/'
-dir = '/home/oskar//Desktop/HPC/FROST/data/results/Aletsch/glaciers/RGI2000-v7.0-G-11-02596/Monitor/'
+parser = argparse.ArgumentParser(description='GIF of the Monitor status plots')
+parser.add_argument('monitor_dir', help='Monitor folder of a glacier (relative path)')
+dir = parser.parse_args().monitor_dir
 
 files = os.listdir(dir)
 files.sort()
@@ -29,7 +33,7 @@ for image in files:
 # frame_one = Image.open(dir+'iterations_seed_111_2.png')
 #frame_one = Image.open(dir + 'glacier_000_surface2020.png').convert("RGBA")
 
-frame_one = Image.open(dir + 'status_001_2020.png').convert("RGBA")
+frame_one = Image.open(os.path.join(dir, 'status_001_2020.png')).convert("RGBA")
 
 os.makedirs("Plots/aletsch", exist_ok=True)
 frame_one.save(

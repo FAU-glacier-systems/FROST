@@ -76,7 +76,6 @@ do
     cp ${dir_in}/calibration_results.json $dir_out
   fi
 
-  #/home/hpc/gwgi/gwgi17/cronjobs/bin/creation_chain_WOODY.sh ${RGI_region} $p
   #chmod u+x ${exec_script}_$p.sh
   #bash ./${exec_script}_$p.sh
 
@@ -145,7 +144,7 @@ do
     for ee in {0..3} #{0..3} #{0..0}
     do
 
-      in_fpath="/home/vault/gwgi/gwgifu1h/data/input/11/1/glacier_ids/"${rgi_id: -5}"/climate/CORDEX_unbiased"
+      in_fpath="${CORDEX_DIR:-data/raw/cordex_alps_archive}/"${rgi_id: -5}"/climate/CORDEX_unbiased"
       in_fname="CORDEX_merged.nc"
 
       echo "python ./batchscripts/extract_CMIP_representative.py --in_fpath $in_fpath --in_fname $in_fname --experiment ${ee}"
@@ -163,9 +162,8 @@ do
         flag_IGM=0
 
         # Copy climatic input files
-        #in_fpath="/home/hpc/gwgi/gwgifu1h/fragile/data/input/11/1/glacier_ids/"${rgi_id: -5}"/climate/CORDEX_unbiased/"
         #in_fpath="${cal_path}"
-        in_fpath="/home/vault/gwgi/gwgifu1h/data/input/11/1/glacier_ids/"${rgi_id: -5}"/climate/CORDEX_unbiased"
+        in_fpath="${CORDEX_DIR:-data/raw/cordex_alps_archive}/"${rgi_id: -5}"/climate/CORDEX_unbiased"
         in_fname="CORDEX_merged.nc"
 
         out_fpath="${cal_path}"

@@ -10,6 +10,9 @@ from netCDF4 import Dataset
 import numpy as np
 import json
 
+# CORDEX archive with one <last 5 digits of rgi_id> folder per glacier
+CORDEX_DIR = os.environ.get('CORDEX_DIR', os.path.join('data', 'raw', 'cordex_alps_archive'))
+
 # settings
 exec_script = "frost_pipeline.py"
 list_fname = "todo_codeskel.txt"
@@ -257,8 +260,7 @@ with open(list_fname, "r") as f:
         for climate_scenario in [1, 2, 3]:
 
             # Build paths
-            in_fpath = f"/home/vault/gwgi/gwgifu1h/data/input/11/1/glacier_ids/{rgi_id[-5:]}/climate/CORDEX_unbiased"
-            # in_fpath = f"/home/oskar/Desktop/HPC_fragile/input/11/1/glacier_ids/{rgi_id[-5:]}/climate/CORDEX_unbiased"
+            in_fpath = os.path.join(CORDEX_DIR, rgi_id[-5:], "climate", "CORDEX_unbiased")
             in_fname = "CORDEX_merged.nc"
 
             print(
@@ -284,8 +286,7 @@ with open(list_fname, "r") as f:
 
                 out_fpath = workdir
                 out_fname = "climate_historical.nc"
-                in_fpath = f"/home/vault/gwgi/gwgifu1h/data/input/11/1/glacier_ids/{rgi_id[-5:]}/climate/CORDEX_unbiased"
-                # in_fpath = f"/home/oskar/Desktop/HPC_fragile/input/11/1/glacier_ids/{rgi_id[-5:]}/climate/CORDEX_unbiased"
+                in_fpath = os.path.join(CORDEX_DIR, rgi_id[-5:], "climate", "CORDEX_unbiased")
                 in_fname = "CORDEX_merged.nc"
 
                 IGM_flag, experiment, member = extract_and_save(
@@ -310,7 +311,7 @@ with open(list_fname, "r") as f:
                 for future in as_completed(futures):
                     workers_with_igm_output.append(future.result())
 
-            bpr_fpath = f"/home/vault/gwgi/gwgifu1h/data/input/11/1/glacier_ids/{rgi_id[-5:]}/climate/CORDEX_unbiased"
+            bpr_fpath = os.path.join(CORDEX_DIR, rgi_id[-5:], "climate", "CORDEX_unbiased")
             bpr_fname = "CORDEX_merged.nc"
 
             # for workdir in workers_with_igm_output:

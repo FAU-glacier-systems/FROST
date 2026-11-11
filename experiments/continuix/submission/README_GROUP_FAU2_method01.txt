@@ -34,7 +34,7 @@ Junior Research Group Glacier Systems & Natural Hazards, Institute of Geography,
 
 =============================================================================================================================
 ACKNOWLEDGEMENTS:
-FROST was developed by Oskar Herrmann and Johannes J. Fürst (FAU, johannes.fuerst@fau.de). We thank the developers of IGM (Guillaume Jouvet and co-workers). Computations were carried out on the Alex cluster of the Erlangen National High Performance Computing Center (NHR@FAU).
+FROST was developed by Oskar Herrmann and Johannes J. Fürst (FAU). We thank the developers of IGM (Guillaume Jouvet and co-workers). Computations were carried out on the Alex cluster of the Erlangen National High Performance Computing Center (NHR@FAU).
 Corresponding author: Oskar Herrmann, oskar.herrmann@fau.de
 
 =============================================================================================================================

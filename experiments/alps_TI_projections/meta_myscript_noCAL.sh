@@ -54,7 +54,6 @@ do
   #cd ../
   #cp ${exec_script}_skel.sh ${exec_script}_$p.sh
   #sed -i "s/\"skel\"/\"$p\"/g" ${exec_script}_$p.sh
-  ##/home/hpc/gwgi/gwgi17/cronjobs/bin/creation_chain_WOODY.sh ${RGI_region} $p
   #chmod u+x ${exec_script}_$p.sh
   #bash ./${exec_script}_$p.sh
   python ${exec_script} --config "${FNAME_out}"

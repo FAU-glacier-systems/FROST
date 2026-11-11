@@ -1,6 +1,6 @@
 # Findings (2026-10-22)
 
-Run central_europe_esmda_velyear (job 4652023): tau_ref inverted on the geometry of the velocity year (ITS_LIVE 2014-2022 composite, 2018), forward runs from the 2000 geometry, ES-MDA with 32 members and 4 iterations, absolute-sill dh/dt covariance, model error 0.5 m/yr. 24 of 25 glaciers (Gietro crashed in the grid coarsening; fixed, rerun pending).
+Run central_europe_esmda_velyear: tau_ref inverted on the geometry of the velocity year (ITS_LIVE 2014-2022 composite, 2018), forward runs from the 2000 geometry, ES-MDA with 32 members and 4 iterations, absolute-sill dh/dt covariance, model error 0.5 m/yr. 24 of 25 glaciers (Gietro crashed in the grid coarsening; fixed, rerun pending).
 
 - Bed and data: no artefacts. Bed roughness on the ice 0.2-1.1 times that of the ice-free terrain, 0-7 single-cell pits per glacier. NASADEM and COPDEM align (0-cell shift); on the ice COPDEM - NASADEM matches Hugonnet dh/dt x 12.5 yr (r 0.73-0.95) with +5-8 m left (radar penetration of NASADEM), so the thickness moved back to 2000 is consistent. Thickness of 2000 against GlaThiDa: Rhone +2 m, Aletsch -10 m, Pasterze +50 m, Plaine Morte +51 m, Claridenfirn -42 m. The outline cells carry 25-77 m of ice (cliffs at the margins).
 - tau_ref: no sign of overfitting (< 1.5 % of the ice at the bounds, small-scale correlation with the observed speed -0.37 to 0.25).
