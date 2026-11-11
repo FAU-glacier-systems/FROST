@@ -36,7 +36,7 @@ EnKF:
   forward_workers: 8               # more retraining workers run out of host memory
   model_error: 0.5                 # m/yr on the band means
   glacier_wide_dhdt: false         # the band covariance already constrains the glacier mean
-  # ice_flow: none                 # for glaciers with an ITS_LIVE p99 on the ice < 10 m/yr: dh/dt = smb, no IGM (experiments/central_europe_noflow)
+  # ice_flow: none                 # for glaciers with an ITS_LIVE p99 on the ice < 5 m/yr: dh/dt = smb, no IGM (experiments/central_europe_noflow)
 
   smb_prior_mean:
     ela: 3144                      # Prior mean ELA

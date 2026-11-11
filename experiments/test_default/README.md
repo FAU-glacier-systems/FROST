@@ -11,7 +11,7 @@ the geometry of the ITS_LIVE year (2018). Chosen in `experiments/inversion_setup
 2022: +69 m, 115 m). The forward runs retrain the iceflow emulator on the
 glacier (`emulator_retrain`). These are the settings of the reference run
 `central_europe_combined_retrain` (see `experiments/README.md`); glaciers that
-barely move (ITS_LIVE p99 on the ice < 10 m/yr) take `EnKF: ice_flow: none`
+barely move (ITS_LIVE p99 on the ice < 5 m/yr) take `EnKF: ice_flow: none`
 instead.
 
 ## Run
