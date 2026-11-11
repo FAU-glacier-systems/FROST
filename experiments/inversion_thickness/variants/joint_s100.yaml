@@ -1,0 +1,106 @@
+# @package _global_
+# inversion_thickness: thickness AND tau_ref fitted to the ITS_LIVE surface
+# velocity on the geometry of the velocity year, IceBoost (shifted, thkprior)
+# as a soft prior: gaussian misfit thk - thkprior with std 100 m; bed
+# smoothness (squared Laplacian of thk - usurf, lam 1e6, as
+# inversion_setup/central_europe_local); tau_ref as ref.yaml.
+# thk optimised as log10(thk) (2026-11-11): in metres the step of L-BFGS was
+# set by the stiff tau_ref directions and thk moved by cm in 500 iterations.
+hydra:
+  run:
+    dir: outputs/inversion
+defaults:
+- override /inputs:
+  - local
+- override /assimilations:
+  - field_inversion
+- override /processes:
+  - iceflow
+- override /outputs: []
+processes:
+  iceflow:
+    method: unified
+    physics:
+      sliding:
+        tau_ref: 0.213
+        u_ref: 100.0
+    numerics:
+      Nz: 2
+      basis_vertical: molho
+      basis_horizontal: q1
+    unified:
+      display:
+        print_cost: true
+      mapping: network
+      inputs:
+      - thk
+      - usurf
+      - arrhenius
+      - tau_ref
+      - dX
+      optimizer: lbfgs
+      line_search: hager-zhang
+      nbit_init: 0
+      nbit: 0
+      nbit_warmup: -1
+      retrain_freq: 0
+      network:
+        pretrained_path: dahunet_mini.keras
+        pretrained: true
+assimilations:
+  field_inversion:
+    optimization:
+      retrain_iter: 0
+    variables:
+    - name: thk
+      transform: log10
+      lower_bound: 0.0
+      upper_bound: 1500.0
+      mask: icemask
+    - name: tau_ref
+      transform: log10
+      lower_bound: 0.05
+      upper_bound: 2.0
+      mask: icemask
+    objective:
+      misfit:
+      - name: velsurf
+        kind: huber
+        components:
+        - uvelsurf
+        - vvelsurf
+        obs:
+        - uvelsurfobs
+        - vvelsurfobs
+        std: 1.0
+      - name: thk
+        kind: gaussian
+        components:
+        - thk
+        obs:
+        - thkprior
+        std: 100.0
+      regularization:
+      - name: tau_ref
+        penalty: squared_laplacian
+        lam: 10000000000.0
+      - name: thk
+        penalty: squared_laplacian
+        lam: 1000000.0
+        ref: usurf
+    output:
+      vars_to_save:
+      - usurf
+      - thk
+      - topg
+      - icemask
+      - tau_ref
+      - velbase_mag
+      - velsurf_mag
+      - velsurfobs_mag
+      - thkprior
+    use_existing_thk: true
+frost:
+  thk_start: product_2000
+  inversion_year: velocity
+  min_velocity_p99: 3.0

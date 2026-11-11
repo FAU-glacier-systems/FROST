@@ -124,16 +124,24 @@ def geometry_at(input_file, year):
 
 
 def restore_2000(output_file, input_file, year):
-    """Put the 2000 surface and thickness back into the inversion result,
-    which the forward runs start from (bed and tau_ref unchanged); the
-    inversion geometry is kept as usurf_inversion and thk_inversion."""
+    """Put the 2000 surface back into the inversion result, which the forward
+    runs start from, on the bed of the inversion (tau_ref unchanged):
+    thk_2000 = max(usurf_2000 - bed, 0) on the ice. With a fixed geometry the
+    bed is that of the product, so this is thk_2000 of the input; with an
+    inverted thickness the new bed carries over to 2000. The inversion
+    geometry is kept as usurf_inversion and thk_inversion."""
     with Dataset(input_file, 'r') as src, Dataset(output_file, 'r+') as out:
+        bed = np.array(out['usurf'][:], dtype=float) - np.array(out['thk'][:], dtype=float)
         for name in ('usurf', 'thk'):
             kept = out.createVariable(f'{name}_inversion', 'f4', ('y', 'x'))
             kept[:] = out[name][:]
             kept.setncattr('description', f'{name} of the inversion ({year:g})')
-            out[name][:] = src[f'{name}_2000'][:]
-        out['topg'][:] = out['usurf'][:] - out['thk'][:]
+        usurf_2000 = np.array(src['usurf_2000'][:], dtype=float)
+        icemask = np.array(src['icemask'][:]) > 0.5
+        thk_2000 = np.where(icemask, np.maximum(usurf_2000 - bed, 0.0), 0.0)
+        out['usurf'][:] = usurf_2000
+        out['thk'][:] = thk_2000
+        out['topg'][:] = usurf_2000 - thk_2000
         out.setncattr('inversion_year', float(year))
 
 

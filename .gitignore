@@ -28,3 +28,11 @@ __pycache__/
 .vscode/
 
 
+
+# Presentation material (logos, screenshots), not part of the code
+assets/images.png
+assets/cropped-Mocca_Logo.png
+assets/Screenshot from *.png
+
+# Papers and internal reviews, kept local
+documentation/

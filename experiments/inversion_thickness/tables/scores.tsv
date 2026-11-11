@@ -1,0 +1,13 @@
+glacier	variant	volume_km3	volume_prior_km3	thk_max	thk_change_mean	glathida_n	glathida_bias	glathida_rms	deep_n	deep_bias	deep_ratio	speed_ratio_median	speed_rms	tau_ref_median
+Grosser Aletschgletscher	ref	13.12	13.12	456.1	-1.182e-06	1103	-10.43	64.81	234	-80.49	1.227	1.091	6.502	0.4105
+Rhonegletscher	ref	1.889	1.889	358.7	2.397e-07	515	2.281	41.26	45	-93.68	1.345	1.109	3.447	0.4221
+Grosser Aletschgletscher	joint_s50	10.91	13.12	483.2	-27.08	1103	-39.39	67.82	234	-92.25	1.295	0.9989	10.08	0.2988
+Rhonegletscher	joint_s50	1.35	1.889	333.6	-33.94	515	-43.44	61.24	45	-128.6	1.5	0.895	5.169	0.2969
+Grosser Aletschgletscher	joint_s100	10.56	13.12	491	-31.37	1103	-44.98	72.68	234	-103.3	1.332	0.9932	9.114	0.3048
+Rhonegletscher	joint_s100	1.28	1.889	321.4	-38.39	515	-49.03	66.63	45	-139.7	1.57	0.8515	5.314	0.2909
+Grosser Aletschgletscher	joint_s50_retrain	13.12	13.12	456.1	-0.002488	1103	-10.43	64.81	234	-80.49	1.227	1.801	18.36	0.4674
+Rhonegletscher	joint_s50_retrain	1.888	1.889	358.4	-0.0998	515	2.245	41.25	45	-93.69	1.345	1.579	8.137	0.4932
+Grosser Aletschgletscher	joint_mc_ti	9.862	13.12	554.2	-39.88	1103	-54.74	85.25	234	-144.1	1.511	0.9908	12.67	0.2958
+Rhonegletscher	joint_mc_ti	1.227	1.889	273.1	-41.7	515	-50.3	72.04	45	-165.7	1.774	0.887	7.225	0.2966
+Grosser Aletschgletscher	diag_mc_glamos	10.08	13.12	568.6	-37.27	1103	-51.58	81.04	234	-134.4	1.478	0.9929	11.41	0.2944
+Rhonegletscher	diag_mc_glamos	1.232	1.889	276.6	-41.4	515	-49.21	71.26	45	-163.8	1.743	0.8476	6.916	0.3012

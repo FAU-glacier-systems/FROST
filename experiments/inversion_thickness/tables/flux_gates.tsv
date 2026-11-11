@@ -1,0 +1,19 @@
+glacier	variant	gate_m	required_1519	its_live_x_thk	ratio
+Grosser Aletschgletscher	ref	2500	0.08145	0.0282	0.3462
+Grosser Aletschgletscher	ref	2800	0.09576	0.04481	0.4679
+Rhonegletscher	ref	2800	0.009382	0.005714	0.609
+Grosser Aletschgletscher	joint_s50	2500	0.08145	0.02867	0.352
+Grosser Aletschgletscher	joint_s50	2800	0.09576	0.04846	0.506
+Rhonegletscher	joint_s50	2800	0.009382	0.004915	0.5239
+Grosser Aletschgletscher	joint_s100	2500	0.08145	0.02795	0.3431
+Grosser Aletschgletscher	joint_s100	2800	0.09576	0.04667	0.4874
+Rhonegletscher	joint_s100	2800	0.009382	0.004647	0.4953
+Grosser Aletschgletscher	joint_s50_retrain	2500	0.08145	0.0282	0.3462
+Grosser Aletschgletscher	joint_s50_retrain	2800	0.09576	0.04481	0.4679
+Rhonegletscher	joint_s50_retrain	2800	0.009382	0.005714	0.609
+Grosser Aletschgletscher	joint_mc_ti	2500	0.08145	0.02597	0.3189
+Grosser Aletschgletscher	joint_mc_ti	2800	0.09576	0.03793	0.3961
+Rhonegletscher	joint_mc_ti	2800	0.009382	0.004547	0.4846
+Grosser Aletschgletscher	diag_mc_glamos	2500	0.08145	0.02652	0.3256
+Grosser Aletschgletscher	diag_mc_glamos	2800	0.09576	0.03927	0.4101
+Rhonegletscher	diag_mc_glamos	2800	0.009382	0.00464	0.4945
