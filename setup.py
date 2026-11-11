@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="frost",
-    version="2.0.0",
+    version="2.0.1",
     packages=find_packages(),
     python_requires=">=3.10",
     # Pinned to the versions running in igm32-frost, the environment actually
