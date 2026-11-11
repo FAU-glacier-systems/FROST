@@ -5,8 +5,8 @@ for the 380 glaciers in `glacier_selection.csv` (European Alps). Each glacier is
 inverted (thickness fixed to Millan et al. 2022 shifted to 2000, sliding fitted
 to velocity), calibrated with the OGGM TI model (prior from its OGGM
 calibration) against Hugonnet dh/dt 2000-2020, and run to 2100 with the
-posterior mean under every complete CORDEX run (RCP2.6/4.5/8.5). Current state
-and next steps: `STATUS.md`.
+posterior mean under every complete CORDEX run (RCP2.6/4.5/8.5). The lab
+notebook (`STATUS.md`) is kept locally.
 
 ## Run
 
@@ -59,7 +59,6 @@ Diagnostics (one GPU job each):
 | `alps_TI_sbatch.sh`, `projections_sbatch.sh`, `copy_cordex.sh` | Job and copy scripts |
 | `plot_cordex_overview.py` | Maps and time series of the forcing |
 | `emulator_check.py`, `inversion_variants.py`, `diagnose_projection.py` (+ `_sbatch.sh`) | Diagnostics, see above |
-| `STATUS.md` | Current state, decisions, findings |
 
 Legacy workflow with Johannes J. Fürst (not runnable with the current layout:
 paths from `experiments/`, scripts and vault folders that no longer exist):

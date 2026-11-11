@@ -1,7 +1,7 @@
 # Experiments: where things stand (2026-10-26)
 
-Start here after a break. Each folder has its own STATUS.md (or README.md)
-with the details, commands and job numbers.
+Each folder has a README.md (or a STATUS.md lab notebook that is kept
+locally and not published) with the details and commands.
 
 ## Reference setup
 

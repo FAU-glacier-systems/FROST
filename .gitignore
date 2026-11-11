@@ -36,3 +36,6 @@ assets/Screenshot from *.png
 
 # Papers and internal reviews, kept local
 documentation/
+
+# Lab notebooks of the experiments, kept local
+experiments/**/STATUS.md

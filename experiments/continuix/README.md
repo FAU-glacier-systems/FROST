@@ -3,8 +3,8 @@
 FROST's contribution to ContinuIX WP2/WP3
 (https://github.com/ContinuIX/ContinuIX-1): for each experiment (EXP01-EXP20) and
 single glacier, calibrate the ELA mass-balance model against the provided dh/dt and
-write the submission file `EXP##_G##_method01.nc`. The current state, results and
-open items are in `STATUS.md`.
+write the submission file `EXP##_G##_method01.nc`. The lab notebook with the
+state and results (`STATUS.md`) is kept locally.
 
 ## Run
 
@@ -37,7 +37,6 @@ sbatch --array=1-$(wc -l < experiments/continuix/tasks_exp01.txt) \
 
 | File | Purpose |
 |---|---|
-| `STATUS.md` | State of the submission, EXP01 results, open items |
 | `config.yml` | Data and results folders, resolution, EnKF settings |
 | `params_inversion_tau.yaml` | Inversion of the sliding `tau_ref` with the provided thickness (used) |
 | `params_inversion.yaml` | Thickness inversion from an SIA start (alternative) |
