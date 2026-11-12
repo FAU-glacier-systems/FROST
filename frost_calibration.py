@@ -72,9 +72,9 @@ def main(rgi_id, rgi_id_dir, smb_model, synthetic, ensemble_size, inflation,
                                    that barely move
            emulator_retrain(bool) - retrain the iceflow emulator in the
                                    forward runs (300 iterations at the start,
-                                   then igm_wrapper.retrain_schedule: 20
-                                   every step, or 5 every 5 steps where 5
-                                   steps < 0.9 yr) instead of keeping it
+                                   then 20 every year of model time,
+                                   igm_wrapper.RETRAIN_NBIT and
+                                   RETRAIN_INTERVAL) instead of keeping it
                                    frozen (experiments/emulator_test)
            exclude_melted_out(float) - leave a band out of the update and
                                    the misfit of an iteration when it has

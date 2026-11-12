@@ -1,0 +1,16 @@
+glacier	variant	runtime_s	obs	speed_2000	speed_2001	speed_2018	speed_2020	lower_obs	lower_2000	lower_2018	max_speed_2000	max_speed_any	max_thk_jump_per_yr	volume_change_pct
+Grosser_Aletschgletscher	retrain	46	33.5	45.6	41.4	28	27.1	56.7	56.4	43.2	278	278	63.4	-17.3
+Grosser_Aletschgletscher	retrain_1x20	70	33.5	45.6	41	28.2	27.5	56.7	56.4	43.5	278	278	57.9	-17.3
+Grosser_Aletschgletscher	retrain_t1x20	51	33.5	45.6	43.1	28.2	27.4	56.7	56.4	43.5	278	278	64.9	-17.3
+Grosser_Aletschgletscher	retrain_t1x10	47	33.5	45.6	43.1	28.1	27.3	56.7	56.4	43.3	278	278	64.9	-17.3
+Grosser_Aletschgletscher	solver	165	33.5	45.2	43	29.3	28.7	56.7	56.2	46.5	271	271	58.4	-17.4
+Rhonegletscher	retrain	45	10.9	19.5	18.5	12.7	12.4	17.5	26.6	18	86.5	86.5	36.5	-17
+Rhonegletscher	retrain_1x20	63	10.9	19.5	18.2	12.9	12.5	17.5	26.6	18.4	86.5	86.5	35.7	-17
+Rhonegletscher	retrain_t1x20	50	10.9	19.5	18.5	12.8	12.5	17.5	26.6	18.4	86.5	86.5	36.5	-17
+Rhonegletscher	retrain_t1x10	47	10.9	19.5	18.5	12.8	12.5	17.5	26.6	18.3	86.5	86.5	36.5	-17
+Rhonegletscher	solver	146	10.9	20.2	19.4	13.5	13	17.5	27.5	20.1	88.5	88.5	37.6	-17
+Glacier_de_Corbassière	retrain	45	7.02	8.94	3.91	9.76	10.2	11.8	12.4	10	69.3	69.3	26.5	-12.6
+Glacier_de_Corbassière	retrain_1x20	60	7.02	8.94	10.8	9.95	9.36	11.8	12.4	10.9	69.3	69.3	24.3	-12.8
+Glacier_de_Corbassière	retrain_t1x20	50	7.02	8.94	9.21	9.69	9.63	11.8	12.4	10.5	69.3	69.3	27.5	-12.8
+Glacier_de_Corbassière	retrain_t1x10	46	7.02	8.94	9.21	9.51	10.1	11.8	12.4	10.2	69.3	69.3	27.5	-12.7
+Glacier_de_Corbassière	solver	140	7.02	12.4	12.2	10.1	10.1	11.8	18.5	11.8	71.5	71.5	26.4	-13.1

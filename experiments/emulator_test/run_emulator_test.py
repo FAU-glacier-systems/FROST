@@ -14,6 +14,8 @@ glacier 2000-2020 with three ice-flow settings:
              the start, 5 every 5 time steps (IGM defaults)
     retrain_1, retrain_1x20  300 at the start, 5 or 20 every time step
     retrain_2x20, retrain_4x20  300 at the start, 20 every 2 or 4 steps
+    retrain_t1x20, retrain_t1x10  300 at the start, 20 or 10 every year of
+             model time (igm32 retrain_interval)
     adaptive_1e-3, adaptive_1e-4  every step, each retraining stopped when
              the velocities change by < tol per iteration (caps 1000 / 50)
     solver   no network: the velocity field solved by L-BFGS (500 iterations
@@ -35,8 +37,11 @@ import time
 
 import yaml
 
-SOURCE = 'data/results/central_europe_esmda_velyear'
-TARGET = 'data/results/emulator_test'
+# Member_0 of the v2 reference (2026-11-12): the earlier source
+# central_europe_esmda_velyear has no ensemble any more; its runs (variants
+# up to retrain_4x20) stay in data/results/emulator_test, tables/speeds.tsv
+SOURCE = 'data/results/central_europe_combined_retrain'
+TARGET = 'data/results/emulator_test_interval'
 MEMBER = 'Member_0'
 
 VARIANTS = {
@@ -50,6 +55,12 @@ VARIANTS = {
     # (CFL step ~0.2 yr) instead of every step (2026-10-23)
     'retrain_2x20': {'nbit_init': 300, 'nbit': 20, 'retrain_freq': 2},
     'retrain_4x20': {'nbit_init': 300, 'nbit': 20, 'retrain_freq': 4},
+    # 20 / 10 every year of model time (igm32 retrain_interval), whatever the
+    # time step: the rule of the forward runs since 2026-11-12
+    'retrain_t1x20': {'nbit_init': 300, 'nbit': 20, 'retrain_freq': 0,
+                      'retrain_interval': 1.0},
+    'retrain_t1x10': {'nbit_init': 300, 'nbit': 10, 'retrain_freq': 0,
+                      'retrain_interval': 1.0},
     # adaptive: check every step, but stop each retraining (and the start-up
     # training) once the velocities change by less than tol per iteration
     # (IGM halt: rel_tol on u); nbit, nbit_init are only caps
@@ -87,6 +98,8 @@ def main():
     parser.add_argument('--rgi_id', required=True)
     parser.add_argument('--variants', nargs='*', default=list(VARIANTS))
     args = parser.parse_args()
+    import importlib.util
+    print(f'IGM: {importlib.util.find_spec("igm").origin}', flush=True)
     for variant in args.variants:
         workdir = setup(args.rgi_id, variant)
         print(f'{args.rgi_id} {variant}: {workdir}', flush=True)

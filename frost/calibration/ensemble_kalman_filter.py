@@ -122,12 +122,10 @@ class EnsembleKalmanFilter:
             else:
                 init_divflux = np.zeros_like(self.icemask_init)
             init_velsurf_mag = np.array(geology_dataset['velsurf_mag'])
-        # retraining every step only where the time steps are long
         if self.emulator_retrain and ice_flow == 'igm':
-            self.emulator_retrain = IGM_wrapper.retrain_schedule(inversion_file)
             print(f"Emulator retraining in the forward runs: {IGM_wrapper.RETRAIN_START} "
-                  f"iterations at the start, "
-                  f"{self.emulator_retrain[1]} every {self.emulator_retrain[0]} time steps")
+                  f"iterations at the start, {IGM_wrapper.RETRAIN_NBIT} every "
+                  f"{IGM_wrapper.RETRAIN_INTERVAL:g} yr of model time")
 
         # Initialize placeholders for observable and hidden variables
         self.ensemble_usurf = np.empty((ensemble_size,) + self.icemask_init.shape)
