@@ -1,0 +1,22 @@
+glacier	rule	runtime_s	error_pct	steps	retrains	speed_2020
+Grosser_Aletschgletscher	t1	51	3.589			27.37
+Grosser_Aletschgletscher	igm_default	46	3.995			27.23
+Grosser_Aletschgletscher	credit	48	4.106	97	30	27.26
+Grosser_Aletschgletscher	credit_x20	52	3.621	97	29	27.37
+Grosser_Aletschgletscher	credit_k1e-2	46	4.304	99	3	26.93
+Grosser_Aletschgletscher	solver	143	0			28.7
+Grosser_Aletschgletscher	solver_321	165	0			28.69
+Rhonegletscher	t1	50	5.522			12.53
+Rhonegletscher	igm_default	47	5.902			12.5
+Rhonegletscher	credit	47	5.88	78	22	12.56
+Rhonegletscher	credit_x20	51	5.013	78	22	12.58
+Rhonegletscher	credit_k1e-2	47	9.314	73	3	12.08
+Rhonegletscher	solver	141	0			13.13
+Rhonegletscher	solver_321	146	0			13.03
+Glacier_de_Corbassière	t1	50	8.817			9.628
+Glacier_de_Corbassière	igm_default	46	5.962			9.529
+Glacier_de_Corbassière	credit	46	5.711	67	25	9.612
+Glacier_de_Corbassière	credit_x20	50	4.716	68	25	9.794
+Glacier_de_Corbassière	credit_k1e-2	45	6.927	67	3	9.193
+Glacier_de_Corbassière	solver	123	0			10.09
+Glacier_de_Corbassière	solver_321	140	0			10.07

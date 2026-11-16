@@ -1,0 +1,14 @@
+case	run	seconds
+warmup	1	16.67
+retrain_20y	1	24.69
+retrain_20y	2	21.07
+retrain_1y	1	18.56
+retrain_1y	2	18.59
+start0_20y	1	18.39
+start0_20y	2	18.09
+start0_1y	1	15.99
+start0_1y	2	16.03
+frozen_20y	1	5.11
+frozen_20y	2	5.08
+frozen_1y	1	3.42
+frozen_1y	2	3.40
