@@ -41,6 +41,43 @@ def install_user_processes(workdir, processes):
             os.path.join(workdir, 'user', 'conf', 'processes'))
 
 
+def reset_igm_tf_functions():
+    """Replace every module-level tf.function of the loaded IGM modules by a
+    fresh one (same Python function and options), as in a new process.
+
+    IGM >= 3.3.0 fails on its second run in one process: compute_node_ice_mask
+    (thk/masks.py, jit), traced inside the jit evaluator_iceflow of the first
+    run, keeps references to that run's variables, and the next run's
+    evaluator (retraced for the new network) calls the stale trace:
+    "AssertionError: Called a function referencing variables which have been
+    deleted" (experiments/igm330_retrain, 2026-11-16). Fresh functions lose
+    nothing that was reused: the evaluator retraces for every run anyway.
+    Returns the number of functions replaced."""
+    import sys
+    import tensorflow as tf
+    function_type = getattr(tf.types.experimental, 'PolymorphicFunction', None) or \
+        tf.types.experimental.GenericFunction
+    fresh = {}  # id -> (old, new); the old one stays referenced while swapping
+    modules = [m for name, m in list(sys.modules.items())
+               if m is not None and (name == 'igm' or name.startswith('igm.'))]
+    for mod in modules:
+        for obj in list(vars(mod).values()):
+            if (isinstance(obj, function_type)
+                    and id(obj) not in fresh and hasattr(obj, 'python_function')):
+                fresh[id(obj)] = obj, tf.function(
+                    obj.python_function,
+                    input_signature=getattr(obj, 'input_signature', None),
+                    autograph=getattr(obj, '_autograph', True),
+                    jit_compile=getattr(obj, '_jit_compile', None),
+                    reduce_retracing=getattr(obj, '_reduce_retracing', False))
+    # also where a module imported the function by name
+    for mod in modules:
+        for attr, obj in list(vars(mod).items()):
+            if id(obj) in fresh and fresh[id(obj)][0] is obj:
+                setattr(mod, attr, fresh[id(obj)][1])
+    return len(fresh)
+
+
 def run_igm(workdir, in_process=False):
     """igm_run +experiment=params in workdir. in_process: call IGM's main()
     in this process instead of starting igm_run, so TensorFlow, CUDA and
@@ -53,6 +90,7 @@ def run_igm(workdir, in_process=False):
     import sys
     from igm.igm_run import main as igm_main
     cwd, argv = os.getcwd(), sys.argv
+    reset_igm_tf_functions()
     try:
         os.chdir(workdir)
         sys.argv = ["igm_run", "+experiment=params"]
@@ -76,17 +114,38 @@ def warm_up():
 # Corbassiere they leave the speed of 2000 low (8.9 m/yr, solver 12.4),
 # from the first step on it follows the solver (emulator_test)
 RETRAIN_START = 300
-# then RETRAIN_NBIT iterations every RETRAIN_INTERVAL years of model time
-# (IGM unified retrain_interval, igm32 fork), the same training per model
-# year on every glacier whatever its time step. Replaces the step-based
-# rule of 2026-10-23 (5 every 5 steps or 20 every step, chosen from a CFL
-# step estimated from the inversion's fastest speed): the estimate missed
-# the real steps (Corbassiere 0.2 vs ~0.8 yr) and gave Rhone ~110
-# iterations per year (50 min per calibration). On Corbassiere 20 every
-# step (~0.8 yr) and every 2 steps (~1.6 yr) both follow the solver
-# (emulator_test); 5 every 5 steps (~4 yr) jumps.
-RETRAIN_NBIT = 20
-RETRAIN_INTERVAL = 1.0  # yr
+# When the emulator is retrained after the start (EnKF emulator_retrain),
+# with plain IGM >= 3.3.0 options (no IGM fork). The igm32 fork's rule of
+# 2026-11-12 (20 every year of model time, unified.retrain_interval) is
+# dropped with the update to IGM 3.3.0 (experiments/igm330_retrain):
+#   igm_default  5 iterations every 5 time steps (IGM default; on slow
+#                glaciers with ~1-yr steps that is every ~5 years)
+#   credit       5 iterations whenever the inputs (thk, usurf, ...) have
+#                changed by kappa (normalised, accumulated over steps),
+#                at the latest every 100 steps (IGM 3.3.0 adaptive_time)
+RETRAIN_RULES = {
+    'igm_default': {'nbit': 5, 'retrain_freq': 5,
+                    'adaptive_time': {'method': 'none'}},
+    'credit': {'nbit': 5, 'retrain_freq': 5,
+               'adaptive_time': {'method': 'credit'}},
+}
+# emulator_retrain: true picks this rule. IGM default (experiments/igm330_retrain,
+# 2026-11-16): same calibration as the fork rule and credit, fastest (254 vs
+# 307 min for the 17 flow glaciers); on IGM 3.3.0 no more jumps on slow
+# glaciers (Corbassiere 6 % from the solver, 27 % on 3.2.1)
+DEFAULT_RETRAIN_RULE = 'igm_default'
+
+
+def retrain_rule(emulator_retrain):
+    """Name of the retraining rule for EnKF emulator_retrain (False/None:
+    frozen emulator, True: DEFAULT_RETRAIN_RULE, or a key of RETRAIN_RULES)."""
+    if emulator_retrain in (None, False, 'false', 'none'):
+        return None
+    rule = DEFAULT_RETRAIN_RULE if emulator_retrain is True else str(emulator_retrain)
+    if rule not in RETRAIN_RULES:
+        raise ValueError(f"emulator_retrain '{emulator_retrain}': use true, false or one "
+                         f"of {list(RETRAIN_RULES)}")
+    return rule
 
 
 def forward(exp, output1D, output2D_3D, member_id, smb_model, usurf, smb,
@@ -119,11 +178,11 @@ def forward(exp, output1D, output2D_3D, member_id, smb_model, usurf, smb,
                                 none; keeps single cells at a retreating ice
                                 cliff from forcing tiny time steps
         in_process (bool)     - run IGM in this process (run_igm)
-        emulator_retrain (bool) - retrain the emulator on the glacier's
-                                physics (RETRAIN_START iterations at the
-                                start, then RETRAIN_NBIT every
-                                RETRAIN_INTERVAL years of model time) instead
-                                of keeping it frozen (False); removes the
+        emulator_retrain (bool or str) - retrain the emulator on the
+                                glacier's physics (RETRAIN_START iterations
+                                at the start, then by a rule of
+                                RETRAIN_RULES; True: DEFAULT_RETRAIN_RULE)
+                                instead of keeping it frozen (False); removes the
                                 start-up speed shock on geometries the
                                 pretrained network extrapolates
                                 (emulator_test)
@@ -150,6 +209,7 @@ def forward(exp, output1D, output2D_3D, member_id, smb_model, usurf, smb,
         prcp_fac = smb['prcp_fac']
         temp_bias = smb['temp_bias']
 
+    rule = retrain_rule(emulator_retrain)
     print(f'{exp}')
     print(f'Forward ensemble member {member_id} with SMB: {smb}')
 
@@ -185,10 +245,10 @@ def forward(exp, output1D, output2D_3D, member_id, smb_model, usurf, smb,
                 "unified": {
                     "mapping": "network",
                     "inputs": ["thk", "usurf", "arrhenius", "tau_ref", "dX"],
-                    "nbit_init": RETRAIN_START if emulator_retrain else 0,
-                    "nbit": RETRAIN_NBIT if emulator_retrain else 0,
+                    "nbit_init": RETRAIN_START if rule else 0,
+                    "nbit": 0,
                     "retrain_freq": 0,
-                    "retrain_interval": RETRAIN_INTERVAL if emulator_retrain else 0.0,
+                    **(RETRAIN_RULES[rule] if rule else {}),
                     "network": {
                         "pretrained_path": str(emulator_path),
                         "pretrained": True,

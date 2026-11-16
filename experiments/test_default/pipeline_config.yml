@@ -32,7 +32,7 @@ EnKF:
   monitor_plots: latest            # all: png per iteration, latest: overwrite one png, final: last run only
   dark_monitor: true               # Monitor plots on black (true) or white
   max_velbar: 1000                 # cap of the depth-averaged speed (m/yr) in the forward runs
-  emulator_retrain: true           # retrain the emulator in the forward runs (igm_wrapper.retrain_schedule); the inversion stays frozen
+  emulator_retrain: true           # retrain the emulator in the forward runs (igm_wrapper.DEFAULT_RETRAIN_RULE); the inversion stays frozen
   forward_workers: 8               # more retraining workers run out of host memory
   model_error: 0.5                 # m/yr on the band means
   glacier_wide_dhdt: false         # the band covariance already constrains the glacier mean

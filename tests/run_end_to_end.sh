@@ -4,8 +4,8 @@
 #   sbatch tests/run_end_to_end.sh
 
 #SBATCH --job-name=frost_e2e
-#SBATCH --partition=a100
-#SBATCH --gres=gpu:a100:1
+#SBATCH --partition=a40
+#SBATCH --gres=gpu:a40:1
 #SBATCH --time=01:00:00
 #SBATCH --output=logs/frost_e2e_%j.out
 

@@ -70,7 +70,9 @@ python -m pytest tests/test_smoke.py    # imports and configs, a few seconds
 ```
 
 `environment.yml` installs FROST itself (editable, with the test extras) and
-IGM at the commit FROST v2.0 was run with; the other dependencies and their
+IGM at a fixed commit (IGM 3.3.0 on the development branch `v3-dev`; FROST
+v2.0 was run with IGM 3.2.1 plus 5 commits, see the note in
+`environment.yml`); the other dependencies and their
 versions are listed in `setup.py`. The end-to-end test runs the default setup
 on Rhonegletscher and needs a GPU (`tests/run_end_to_end.sh` on a Slurm
 cluster).

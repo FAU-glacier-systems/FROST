@@ -123,9 +123,10 @@ class EnsembleKalmanFilter:
                 init_divflux = np.zeros_like(self.icemask_init)
             init_velsurf_mag = np.array(geology_dataset['velsurf_mag'])
         if self.emulator_retrain and ice_flow == 'igm':
+            rule = IGM_wrapper.retrain_rule(self.emulator_retrain)
             print(f"Emulator retraining in the forward runs: {IGM_wrapper.RETRAIN_START} "
-                  f"iterations at the start, {IGM_wrapper.RETRAIN_NBIT} every "
-                  f"{IGM_wrapper.RETRAIN_INTERVAL:g} yr of model time")
+                  f"iterations at the start, then rule '{rule}' "
+                  f"{IGM_wrapper.RETRAIN_RULES[rule]}")
 
         # Initialize placeholders for observable and hidden variables
         self.ensemble_usurf = np.empty((ensemble_size,) + self.icemask_init.shape)

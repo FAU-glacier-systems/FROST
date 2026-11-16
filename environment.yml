@@ -10,6 +10,10 @@ dependencies:
     # truth instead of duplicating it here.
     - -e .[dev]
     # igm is a git source, not a normal PyPI release, so it can't live in
-    # setup.py's install_requires - pinned to the commit FROST v2.0 was run
-    # with (v3.2.1 plus 5 commits on main, 2026-10-22).
-    - git+https://github.com/instructed-glacier-model/igm@33c583ca700e1f327eeccb2a9fea4b74252673e0
+    # setup.py's install_requires - pinned to IGM 3.3.0 (2026-11-13; the
+    # retraining rules of igm_wrapper.RETRAIN_RULES need its adaptive_time).
+    # FROST v2.0 was run with 33c583ca (v3.2.1 plus 5 commits on main).
+    # v3-dev also needs a one-line fix not yet in IGM upstream: igm_run reads
+    # processes.iceflow...fp16_inference in every run, so runs without ice
+    # flow (the OGGM-shop download) fail; local branch frost/v3.3.0.
+    - git+https://github.com/instructed-glacier-model/igm@2d44578e4f4cef381de491b07a25c39172e56896

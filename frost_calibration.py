@@ -70,11 +70,10 @@ def main(rgi_id, rgi_id_dir, smb_model, synthetic, ensemble_size, inflation,
                                    dh/dt = smb with melt-out
                                    (glacier_model/no_flow.py), for glaciers
                                    that barely move
-           emulator_retrain(bool) - retrain the iceflow emulator in the
+           emulator_retrain(bool or str) - retrain the iceflow emulator in the
                                    forward runs (300 iterations at the start,
-                                   then 20 every year of model time,
-                                   igm_wrapper.RETRAIN_NBIT and
-                                   RETRAIN_INTERVAL) instead of keeping it
+                                   then a rule of igm_wrapper.RETRAIN_RULES;
+                                   true: DEFAULT_RETRAIN_RULE) instead of keeping it
                                    frozen (experiments/emulator_test)
            exclude_melted_out(float) - leave a band out of the update and
                                    the misfit of an iteration when it has
