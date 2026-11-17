@@ -96,7 +96,7 @@ CONCLUSIONS = [
           'fastest, same calibration (igm_wrapper.DEFAULT_RETRAIN_RULE). The small GLAMOS '
           'loss is common to both 3.3.0 rules. Download + inversion on 3.3.0: end-to-end test.'),
     ('b', 'Live IGM model (2026-11-17, last page): x2 faster calibration (127 against 254 min), '
-          'same posterior; 8 workers saturate the GPU.'),
+          'same posterior and GLAMOS profile RMSE (0.992 / 0.992); 8 workers saturate the GPU.'),
 ]
 
 C = dict(fg='#111111', muted='#555555', grid='#c8c8c8')
