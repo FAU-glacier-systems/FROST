@@ -3,10 +3,11 @@
 # Published under the GNU GPL (Version 3), check the LICENSE file
 
 # GLAMOS/WGMS evaluation (central_europe_esmda/evaluate.py: ELA, gradients,
-# SMB profile RMSE) of the three calibrations compared in report.py. Reads
+# SMB profile RMSE) of the calibrations compared in report.py. Reads
 # every posterior member, so it runs as a job (CPU).
 # Submit from a Fritz login node, in the repo root, after the calibrations:
-#   sbatch experiments/igm330_retrain/evaluate_sbatch.sh
+#   sbatch experiments/igm330_retrain/evaluate_sbatch.sh               (all four)
+#   sbatch experiments/igm330_retrain/evaluate_sbatch.sh igm330_live   (only these)
 
 #SBATCH --nodes=1
 #SBATCH --partition=singlenode
@@ -18,7 +19,8 @@
 module load python
 conda activate igm32-frost
 
-for NAME in central_europe_retrain_t1 igm330_default igm330_credit; do
+NAMES=${*:-central_europe_retrain_t1 igm330_default igm330_credit igm330_live}
+for NAME in $NAMES; do
     python experiments/central_europe_esmda/evaluate.py --results "data/results/$NAME" \
         --out "experiments/igm330_retrain/eval_$NAME"
 done

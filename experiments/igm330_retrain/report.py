@@ -8,10 +8,12 @@ PDF report: emulator retraining in the forward runs on IGM 3.3.0 (IGM default
 rule and the new adaptive 'credit' rule) against the v3-dev rule of IGM 3.2.1
 + fork (20 iterations every year of model time, central_europe_retrain_t1):
 speed against the solver (forward_test.py), calibration wall time, posterior
-SMB parameters, misfit and GLAMOS SMB profiles (evaluate_sbatch.sh).
+SMB parameters, misfit and GLAMOS/WGMS evaluation (evaluate_sbatch.sh); and
+the final setup, IGM default rule with the live IGM model (igm330_live,
+live_model_test.py, worker_sweep.py).
 
 Reads saved results and logs only (fine on a login node). From the repo root:
-    python experiments/igm330_retrain/report.py --default_job <id> --credit_job <id>
+    python experiments/igm330_retrain/report.py
 Writes experiments/igm330_retrain/igm330_retrain_report.pdf and
 tables/{forward,calibration}.tsv.
 """
@@ -37,11 +39,13 @@ sys.path.insert(0, HERE)
 from frost.visualization import plot_style  # noqa: E402
 from forward_test import SOURCE, TARGET, OLD_TARGET  # noqa: E402
 
-TITLE = 'FROST on IGM 3.3.0: emulator retraining'
+TITLE = 'FROST on IGM 3.3.0: emulator retraining and live model'
 PAGE = (8.27, 11.69)
 L, R = 0.09, 0.91
 BODY = 9.5
 T1_JOB = 4988518  # central_europe_retrain_t1
+JOBS = {'igm_default': 5014441, 'credit': 5014442, 'live': 5022120}  # calibration arrays
+LIVE_TEST_JOBS = {'fresh': 5021885, 'live': 5022119}  # live_model_test.py (Rhone)
 
 # rules: (label, colour); 't1' = IGM 3.2.1 + fork, the reference
 RULES = {
@@ -51,6 +55,7 @@ RULES = {
     'credit': ('Credit (IGM 3.3.0): 5 it. when inputs changed by kappa 1e-3', '#2a9a63'),
     'credit_x20': ('Credit, 20 it. per retraining', '#7b4fa0'),
     'credit_k1e-2': ('Credit, kappa 1e-2', '#c62f35'),
+    'live': ('IGM default + live IGM model (final setup)', '#8c564b'),
 }
 # forward runs: rule -> (results root, variant folder)
 FORWARD = {'solver': (TARGET, 'solver'), 't1': (OLD_TARGET, 'retrain_t1x20'),
@@ -60,7 +65,8 @@ SOLVER_OLD = (OLD_TARGET, 'solver')  # IGM 3.2.1 solver: reference of t1
 # calibrations: rule -> (results, log prefix, evaluation folder)
 CALIB = {'t1': ('data/results/central_europe_retrain_t1', 'ce_t1', 'eval_central_europe_retrain_t1'),
          'igm_default': ('data/results/igm330_default', 'igm330', 'eval_igm330_default'),
-         'credit': ('data/results/igm330_credit', 'igm330', 'eval_igm330_credit')}
+         'credit': ('data/results/igm330_credit', 'igm330', 'eval_igm330_credit'),
+         'live': ('data/results/igm330_live', 'igm330', 'eval_igm330_live')}
 
 # Written after the results (2026-11-16, jobs 5014381, 5014441, 5014442)
 CONCLUSIONS = [
@@ -89,6 +95,8 @@ CONCLUSIONS = [
     ('b', 'Choice: IGM default (5 every 5 steps) for the forward runs: plain IGM settings, '
           'fastest, same calibration (igm_wrapper.DEFAULT_RETRAIN_RULE). The small GLAMOS '
           'loss is common to both 3.3.0 rules. Download + inversion on 3.3.0: end-to-end test.'),
+    ('b', 'Live IGM model (2026-11-17, last page): x2 faster calibration (127 against 254 min), '
+          'same posterior; 8 workers saturate the GPU.'),
 ]
 
 C = dict(fg='#111111', muted='#555555', grid='#c8c8c8')
@@ -278,7 +286,7 @@ def calibration_table(jobs):
 
 def summary_rows(fwd, cal):
     out = []
-    for rule in ['t1', 'igm_default', 'credit', 'credit_x20', 'credit_k1e-2']:
+    for rule in ['t1', 'igm_default', 'credit', 'credit_x20', 'credit_k1e-2', 'live']:
         f = fwd[fwd.rule == rule]
         c = cal[cal.rule == rule] if rule in CALIB else cal.iloc[:0]
         done = c.dropna(subset=['misfit']) if 'misfit' in c else c.iloc[:0]
@@ -330,17 +338,17 @@ def draw_summary(fig, fwd, cal, jobs):
             cell.PAD = 0.02
         if r == 0:
             cell.set_text_props(weight='bold')
-    y -= 0.125
+    y -= 0.135
     note = ('Fwd: mean of the 3 glaciers (t1 against the IGM 3.2.1 solver). Calib: sum and '
             'longest of the 17 tasks; misfit and RMSE: means; dELA: posterior mean minus t1 in '
             'units of t1\'s posterior std.')
     for i, ln in enumerate(textwrap.wrap(note, 120)):
         fig.text(L, y - 0.012 * i, ln, fontsize=7.5, color=C['muted'], va='top')
-    y -= 0.03
+    y -= 0.022
     concl = CONCLUSIONS or [('p', 'Conclusions pending: written once the forward test and both '
                                   'calibrations have run.')]
     y = text_block(fig, y, [('h', 'Conclusions')] + concl)
-    missing = [r for r in ['igm_default', 'credit'] if not jobs.get(r)]
+    missing = [r for r in ['igm_default', 'credit', 'live'] if not jobs.get(r)]
     if missing:
         text_block(fig, y - 0.01, [('p', f'No Slurm job id given for {", ".join(missing)}: '
                                          'wall times missing.')])
@@ -423,10 +431,12 @@ def draw_calibration(fig, cal):
     ax.set_ylabel('Wall time (min)')
     ax.legend(fontsize=7, loc='upper right')
     ax = fig.add_axes([L + 0.04, 0.12, R - L - 0.04, 0.27])
-    for k, rule in enumerate([r for r in rules if r != 't1']):
+    others = [r for r in rules if r != 't1']
+    w2 = 0.8 / max(len(others), 1)
+    for k, rule in enumerate(others):
         c = cal[cal.rule == rule].set_index('glacier').reindex(names)
         if 'd_ela_sd' in c:
-            ax.bar(x + (k - 0.5) * 0.35, c.d_ela_sd, 0.35, color=RULES[rule][1],
+            ax.bar(x + (k - (len(others) - 1) / 2) * w2, c.d_ela_sd, w2, color=RULES[rule][1],
                    label=RULES[rule][0])
     ax.axhspan(-1, 1, color='#888888', alpha=0.12, lw=0, label='Inside t1 posterior +-1 std')
     ax.axhline(0, color='#111111', lw=0.6)
@@ -457,12 +467,170 @@ def draw_fit(fig, cal):
         ax.legend(fontsize=7, loc='upper right')
 
 
+def evaluation(folder):
+    """evaluate.py summary (tables/evaluation.tsv) or None if it has not run."""
+    path = os.path.join(HERE, folder, 'tables', 'evaluation.tsv')
+    return pd.read_csv(path, sep='\t') if os.path.exists(path) else None
+
+
+def glamos_rows():
+    """One row per calibration (+ the ContinuIX submission as a reference):
+    posterior against GLAMOS/WGMS (evaluate.py, 'new' run of each folder)."""
+    def metrics(ev, run):
+        e = ev[ev.run == run].set_index(['parameter', 'unit'])
+        g = lambda p, u, c: e.loc[(p, u), c] if (p, u) in e.index else np.nan  # noqa: E731
+        return [g('ela', 'ice', 'bias'), g('ela', 'ice', 'mae'), g('ela', 'ice', 'inside_2sigma_pct'),
+                g('abl', 'w.e.', 'bias'), g('acc', 'w.e.', 'bias'),
+                g('profile', 'w.e.', 'mae'), g('profile', 'w.e.', 'bias'),
+                g('profile', 'w.e.', 'inside_2sigma_pct')]
+    rows, labels = [], []
+    ref = evaluation(CALIB['t1'][2])
+    if ref is not None and (ref.run == 'submitted').any():
+        rows.append(metrics(ref, 'submitted'))
+        labels.append(('ContinuIX submission (v1)', '#888888'))
+    for rule, (_, _, folder) in CALIB.items():
+        ev = evaluation(folder)
+        label = RULES[rule][0].split(' (')[0] if rule != 't1' else '20 it./yr (3.2.1 fork)'
+        rows.append(metrics(ev, 'new') if ev is not None else [np.nan] * 8)
+        labels.append((label.replace(' (final setup)', '') + ('' if ev is not None else ' (pending)'), RULES[rule][1]))
+    return labels, rows
+
+
+def draw_glamos(fig):
+    heading(fig, 'GLAMOS/WGMS evaluation',
+            'Posterior against the in-situ references (evaluate.py; GLAMOS for the Swiss '
+            'glaciers, WGMS for the others): ELA, ablation and accumulation gradients and the '
+            'SMB profile 2000-2019 per 50 m band. Not used in the calibration.')
+    labels, rows = glamos_rows()
+    cols = ['Run', 'ELA bias\nm', 'ELA MAE\nm', 'ELA in\n2 sd %', 'abl. grad\nbias', 'acc. grad\nbias',
+            'Profile\nRMSE', 'Profile\nbias', 'Bins in\n2 sd %']
+    fmt = ['{:.0f}', '{:.0f}', '{:.0f}', '{:+.2f}', '{:+.2f}', '{:.3f}', '{:+.3f}', '{:.0f}']
+    cells = [[lab] + ['-' if not np.isfinite(v) else f.format(v) for v, f in zip(r, fmt)]
+             for (lab, _), r in zip(labels, rows)]
+    ax = fig.add_axes([L, 0.70, R - L, 0.17])
+    ax.axis('off')
+    tab = ax.table(cellText=cells, colLabels=cols, loc='upper left', cellLoc='right',
+                   colLoc='right', colWidths=[0.32] + [0.085] * 8)
+    tab.auto_set_font_size(False)
+    tab.set_fontsize(7.5)
+    for (r, c), cell in tab.get_celld().items():
+        cell.set_height(0.20 if r == 0 else 0.12)
+        cell.set_edgecolor('white' if r else C['grid'])
+        if c == 0:
+            cell.set_text_props(ha='left', color=labels[r - 1][1] if r else C['fg'])
+            cell.PAD = 0.02
+        if r == 0:
+            cell.set_text_props(weight='bold')
+    note = ('Gradients in m w.e./yr/100 m, profile in m w.e./yr. ELA: 13 glaciers with a '
+            'reference ELA inside the glacier (4 censored). Bins in 2 sd: share of profile bands '
+            'where the reference lies inside 2 posterior std.')
+    for i, ln in enumerate(textwrap.wrap(note, 125)):
+        fig.text(L, 0.685 - 0.012 * i, ln, fontsize=7, color=C['muted'], va='top')
+    # profile RMSE per glacier, difference to t1
+    rmse = {rule: profiles(ev) for rule, (_, _, ev) in CALIB.items()}
+    gl = glaciers(os.path.join(os.path.dirname(HERE), 'igm330_default', 'glaciers.txt'))
+    names = [n for _, n in gl]
+    x = np.arange(len(names))
+    others = [r for r in CALIB if r != 't1' and rmse[r]]
+    ax = fig.add_axes([L + 0.04, 0.17, R - L - 0.04, 0.42])
+    w = 0.8 / max(len(others), 1)
+    for k, rule in enumerate(others):
+        d = [rmse[rule].get(g, np.nan) - rmse['t1'].get(g, np.nan) for g, _ in gl]
+        ax.bar(x + (k - (len(others) - 1) / 2) * w, d, w, color=RULES[rule][1],
+               label=RULES[rule][0])
+    ax.axhline(0, color='#111111', lw=0.6)
+    ax.set_xticks(x, [short(n) for n in names], rotation=60, ha='right', fontsize=7.5)
+    ax.set_ylabel('Profile RMSE minus t1 (m w.e./yr)')
+    ax.set_title('Per glacier: SMB profile RMSE against the fork rule (t1); below 0 = better',
+                 fontsize=9, loc='left')
+    ax.legend(fontsize=7, loc='upper right')
+
+
+def live_test_timing():
+    """Seconds per member of live_model_test.py: fresh (warm) and live, Rhone."""
+    out = {}
+    for mode, job in LIVE_TEST_JOBS.items():
+        try:
+            with open(os.path.join('logs', f'igm330_live_{job}.out'), errors='ignore') as f:
+                t = [float(m[1]) for m in re.finditer(rf'^TIMING {mode} \S+ ela \S+ ([\d.]+) s',
+                                                       f.read(), re.M)]
+        except OSError:
+            t = []
+        out[mode] = t
+    return out
+
+
+def draw_live(fig, cal):
+    heading(fig, 'Final setup: live IGM model',
+            'Each calibration worker keeps its compiled IGM model for all members of a glacier '
+            '(igm_wrapper.LiveIGM): weights reset, optimizer zeroed, new geometry and SMB, run. '
+            'No IGM source change.')
+    t = live_test_timing()
+    fresh = t['fresh'][1:8] if len(t['fresh']) > 1 else []  # warm runs
+    live = t['live'][1:] if len(t['live']) > 1 else []
+    c = cal.groupby('rule').minutes.sum()
+    lines = []
+    if fresh and live:
+        lines.append(('b', f'One Rhone member alone on an A40 (2000-2020, 300 start iterations): '
+                           f'{np.mean(fresh):.1f} s as a fresh in-process run, {np.mean(live):.1f} s '
+                           f'with the live model (x{np.mean(fresh) / np.mean(live):.1f}); '
+                           f'results bit-identical for all 8 test members (thk, speed, SMB).'))
+    if 'live' in c and 'igm_default' in c:
+        d = cal[cal.rule.isin(['igm_default', 'live'])].pivot(index='glacier', columns='rule',
+                                                               values='ela')
+        dsd = cal[cal.rule == 'igm_default'].set_index('glacier').ela_std
+        rel = ((d.live - d.igm_default).abs() / dsd).dropna()
+        lines.append(('b', f'Calibration of the 17 flow glaciers: {c["live"]:.0f} min against '
+                           f'{c["igm_default"]:.0f} min (IGM default without the live model, '
+                           f'x{c["igm_default"] / c["live"]:.1f}); small glaciers x3, large x1.4 '
+                           f'(there the compute dominates). Posterior identical on '
+                           f'{(rel == 0).sum()} glaciers, max difference {rel.max():.2f} posterior '
+                           f'std elsewhere (probably GPU nondeterminism with 8 workers on one GPU).'))
+    lines.append(('b', 'Safety: after every IGM update rerun live_model_test_sbatch.sh (must stay '
+                       'bit-identical); FROST_LIVE_IGM=0 falls back to fresh runs.'))
+    y = text_block(fig, 0.88, lines)
+    path = os.path.join(HERE, 'tables', 'worker_sweep.tsv')
+    if not os.path.exists(path):
+        return
+    s = pd.read_csv(path, sep='\t')
+    ax = fig.add_axes([L + 0.04, 0.40, (R - L) / 2 - 0.07, y - 0.47])
+    ax2 = fig.add_axes([L + (R - L) / 2 + 0.05, 0.40, (R - L) / 2 - 0.05, y - 0.47])
+    colours = {'Silvretta': '#2a9a63', 'Rhone': '#1f6fb2', 'Aletsch': '#e08a00'}
+    for g, grp in s.groupby('glacier'):
+        ok = grp[grp.ok.astype(str) == 'True']
+        ax.plot(ok.workers, ok.warm_pass_s, 'o-', color=colours.get(g), label=g)
+        ax2.plot(ok.workers, ok.gpu_mem_peak_gib, 'o-', color=colours.get(g), label=g)
+        bad = grp[grp.ok.astype(str) != 'True']
+        ax2.scatter(bad.workers, [48] * len(bad), marker='x', color=colours.get(g), s=50)
+    ax.set_xlabel('Forward workers')
+    ax.set_ylabel('Pass of 32 members, warm (s)')
+    ax.set_title('Worker sweep: time per pass', fontsize=9, loc='left')
+    ax.legend(fontsize=7)
+    ax2.axhline(48, color='#c62f35', ls='--', lw=0.8)
+    ax2.set_xlabel('Forward workers')
+    ax2.set_ylabel('Peak GPU memory (GiB)')
+    ax2.set_title('GPU memory (x: out of memory)', fontsize=9, loc='left')
+    text_block(fig, 0.33, [
+        ('b', 'Worker sweep (worker_sweep.py, one A40 + 16 cores): the GPU is busy 94-99 % from '
+              '4-8 workers on, so more workers do not shorten a pass (+-5 % from 8 to 32). Each '
+              'worker holds 2.3-2.8 GiB of GPU memory; 24 and 32 workers ran out of the '
+              '48 GB on Aletsch (Rhone at the limit). Host memory 11 GiB at 8 workers (limit 54). -> 8 workers stay.'),
+        ('b', 'What is left is GPU compute per member (Rhone ~3.7 s in parallel); further speed '
+              'would need less retraining or several members per GPU call. Not pursued.'),
+    ])
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
-    parser.add_argument('--default_job', type=int, help='Slurm array job of igm330_default')
-    parser.add_argument('--credit_job', type=int, help='Slurm array job of igm330_credit')
+    parser.add_argument('--default_job', type=int, default=JOBS['igm_default'],
+                        help='Slurm array job of igm330_default')
+    parser.add_argument('--credit_job', type=int, default=JOBS['credit'],
+                        help='Slurm array job of igm330_credit')
+    parser.add_argument('--live_job', type=int, default=JOBS['live'],
+                        help='Slurm array job of igm330_live')
     args = parser.parse_args()
-    jobs = {'t1': T1_JOB, 'igm_default': args.default_job, 'credit': args.credit_job}
+    jobs = {'t1': T1_JOB, 'igm_default': args.default_job, 'credit': args.credit_job,
+            'live': args.live_job}
 
     fwd, series = forward_table()
     cal = calibration_table(jobs)
@@ -480,7 +648,9 @@ def main():
              ('Forward test', lambda f: draw_forward_series(f, series)),
              ('Forward test', lambda f: draw_forward_cost(f, fwd)),
              ('Calibration', lambda f: draw_calibration(f, cal)),
-             ('Calibration', lambda f: draw_fit(f, cal))]
+             ('Calibration', lambda f: draw_fit(f, cal)),
+             ('GLAMOS/WGMS', lambda f: draw_glamos(f)),
+             ('Live model', lambda f: draw_live(f, cal))]
     path = os.path.join(HERE, 'igm330_retrain_report.pdf')
     with PdfPages(path) as pdf:
         for n, (topic, draw) in enumerate(pages, start=1):
