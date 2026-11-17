@@ -314,10 +314,12 @@ class EnsembleKalmanFilter:
                 new_velsurf_mag_ensemble[member_id] = new_velsurf_mag
                 new_divflux_ensemble[member_id] = new_divflux
 
-            if self.emulator_retrain:
+            if self.emulator_retrain and not IGM_wrapper.LIVE_IGM:
                 # each retraining compiles new graphs that a kept worker never
                 # frees: the workers ran out of memory after 4 forward runs
-                # (central_europe_retrain, 2026-10-23); fresh workers each run
+                # (central_europe_retrain, 2026-10-23); fresh workers each run.
+                # The live IGM model compiles once per worker and glacier, so
+                # its workers are kept (and keep their compiled model).
                 self.close()
 
         else:

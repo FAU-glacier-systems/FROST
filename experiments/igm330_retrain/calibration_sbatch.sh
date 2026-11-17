@@ -8,6 +8,7 @@
 # Submit from an Alex login node, in the repo root:
 #   sbatch --array=1-17 experiments/igm330_retrain/calibration_sbatch.sh igm330_default
 #   sbatch --array=1-17 experiments/igm330_retrain/calibration_sbatch.sh igm330_credit
+#   sbatch --array=1-17 experiments/igm330_retrain/calibration_sbatch.sh igm330_live
 
 #SBATCH --nodes=1
 #SBATCH --partition=a40
@@ -23,7 +24,7 @@ export https_proxy=http://proxy:80
 module load python
 conda activate igm32-frost
 
-EXPERIMENT=experiments/${1:?experiment: igm330_default or igm330_credit}
+EXPERIMENT=experiments/${1:?experiment: igm330_default, igm330_credit or igm330_live}
 read -r RGI_ID NAME <<< "$(sed -n "${SLURM_ARRAY_TASK_ID}p" "$EXPERIMENT/glaciers.txt")"
 echo "Task ${SLURM_ARRAY_TASK_ID}: ${RGI_ID} (${NAME}), $EXPERIMENT"
 python -c 'import importlib.metadata as m; print("IGM", m.version("igm-model"))'

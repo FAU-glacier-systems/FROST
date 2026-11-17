@@ -1,0 +1,4 @@
+glacier	workers	cores	pass_	ok	seconds	gpu_mem_peak_mib	gpu_util_mean	host_workers_peak_mib	job_peak_mib	job_limit_mib
+Rhone	24	16	1	True	185.61	48487.00	71.54	45308.75	32260.20	55200.00
+Rhone	24	16	2	True	118.42	48487.00	98.22	45365.51	32344.77	55200.00
+Rhone	24	16	3	True	117.65	48487.00	99.13	45422.15	32404.25	55200.00

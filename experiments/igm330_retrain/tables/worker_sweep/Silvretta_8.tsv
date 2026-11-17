@@ -1,0 +1,4 @@
+glacier	workers	cores	pass_	ok	seconds	gpu_mem_peak_mib	gpu_util_mean	host_workers_peak_mib	job_peak_mib	job_limit_mib
+Silvretta	8	16	1	True	76.89	8590.00	39.57	15142.37	11530.15	55200.00
+Silvretta	8	16	2	True	28.04	8590.00	94.21	15036.16	11530.15	55200.00
+Silvretta	8	16	3	True	28.06	8590.00	94.89	15056.27	11530.15	55200.00

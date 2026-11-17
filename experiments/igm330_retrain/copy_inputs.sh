@@ -2,14 +2,14 @@
 # Copyright (C) 2024-2026 Oskar Herrmann
 # Published under the GNU GPL (Version 3), check the LICENSE file
 
-# Inputs of igm330_default and igm330_credit: Preprocess (download,
+# Inputs of igm330_default, igm330_credit and igm330_live: Preprocess (download,
 # inversion, emulator) of each glacier from central_europe_retrain, as
 # central_europe_retrain_t1, so only IGM 3.3.0 and the retraining rule
 # differ. From the repo root:
 #   bash experiments/igm330_retrain/copy_inputs.sh
 
 SRC=data/results/central_europe_retrain
-for DST in data/results/igm330_default data/results/igm330_credit; do
+for DST in data/results/igm330_default data/results/igm330_credit data/results/igm330_live; do
     while read -r RGI_ID NAME; do
         [ -n "$RGI_ID" ] || continue
         [ -d "$SRC/$RGI_ID/Preprocess" ] || { echo "$NAME: no inputs in $SRC"; continue; }

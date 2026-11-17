@@ -1,0 +1,4 @@
+glacier	workers	cores	pass_	ok	seconds	gpu_mem_peak_mib	gpu_util_mean	host_workers_peak_mib	job_peak_mib	job_limit_mib
+Aletsch	16	16	1	True	204.61	37787.00	78.72	30257.12	22199.84	55200.00
+Aletsch	16	16	2	True	152.18	37787.00	99.36	30229.54	22233.03	55200.00
+Aletsch	16	16	3	True	152.10	37787.00	99.43	30253.29	22233.03	55200.00

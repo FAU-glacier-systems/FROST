@@ -78,15 +78,160 @@ def reset_igm_tf_functions():
     return len(fresh)
 
 
+# In-process runs reuse one live IGM model per process (LiveIGM): ~5x faster
+# per member, bit-identical to fresh runs (experiments/igm330_retrain,
+# 2026-11-17: Rhone 5.5 vs 27.5 s). FROST_LIVE_IGM=0 switches it off.
+LIVE_IGM = os.environ.get('FROST_LIVE_IGM', '1') != '0'
+
+
+class LiveIGM:
+    """Runs IGM members one after the other in one process, keeping IGM's
+    compiled ice-flow objects, without IGM source changes.
+
+    The first member of a glacier is a plain in-process igm_run; its module
+    lists, cfg and state are captured, and the network weights right before
+    the initial training. Every next member with the same setup (same
+    ensemble folder, same params.yaml apart from SMB and time) gets a new
+    State, initialised as igm_run does it, except iceflow: the kept mapping,
+    optimizer (traced minimize), evaluator parameters and discretisation are
+    put back, the weights reset to the captured ones, the Adam moments
+    zeroed, then IGM's own initial solve (solve_iceflow(init=True)) and
+    evaluation, and IGM's update/finalize loop. cfg = the first cfg merged
+    with the member's params.yaml. Another setup starts again with a plain
+    run. Nothing is retraced, so no compiled graphs pile up either."""
+
+    def __init__(self):
+        self.base = None  # dict: key, cfg, modules, state, w0
+
+    @staticmethod
+    def _key(workdir, params):
+        """What the kept objects depend on: the glacier (ensemble folder,
+        hence the grid), the module lists and the iceflow, input, output and
+        core settings. SMB/climate and time settings (member parameters) are
+        read again by every member's initialize."""
+        kept = {k: params.get(k) for k in ('defaults', 'inputs', 'outputs', 'core')}
+        kept['iceflow'] = params.get('processes', {}).get('iceflow')
+        return (os.path.dirname(os.path.abspath(workdir)),
+                json.dumps(kept, sort_keys=True, default=str))
+
+    def run(self, workdir):
+        with open(os.path.join(workdir, 'experiment', 'params.yaml')) as f:
+            params = yaml.safe_load(f)
+        key = self._key(workdir, params)
+        if self.base is None or self.base['key'] != key:
+            self.base = None  # free the old glacier's model before the new one
+            self._capture_run(workdir, key)
+            return
+        try:
+            self._live_run(workdir, params)
+        except Exception:
+            self.base = None  # next member starts again with a plain run
+            raise
+
+    def _capture_run(self, workdir, key):
+        import igm.igm_run as R
+        import igm.processes.iceflow.unified.unified as U
+        cap = {}
+        orig = R.setup_igm_modules, R.finalize_modules, U.solve_iceflow
+
+        def setup(cfg, state):
+            cap['modules'] = orig[0](cfg, state)
+            return cap['modules']
+
+        def final(modules, cfg, state):
+            cap['cfg'], cap['state'] = cfg, state
+            return orig[1](modules, cfg, state)
+
+        def solve(cfg, state, init=False):
+            if init and 'w0' not in cap:
+                cap['w0'] = [v.numpy() for v in state.iceflow_model.variables]
+            return orig[2](cfg, state, init=init)
+
+        R.setup_igm_modules, R.finalize_modules, U.solve_iceflow = setup, final, solve
+        try:
+            _run_igm_main(workdir)
+        finally:
+            R.setup_igm_modules, R.finalize_modules, U.solve_iceflow = orig
+        if {'modules', 'cfg', 'state', 'w0'} <= set(cap):
+            self.base = dict(cap, key=key)
+
+    def _reset_iceflow(self, cfg, state):
+        from igm.processes.iceflow.utils.fields import initialize_iceflow_fields
+        from igm.processes.iceflow.unified.solver import solve_iceflow
+        from igm.processes.iceflow.unified.evaluator import evaluate_iceflow
+        state0 = self.base['state']
+        state.iceflow_initialized = True
+        state.iceflow = state0.iceflow
+        state.iceflow_model = state0.iceflow_model
+        state.vert_weight = state0.vert_weight
+        initialize_iceflow_fields(cfg, state)
+        for v, w in zip(state.iceflow_model.variables, self.base['w0']):
+            v.assign(w)
+        adam = getattr(state.iceflow.optimizer, 'optim_adam', None)
+        if adam is not None:
+            for v in adam.variables:
+                if 'learning_rate' not in v.name:
+                    v.assign(np.zeros(v.shape, v.dtype.as_numpy_dtype
+                                      if hasattr(v.dtype, 'as_numpy_dtype') else v.dtype))
+        solve_iceflow(cfg, state, init=True)
+        evaluate_iceflow(cfg, state)
+
+    def _live_run(self, workdir, params):
+        from datetime import datetime
+        from pathlib import Path
+        from omegaconf import OmegaConf
+        from igm.common import State, update_modules, finalize_modules
+        params = {k: v for k, v in params.items() if k not in ('hydra', 'defaults')}
+        cfg = OmegaConf.merge(self.base['cfg'], OmegaConf.create(params))
+        inputs, processes, assimilations, outputs = self.base['modules']
+        workdir = os.path.abspath(workdir)
+        rundir = os.path.join(workdir, 'outputs', 'forward')
+        os.makedirs(rundir, exist_ok=True)
+        cwd = os.getcwd()
+        os.chdir(rundir)
+        try:
+            state = State()
+            state.original_cwd = Path(workdir)
+            state.saveresult = True
+            state.start_time = datetime.now()
+            for m in inputs:
+                m.run(cfg, state)
+            for m in outputs:
+                m.initialize(cfg, state)
+            combined = assimilations + processes
+            for m in combined:
+                if m.__name__.split('.')[-1] == 'iceflow':
+                    self._reset_iceflow(cfg, state)
+                else:
+                    m.initialize(cfg, state)
+            update_modules(combined, outputs, cfg, state)
+            finalize_modules(combined, cfg, state)
+        finally:
+            os.chdir(cwd)
+
+
+_LIVE = LiveIGM()
+
+
 def run_igm(workdir, in_process=False):
-    """igm_run +experiment=params in workdir. in_process: call IGM's main()
-    in this process instead of starting igm_run, so TensorFlow, CUDA and
-    IGM are loaded once per process, not once per run (G02: 18.9 s per
-    igm_run, 2.6 s per call after the first). For worker processes that run
-    one member at a time: changes the working directory while it runs."""
+    """igm_run +experiment=params in workdir. in_process: run IGM in this
+    process instead of starting igm_run, so TensorFlow, CUDA and IGM are
+    loaded once per process, not once per run (G02: 18.9 s per igm_run,
+    2.6 s per call after the first), and with LIVE_IGM the compiled ice-flow
+    model is kept between members of a glacier (LiveIGM). For worker
+    processes that run one member at a time: changes the working directory
+    while it runs."""
     if not in_process:
         subprocess.run(["igm_run", "+experiment=params"], cwd=workdir)
         return
+    if LIVE_IGM:
+        _LIVE.run(workdir)
+    else:
+        _run_igm_main(workdir)
+
+
+def _run_igm_main(workdir):
+    """IGM's main() in this process, in workdir."""
     import sys
     from igm.igm_run import main as igm_main
     cwd, argv = os.getcwd(), sys.argv
