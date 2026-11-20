@@ -612,6 +612,19 @@ def observed_speed_map_panel(ax, g):
 
 
 def plot_glacier(g, stats, path, name, rgi_id):
+    """The glacier page as PNG (REPORT.md) and its data as glacier.pkl next
+    to it, from which write_pdf draws the page again as vector graphics."""
+    fig = glacier_figure(g, stats, name, rgi_id)
+    fig.savefig(path, dpi=DPI)
+    plt.close(fig)
+    try:
+        with open(os.path.join(os.path.dirname(path), 'glacier.pkl'), 'wb') as f:
+            pickle.dump(dict(g=g, stats=stats, name=name, rgi_id=rgi_id), f)
+    except Exception as error:  # the PDF then takes the PNG
+        print(f'{name}: page data not kept ({error})')
+
+
+def glacier_figure(g, stats, name, rgi_id):
     """One A4 page, 3 x 2: thickness with GlaThiDa and speed by elevation
     band; band profile of dh/dt and SMB against GLAMOS / WGMS (both with
     minus the flux divergence); dh/dt and speed misfit maps. Without ice
@@ -675,8 +688,7 @@ def plot_glacier(g, stats, path, name, rgi_id):
     for i, (ax, (panel, key)) in enumerate(zip(axes.flat, panels)):
         panel(ax, g, stats) if panel is thickness_panel else panel(ax, g)
         caption(ax, f'({"abcdef"[i]}) {captions[key]}')
-    fig.savefig(path, dpi=DPI)
-    plt.close(fig)
+    return fig
 
 
 # ------------------------------------------------------ overview pages
@@ -818,8 +830,8 @@ def speed_time(ax, summary, data, colors, styles):
     """Glacier-mean forward speed relative to the observed, in time."""
     for d, c, style in zip(data, colors, styles):
         ax.plot(d['years'], d['speed_series'] / d['speed_obs_regions'][0], color=c, lw=1, ls=style)
-    ax.axhline(1, color=fg(), lw=0.8)
-    ax.axvspan(2014, 2022, color='gray', alpha=0.15, lw=0)
+    ax.axhline(1, color=fg(), lw=0.8, label='forward = observed')
+    ax.axvspan(2014, 2022, color='gray', alpha=0.15, lw=0, label='ITS_LIVE period 2014-2022')
     ax.set_yscale('log')
     plain_log_axis(ax.yaxis, [0.5, 0.75, 1, 1.5, 2, 3, 5, 10])
     ax.xaxis.set_major_locator(matplotlib.ticker.MaxNLocator(integer=True))
@@ -832,14 +844,19 @@ def speed_time(ax, summary, data, colors, styles):
 def dhdt_scatter(ax, summary, colors, markers):
     """Glacier-mean dh/dt, model against Hugonnet."""
     ax.errorbar(summary.dhdt_obs, summary.dhdt_model, xerr=2 * summary.dhdt_obs_sigma,
-                yerr=2 * summary.dhdt_model_std, fmt='none', ecolor='0.5', lw=0.5, alpha=0.4)
+                yerr=2 * summary.dhdt_model_std, fmt='none', ecolor='0.5', lw=0.5, alpha=0.4,
+                label='+-2 sigma (Hugonnet), +-2 std (members)')
     flat = no_flow(summary)
     for i, row in enumerate(summary.itertuples()):
         ax.scatter(row.dhdt_obs, row.dhdt_model, marker=markers[i], s=22, zorder=3, lw=1,
                    facecolors='none' if flat[i] else colors[i], edgecolors=colors[i])
     low = min(summary.dhdt_obs.min(), summary.dhdt_model.min()) - 0.2
     high = max(summary.dhdt_obs.max(), summary.dhdt_model.max()) + 0.2
-    ax.plot([low, high], [low, high], '--', color=fg(), lw=0.8)
+    ax.plot([low, high], [low, high], '--', color=fg(), lw=0.8, label='1:1')
+    if flat.any():
+        ax.scatter([], [], marker='o', s=22, facecolors='none', edgecolors=fg(),
+                   label='open: without ice flow')
+    ax.legend(fontsize=6, loc='upper left')
     ax.set_xlim(low, high)
     ax.set_ylim(low, high)
     ax.set_aspect('equal')
@@ -1207,9 +1224,10 @@ def velocity_page(summary, data):
         ax.scatter(row.speed_obs, row.speed_forward_obs_year, color=colors[i], marker=markers[i],
                    s=24, zorder=3)
     low, high = 0.2, 1.5 * max(summary.speed_obs.max(), summary.speed_forward_obs_year.max())
-    ax.plot([low, high], [low, high], '--', color=fg(), lw=0.8)
+    ax.plot([low, high], [low, high], '--', color=fg(), lw=0.8, label='1:1')
     ax.fill_between([low, high], [low / 1.33, high / 1.33], [low * 1.33, high * 1.33],
-                    color='gray', alpha=0.2, lw=0)
+                    color='gray', alpha=0.2, lw=0, label='+-33 %')
+    ax.legend(fontsize=6, loc='upper left')
     for row, name in zip(summary.itertuples(), names):
         if abs(np.log(row.speed_ratio_obs)) > np.log(1.5):
             ax.annotate(name, (row.speed_obs, row.speed_forward_obs_year), fontsize=5.5,
@@ -1231,16 +1249,18 @@ def velocity_page(summary, data):
 
     ax = fig.add_subplot(grid[0, 1])
     name_bars(ax, summary, summary.speed_start_ratio, colors, f'Forward 2000 / forward {year:g}')
-    ax.axvline(1, color=fg(), lw=0.6)
-    ax.axvline(2, color='r', ls='--', lw=0.8)
+    ax.axvline(1, color=fg(), lw=0.6, label='no change')
+    ax.axvline(2, color='r', ls='--', lw=0.8, label='2x: start-up shock')
     ax.set_xscale('log')
     plain_log_axis(ax.xaxis, [1, 1.5, 2, 3, 5, 8])
+    ax.legend(fontsize=6, loc='upper right')
     ax.set_title('Start-up of the forward runs', fontsize=9)
     caption(ax, f'(b) Forward speed of 2000 against that of {year:g}. Red dashed: 2x, the flag of a '
                 'start-up shock (ice flow out of balance with the geometry of 2000).')
 
     ax = fig.add_subplot(grid[1, :])
     speed_time(ax, summary, data, colors, styles)
+    ax.legend(fontsize=6, loc='upper right')
     caption(ax, '(c) Glacier-mean forward speed (median of the members) relative to ITS_LIVE, every '
                 'year; grey: observation period 2014-2022. Colour, marker and line style of each '
                 'glacier as in the legend (tab10, then lighter shades with dashed lines from the '
@@ -1265,8 +1285,9 @@ def dhdt_page(summary, data):
     for d, c, style in zip(data, colors, styles):
         ax.plot(d['band_residual'], d['band_rel_elevation'], color=c, lw=0.8, alpha=0.8, ls=style)
         profiles.append(np.interp(grid, d['band_rel_elevation'], d['band_residual']))
-    ax.plot(np.median(profiles, 0), grid, '-', color=fg(), lw=2.2)
+    ax.plot(np.median(profiles, 0), grid, '-', color=fg(), lw=2.2, label='median of the glaciers')
     ax.axvline(0, color=fg(), lw=0.6)
+    ax.legend(fontsize=6, loc='upper left')
     ax.set_xlim(-3, 3)
     ax.set_xlabel('Band dh/dt, model - observed (m/yr)')
     ax.set_ylabel('Relative elevation (0 tongue, 1 top)')
@@ -1277,8 +1298,9 @@ def dhdt_page(summary, data):
 
     ax = axes[1, 0]
     name_bars(ax, summary, summary.dhdt_chi2_data, colors, 'Band chi2 / n (data error)')
-    ax.axvline(1, color=fg(), lw=0.6)
-    ax.axvline(4, color='r', ls='--', lw=0.8)
+    ax.axvline(1, color=fg(), lw=0.6, label='1: within the error')
+    ax.axvline(4, color='r', ls='--', lw=0.8, label='4: flagged')
+    ax.legend(fontsize=6, loc='lower right')
     ax.set_xscale('log')
     plain_log_axis(ax.xaxis, [0.1, 0.3, 1, 2, 4, 10, 30])
     ax.set_title('Band misfit per glacier', fontsize=9)
@@ -1301,7 +1323,11 @@ def dhdt_page(summary, data):
         observed, modelled = np.concatenate(observed), np.concatenate(modelled)
         low = min(observed.min(), modelled.min()) - 0.3
         high = max(observed.max(), modelled.max()) + 0.3
-        ax.plot([low, high], [low, high], '--', color=fg(), lw=0.8)
+        ax.plot([low, high], [low, high], '--', color=fg(), lw=0.8, label='1:1')
+        if flat.any():
+            ax.scatter([], [], marker='o', s=12, facecolors='none', edgecolors=fg(),
+                       label='open: without ice flow')
+        ax.legend(fontsize=6, loc='upper left')
         ax.set_xlim(low, high)
         ax.set_ylim(low, high)
         ax.set_aspect('equal')
@@ -1351,7 +1377,7 @@ def profile_page(summary, profiles):
                                     'SMB, mean +- 2 std of the members (m ice x 0.91). x: m w.e./yr, '
                                     'y: elevation (m). Compares the SMB directly, without the ELA and '
                                     'gradient definitions of the references.')
-    grid = fig.add_gridspec(rows, 5, left=0.07, right=0.97, top=0.9, bottom=0.08,
+    grid = fig.add_gridspec(rows, 5, left=0.07, right=0.97, top=0.9, bottom=0.11,
                             hspace=0.75, wspace=0.45)
     colors, _, _ = glacier_style(summary)
     for i, (row, name, color) in enumerate(zip(summary.itertuples(), labels(summary), colors)):
@@ -1378,6 +1404,14 @@ def profile_page(summary, profiles):
         text = (f'{len(profiles)} glaciers: RMSE {rmse.mean():.2f}, bias {bias.mean():+.2f} m w.e./yr, '
                 f'{100 * inside.mean():.0f} % of the bins within +-2 std.')
         fig.text(0.06, 0.03, text, fontsize=7, color=muted())
+    from matplotlib.lines import Line2D
+    handles = [Line2D([], [], ls='none', marker='o', color=fg(), ms=3),
+               Line2D([], [], color=fg(), lw=1.2),
+               matplotlib.patches.Patch(color=fg(), alpha=0.3, lw=0)]
+    fig.legend(handles, ['GLAMOS / WGMS, bins with >= 10 years',
+                         'posterior mean (colour of the glacier)', 'posterior +- 2 std'],
+               loc='lower center', bbox_to_anchor=(0.5, 0.045), ncol=3, fontsize=6.5,
+               frameon=False)
     return fig
 
 
@@ -1425,7 +1459,13 @@ def reference_page(summary, folder):
         lim = [min(every), max(every)]
         pad = 0.08 * (lim[1] - lim[0])
         lim = [lim[0] - pad, lim[1] + pad]
-        ax.plot(lim, lim, '--', color=fg(), lw=0.8)
+        ax.plot(lim, lim, '--', color=fg(), lw=0.8, label='1:1')
+        ax.errorbar([], [], yerr=[], fmt='none', ecolor=fg(), alpha=0.45, lw=0.8,
+                    label='posterior +- 1 std')
+        if p == 'ela':
+            ax.scatter([], [], marker='o', s=24, facecolors='none', edgecolors=fg(),
+                       label='open: reference ELA at the top (lower bound)')
+        ax.legend(fontsize=6, loc='upper left')
         ax.set_xlim(lim)
         ax.set_ylim(lim)
         ax.set_aspect('equal')
@@ -1647,13 +1687,24 @@ def write_pdf(summary, data, out, results, settings, folder):
         for number, (topic, fig) in enumerate(pages, start=1):
             finish(pdf, fig, topic, number)
         for number, (name, folder_name) in enumerate(glaciers, start=len(pages) + 1):
-            fig = plt.figure(figsize=A4)
-            # the glacier page, slightly reduced: side margins, room for header and footer
-            ax = fig.add_axes([0.035, 0.02, 0.93, 0.955])
-            ax.imshow(plt.imread(os.path.join(out, folder_name, f'glacier{SUFFIX}.png')))
-            ax.axis('off')
-            finish(pdf, fig, name, number, dpi=DPI)
+            # dpi: resolution of the map images only; lines and text stay vectors
+            finish(pdf, glacier_page(out, folder_name), name, number, dpi=DPI)
     return path
+
+
+def glacier_page(out, folder_name):
+    """The glacier page as vector graphics from glacier.pkl, or the PNG
+    (runs from before glacier.pkl) inserted as an image."""
+    path = os.path.join(out, folder_name, 'glacier.pkl')
+    if os.path.exists(path):
+        with open(path, 'rb') as f:
+            page = pickle.load(f)
+        return glacier_figure(page['g'], page['stats'], page['name'], page['rgi_id'])
+    fig = plt.figure(figsize=A4)
+    ax = fig.add_axes([0.035, 0.02, 0.93, 0.955])
+    ax.imshow(plt.imread(os.path.join(out, folder_name, f'glacier{SUFFIX}.png')))
+    ax.axis('off')
+    return fig
 
 
 def write_markdown(summary, out, results):

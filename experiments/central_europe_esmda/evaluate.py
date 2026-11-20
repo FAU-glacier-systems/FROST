@@ -97,6 +97,55 @@ def melt_out(rgi_dir, elevation_step=50):
     return int(dead.sum()), provider.num_bins
 
 
+def ti_ela_gradients(result, rgi_dir, step=10.0):
+    """ELA (m) and ablation / accumulation gradient (m ice/yr per km) of a
+    TI posterior, defined as the references (extract_glamos_ela_gradients.py):
+    in every year 2000-2019 the altitude where the annual balance crosses
+    zero (the glacier top if it stays negative, as GLAMOS), and the
+    gradients fitted through it on the elevations with negative and with
+    positive balance (at least 3, 0 < gradient < 30 and < 10 m w.e. per km);
+    then the mean over the years. The balance is computed on the 2000
+    surface of the glacier in `step` m. Returns the mean and std over the
+    members of (ela, abl, acc)."""
+    from frost.glacier_model import no_flow
+    with Dataset(os.path.join(rgi_dir, 'Preprocess', 'data', 'input.nc')) as ds:
+        usurf = np.array(ds['usurf'][:], dtype=float)
+        ice = np.array(ds['icemask'][:]) > 0.5
+    z = np.arange(np.floor(usurf[ice].min() / step) * step, usurf[ice].max() + step, step)
+    climate = no_flow.load_climate(os.path.join(rgi_dir, 'climate_historical.nc'))
+    ti = no_flow.ti_from_results(result)
+    monthly = no_flow.ti_months(z[None], climate, no_flow.ti_params(ti, 2), 2000, 2019,
+                                ti['snow_ratio'])
+    first = (2000 - climate['yr_0']) * 12
+    annual = monthly[:, first:first + 240].reshape(len(monthly), 20, 12, len(z)).sum(2)
+
+    def gradient(b, ela, negative, limit):
+        mask = b < 0 if negative else b > 0
+        dz = (z[mask] - ela) / 1000
+        if mask.sum() < 3 or np.sum(dz ** 2) == 0:
+            return np.nan
+        g = np.sum(dz * b[mask]) / np.sum(dz ** 2)
+        return g if 0 < g < limit else np.nan
+
+    values = []
+    for member in annual:
+        years = []
+        for b in member:
+            if (b < 0).all():
+                ela = z[-1]
+            elif (b > 0).all():
+                ela = z[0]
+            else:
+                k = np.flatnonzero((b[:-1] < 0) & (b[1:] >= 0))
+                k = k[0] if len(k) else np.argmin(np.abs(b))
+                ela = z[k] + (z[k + 1] - z[k]) * -b[k] / (b[k + 1] - b[k]) \
+                    if k + 1 < len(z) and b[k + 1] != b[k] else z[k]
+            years.append((ela, gradient(b, ela, True, 30), gradient(b, ela, False, 10)))
+        values.append(np.nanmean(np.array(years), axis=0))
+    values = np.array(values) / np.array([1, ICE_TO_WE, ICE_TO_WE])
+    return np.nanmean(values, axis=0), np.nanstd(values, axis=0)
+
+
 def glacier_rows(glaciers, reference):
     censored = ela_censored_share([rgi_id for rgi_id, _ in glaciers])
     rows = []
@@ -111,9 +160,14 @@ def glacier_rows(glaciers, reference):
                 result = json.load(f)
             row = dict(rgi_id=rgi_id, glacier=name, run=run,
                        ela_censored=censored[rgi_id])
+            if 'melt_f' in result.get('initial_smb', {}):
+                # TI: from its SMB profile, the parameters are no ELA
+                mean, std = ti_ela_gradients(result, rgi_dir)
+            else:
+                mean, std = result['final_mean'], result['final_std']
             for k, (p, column) in enumerate(PARAMETERS.items()):
-                row[p] = result['final_mean'][k]
-                row[f'{p}_std'] = result['final_std'][k]
+                row[p] = mean[k]
+                row[f'{p}_std'] = std[k]
                 row[f'{p}_ref'] = ref[column]
             if run == 'new':
                 row['dead_bands'], row['bands'] = melt_out(rgi_dir)

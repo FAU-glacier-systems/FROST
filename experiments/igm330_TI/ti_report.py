@@ -396,8 +396,9 @@ def parameter_page(ti):
                   '+- 1 std (grey bar; the mean is OGGM\'s calibration of the glacier to the '
                   'Hugonnet glacier-wide mass balance) and the posterior mean of the earlier TI '
                   'calibration (open diamond). The band dh/dt pull the parameters away from OGGM\'s '
-                  'single-number fit; melt factor and temperature bias trade off (page ES-MDA).')
-    axes = sr.overview_grid(fig)
+                  'single-number fit; melt factor and temperature bias trade off (page ES-MDA). '
+                  + sr.NO_FLOW_NOTE + '.')
+    axes = sr.overview_grid(fig, top=0.82)
     y = np.arange(len(ti))
     for ax, (p, label, unit), letter in zip(axes.flat[:3], PARAMETERS, 'abc'):
         parameter_panel(ax, ti, p, label, unit)
@@ -407,7 +408,7 @@ def parameter_page(ti):
     for k, (p, label, _) in enumerate(PARAMETERS):
         ax.scatter(ti[p + '_spread_ratio'], y + (k - 1) * 0.22, s=14, color=colors,
                    marker=['o', 's', '^'][k], label=label)
-    ax.axvline(1, color=c['ELA'], lw=0.8)
+    ax.axvline(1, color=fg(), lw=0.8)
     ax.axvline(0.15, color=c['previous'], lw=0.8, ls='--')
     ax.set_yticks(y)
     ax.set_yticklabels(sr.labels(ti), fontsize=6)
@@ -417,12 +418,22 @@ def parameter_page(ti):
     ax.set_xlim(0, 1.1)
     sr.small(ax)
     ax.tick_params(axis='y', labelsize=6)
-    handles = [Line2D([], [], ls='none', marker=m, color=fg(), markersize=4) for m in 'os^']
-    ax.legend(handles, [p[0] for p in PARAMETERS], fontsize=6, loc='lower right')
+    # one legend for all panels, above them: none hides data
+    handles = [matplotlib.patches.Patch(color=c['ELA'], alpha=0.35, lw=0),
+               Line2D([], [], ls='none', marker='|', color=c['ELA'], markersize=7),
+               Line2D([], [], ls='-', marker='o', color=fg(), markersize=4, lw=1),
+               Line2D([], [], ls='none', marker='D', mfc='none', mec=fg(), markersize=4)] + \
+        [Line2D([], [], ls='none', marker=m, color=fg(), markersize=4) for m in 'os^'] + \
+        [Line2D([], [], color=fg(), lw=0.8), Line2D([], [], color=c['previous'], lw=0.8, ls='--')]
+    fig.legend(handles, ['(a-c) prior +- 1 std', '(a-c) prior mean (OGGM)',
+                         '(a-c) posterior mean +- 1 std', '(a-c) earlier TI, mean']
+               + [f'(d) {p[0]}' for p in PARAMETERS] + ['(d) 1: spread of the prior',
+                                                       '(d) 0.15: possible collapse'],
+               loc='upper center', bbox_to_anchor=(0.5, 0.89), ncol=5, fontsize=6, frameon=False)
     sr.caption(ax, '(d) Spread left after the calibration: posterior std over prior std (o melt '
                    'factor, s precipitation factor, ^ temperature bias). Dashed: 0.15, below it the '
                    'ensemble may have collapsed (32 members with ice flow).')
-    fig.text(0.06, 0.03, sr.NO_FLOW_NOTE, fontsize=6.5, color=sr.muted())
+    sr.glacier_legend(fig, ti, colors, markers)
     return fig
 
 
@@ -445,7 +456,8 @@ def esmda_page(ti, results_by_id):
                 color=colors[i], lw=0.9, markersize=2.5)
     ax.set_yscale('log')
     sr.plain_log_axis(ax.yaxis, [0.1, 0.3, 1, 3, 10])
-    ax.axhline(1, color=c['ELA'], lw=0.8)
+    ax.axhline(1, color=fg(), lw=0.8, label='1: fit within the error')
+    ax.legend(fontsize=6, loc='upper right')
     ax.set_xlabel('iteration')
     ax.xaxis.set_major_locator(matplotlib.ticker.MaxNLocator(integer=True))
     ax.set_ylabel('misfit chi2 / n')
@@ -460,7 +472,8 @@ def esmda_page(ti, results_by_id):
             path = [(x['parameter_mean'][j] - prior) / spread for x in result['diagnostics']]
             ax.plot(range(len(path)), path, ls=styles[i], marker=markers[i], color=colors[i],
                     lw=0.9, markersize=2.5)
-        ax.axhline(0, color=c['ELA'], lw=0.8)
+        ax.axhline(0, color=fg(), lw=0.8, label='prior mean')
+        ax.legend(fontsize=6, loc='best')
         ax.set_xlabel('iteration')
         ax.xaxis.set_major_locator(matplotlib.ticker.MaxNLocator(integer=True))
         ax.set_ylabel(f'{p}: (mean - prior) / prior std')
@@ -540,7 +553,8 @@ def season_page(ti, records_by_id):
         allx, ally = np.array(allx), np.array(ally)
         if len(allx) > 2:
             lim = [min(allx.min(), ally.min()) - 0.2, max(allx.max(), ally.max()) + 0.2]
-            ax.plot(lim, lim, color=c['ELA'], lw=0.8, ls='--')
+            ax.plot(lim, lim, color=fg(), lw=0.8, ls='--', label='1:1')
+            ax.legend(fontsize=6, loc='upper left')
             ax.set_xlim(lim)
             ax.set_ylim(lim)
             diff = ally - allx
@@ -554,7 +568,7 @@ def season_page(ti, records_by_id):
     for ax, (column, season), letter in zip(axes[1], [('winter_bias', 'winter'),
                                                       ('summer_bias', 'summer')], 'cd'):
         sr.name_bars(ax, ti, ti[column].fillna(0), colors, f'{season} bias, TI - measured (m w.e.)')
-        ax.axvline(0, color=c['ELA'], lw=0.8)
+        ax.axvline(0, color=fg(), lw=0.8)
         sr.caption(ax, f'({letter}) Mean {season} bias over the band-years of each glacier '
                        '(0: no seasonal data).')
     sr.glacier_legend(fig, ti, colors, markers)
@@ -577,7 +591,8 @@ def band_page(ti, records):
     r = records[ok]
     ax.scatter(r.ba, r.TI_ba, s=2, c=[colors[index[x]] for x in r.rgi_id], lw=0, alpha=0.6)
     lim = [min(r.ba.min(), r.TI_ba.min()) - 0.3, max(r.ba.max(), r.TI_ba.max()) + 0.3]
-    ax.plot(lim, lim, color=c['ELA'], lw=0.8, ls='--')
+    ax.plot(lim, lim, color=fg(), lw=0.8, ls='--', label='1:1')
+    ax.legend(fontsize=6, loc='upper left')
     ax.set_xlim(lim)
     ax.set_ylim(lim)
     ax.set_aspect('equal')
@@ -603,7 +618,7 @@ def band_page(ti, records):
     pooled = pd.concat(pooled).groupby('bin').mean()
     ax.plot((pooled.index + 0.5) / 5, pooled.ti, color=c['TI'], lw=2.2, label='TI, mean')
     ax.plot((pooled.index + 0.5) / 5, pooled.ela, color=c['ELA'], lw=2.2, ls='--', label='ELA, mean')
-    ax.axhline(0, color=c['ELA'], lw=0.8)
+    ax.axhline(0, color=fg(), lw=0.8)
     ax.set_xlabel('relative height of the band (0 lowest, 1 highest)')
     ax.set_ylabel('model - measured (m w.e.)')
     ax.legend(fontsize=6)
@@ -612,7 +627,9 @@ def band_page(ti, records):
                    'over all glaciers (thick); ELA calibration for comparison.')
     ax = axes[1, 0]
     sr.name_bars(ax, ti, ti.gw_r.fillna(0), colors, 'r of the glacier-wide balance between years')
-    ax.scatter(ti.ela_gw_r, np.arange(len(ti)), marker='|', s=40, color=fg(), zorder=3)
+    ax.scatter(ti.ela_gw_r, np.arange(len(ti)), marker='|', s=40, color=fg(), zorder=3,
+               label='ELA calibration')
+    ax.legend(fontsize=6, loc='lower left')
     ax.set_xlim(-1, 1)
     sr.caption(ax, '(c) Year-to-year glacier-wide balance: r of TI (bars) and of the ELA '
                    'calibration (|, only the period length varies).')
@@ -708,8 +725,8 @@ def glacier_page(row, result, previous, records, color):
         spread = result['initial_spread']
         ax.add_patch(matplotlib.patches.Rectangle(
             (prior[px] - spread[px], prior[py] - spread[py]), 2 * spread[px], 2 * spread[py],
-            facecolor=c['ELA'], alpha=0.2, lw=0))
-        ax.plot(prior[px], prior[py], 'x', color=c['ELA'], markersize=7, label='prior (OGGM) +- 1 std')
+            facecolor=c['ELA'], alpha=0.2, lw=0, label='prior +- 1 std'))
+        ax.plot(prior[px], prior[py], 'x', color=c['ELA'], markersize=7, label='prior mean (OGGM)')
         if previous is not None and px in previous['names'] and py in previous['names']:
             p = np.array(previous['final_ensemble'], dtype=float)
             ax.plot(p[:, previous['names'].index(px)].mean(), p[:, previous['names'].index(py)].mean(),
@@ -730,18 +747,22 @@ def glacier_page(row, result, previous, records, color):
         ax.plot(range(len(d)), [(x['parameter_mean'][k] - result['initial_smb'][p])
                                 / result['initial_spread'][p] for x in d],
                 marker='os^'[j], lw=1, markersize=3, color=[c['TI'], c['winter'], c['summer']][j], label=p)
-    ax.axhline(0, color=c['ELA'], lw=0.8)
+    ax.axhline(0, color=fg(), lw=0.5)
     twin = ax.twinx()
-    twin.plot(range(len(d)), [x['misfit'] for x in d], color=fg(), lw=0.8, ls=':', marker='.')
+    twin.plot(range(len(d)), [x['misfit'] for x in d], color=fg(), lw=0.8, ls=':', marker='.',
+              label='misfit chi2 / n')
     twin.set_ylabel('misfit chi2 / n (dotted)', fontsize=7)
     twin.tick_params(labelsize=6.5)
     twin.grid(False)
     ax.set_xlabel('iteration (0 prior)')
     ax.xaxis.set_major_locator(matplotlib.ticker.MaxNLocator(integer=True))
     ax.set_ylabel('(mean - prior) / prior std')
-    ax.legend(fontsize=5.5, loc='best')
+    handles, names_ = ax.get_legend_handles_labels()
+    more, more_names = twin.get_legend_handles_labels()
+    twin.legend(handles + more, names_ + more_names, fontsize=5.5, loc='best')
     sr.small(ax)
-    sr.caption(ax, '(c) ES-MDA: parameter means and misfit per iteration.')
+    sr.caption(ax, '(c) ES-MDA: parameter means (left axis) and misfit (right axis, dotted) per '
+                   'iteration.')
     panels = [grid[1, 1], grid[2, 0], grid[2, 1]]
     if records is None or not len(records):
         for k, slot in enumerate(panels):
@@ -774,11 +795,11 @@ def glacier_page(row, result, previous, records, color):
         seasonal = True
         ax.fill_between(wide.year, wide.model - 2 * wide['std'], wide.model + 2 * wide['std'],
                         color=c[key], alpha=0.2, lw=0)
-        ax.plot(wide.year, wide.model, color=c[key], lw=1.1, label=f'TI {label}')
+        ax.plot(wide.year, wide.model, color=c[key], lw=1.1, label=f'TI {label} (+- 2 std)')
         ax.plot(wide.year, wide.obs, color=c[key], lw=0, marker='o', markersize=2.5,
                 label=f'measured {label}')
     if seasonal:
-        ax.axhline(0, color=c['ELA'], lw=0.6)
+        ax.axhline(0, color=fg(), lw=0.5)
         ax.legend(fontsize=5.5, loc='best', ncol=2)
     else:
         ax.text(0.5, 0.5, 'no seasonal data', transform=ax.transAxes, ha='center', color=sr.muted(),
@@ -793,11 +814,11 @@ def glacier_page(row, result, previous, records, color):
     if len(profile):
         ax.fill_betweenx(profile.z, profile.ti - 2 * profile.ti_std, profile.ti + 2 * profile.ti_std,
                          color=c['TI'], alpha=0.3, lw=0)
-        ax.plot(profile.ti, profile.z, color=c['TI'], lw=1.2, label='TI')
+        ax.plot(profile.ti, profile.z, color=c['TI'], lw=1.2, label='TI (+- 2 std)')
         ax.plot(profile.ela, profile.z, color=c['ELA'], lw=1, ls='--', label='ELA')
         ax.plot(profile.obs, profile.z, color=c['obs'], lw=0.9, marker='o', markersize=2.5,
                 label=row.source)
-        ax.axvline(0, color=c['ELA'], lw=0.6)
+        ax.axvline(0, color=fg(), lw=0.5)
         ax.legend(fontsize=5.5, loc='best')
     ax.set_xlabel('mean annual balance (m w.e./yr)')
     ax.set_ylabel('elevation (m)')
@@ -938,14 +959,9 @@ def main():
             finish(pdf, fig, topic, number)
         for i, row in enumerate(ti.itertuples()):
             title = row.glacier.replace('_', ' ')
-            png = os.path.join(sanity_dir, row.glacier, f'glacier{suffix}.png')
-            fig = plt.figure(figsize=sr.A4)
-            ax = fig.add_axes([0.035, 0.02, 0.93, 0.955])
-            if os.path.exists(png):
-                ax.imshow(plt.imread(png))
-            ax.axis('off')
             number += 1
-            finish(pdf, fig, f'{title}: geometry, speed, dh/dt', number, dpi=sr.DPI)
+            finish(pdf, sr.glacier_page(sanity_dir, row.glacier),
+                   f'{title}: geometry, speed, dh/dt', number, dpi=sr.DPI)
             fig = glacier_page(row, results_by_id[row.rgi_id], previous_by_id[row.rgi_id],
                                records_by_id[row.rgi_id], colors[i])
             target = os.path.join(out, row.glacier)
