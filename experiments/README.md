@@ -64,6 +64,9 @@ doi:10.5194/tc-20-3817-2026):
 | `central_europe_noflow` | no-flow part of the reference; on slow glaciers the SMB profiles are as good as with IGM |
 | `central_europe_TI`, `central_europe_TI_meltout` | temperature-index SMB: interannual variability reproduced, mean profile as with the ELA model; leaving out melted-out bands changes little |
 | `central_europe_TI_slowflow`, `central_europe_TI_combined` | TI with ice flow on glaciers of 5-10 m/yr; combined TI run |
+| `igm330_retrain` (`igm330_default`, `igm330_credit`, `igm330_live`) | IGM 3.3.0: emulator retraining rules and the live IGM model (members of a glacier in one process, same results, ~4x faster); credit is the default since 2026-11-20 |
+| `igm330_credit_combined`, `igm330_live_combined` | ELA calibration of the 25 glaciers on IGM 3.3.0 with credit / igm_default retraining: the same scores as the v2.0 reference (SMB profile RMSE 0.91, ELA r 0.82) |
+| `igm330_TI` | TI calibration on IGM 3.3.0 (live IGM model, credit retraining, 5 m/yr split): same scores as `central_europe_TI_combined`; glacier-wide balance per year r 0.76 (ELA 0.08), report `ti_report.py` |
 | `central_europe_TI_snow`, `central_europe_TI_snow_lapse`, `central_europe_TI_flow_snow_lapse` | snow/ice melt factors and a calibrated lapse rate: profile shape closer to GLAMOS, but no better overall |
 | `central_europe_combined`, `central_europe_esmda_velyear` | the same with the frozen emulator: start-up speed shock |
 | `central_europe_esmda` | first IGM 3.2 + ES-MDA run; tongues of large glaciers starve when tau_ref is fitted on the 2000 geometry |
