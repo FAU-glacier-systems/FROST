@@ -917,6 +917,19 @@ def calibration_text(enkf):
             f'model error {enkf.get("model_error", 0)} m/yr')
 
 
+# EnKF emulator_retrain: true (IGM 3.2.1 + retrain_interval) or a rule of
+# igm_wrapper.RETRAIN_RULES (IGM 3.3.0)
+RETRAIN_TEXT = {
+    'True': 'retrained in the forward runs (emulator_retrain: true; IGM 3.2.1: 300 iterations at '
+            'the start, 20 every step, or 5 every 5 steps where 5 steps < 0.9 yr; IGM 3.3.0: the '
+            'credit rule)',
+    'igm_default': 'retrained in the forward runs (IGM 3.3.0: 300 iterations at the start, '
+                   'then 5 every 5 steps)',
+    'credit': 'retrained in the forward runs (IGM 3.3.0 credit: 300 iterations at the start, '
+              'then 5 whenever the inputs changed by kappa 1e-3)',
+}
+
+
 def igm_text(enkf, inversion):
     """Inversion, emulator and calibration settings of an IGM run."""
     frost = inversion.get('frost') or {}
@@ -940,8 +953,7 @@ def igm_text(enkf, inversion):
     nbit = unified.get('nbit_init', 0) or 0
     lines.append(f'Emulator: {network}, ' + (f'retrained {nbit} iterations before the inversion'
                                             if nbit else 'frozen in the inversion') + ', '
-                 + ('retrained in the forward runs (300 iterations at the start; 20 every step, '
-                    'or 5 every 5 steps where 5 steps < 0.9 yr)'
+                 + (RETRAIN_TEXT.get(str(enkf.get('emulator_retrain')), RETRAIN_TEXT['True'])
                     if enkf.get('emulator_retrain') else 'frozen in the forward runs'))
     lines.append(f'Calibration: {calibration_text(enkf)}'
                  + (f', speed cap {enkf["max_velbar"]} m/yr' if enkf.get('max_velbar') else ''))

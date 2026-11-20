@@ -274,11 +274,14 @@ RETRAIN_RULES = {
     'credit': {'nbit': 5, 'retrain_freq': 5,
                'adaptive_time': {'method': 'credit'}},
 }
-# emulator_retrain: true picks this rule. IGM default (experiments/igm330_retrain,
-# 2026-11-16): same calibration as the fork rule and credit, fastest (254 vs
-# 307 min for the 17 flow glaciers); on IGM 3.3.0 no more jumps on slow
-# glaciers (Corbassiere 6 % from the solver, 27 % on 3.2.1)
-DEFAULT_RETRAIN_RULE = 'igm_default'
+# emulator_retrain: true picks this rule. credit (2026-11-20): the same
+# calibration as igm_default (experiments/igm330_retrain) and the same speeds
+# (17 flow glaciers: forward / ITS_LIVE 1.04 against 1.09), but on slow
+# glaciers with long time steps igm_default lowers the speed in steps (every
+# 5 steps), credit smoothly (experiments/igm330_TI/README.md); igm_default
+# was faster (254 against 307 min for the 17 glaciers, before the live IGM
+# model)
+DEFAULT_RETRAIN_RULE = 'credit'
 
 
 def retrain_rule(emulator_retrain):
