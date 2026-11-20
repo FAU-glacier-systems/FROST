@@ -27,7 +27,10 @@ Rhone (as timing_test.py), 8 members with different ELAs, emulator retraining
     python live_model_test.py live    live model
     python live_model_test.py compare differences live vs fresh per member
 fresh also reruns member 0 at the end (noise floor of two fresh runs).
+An optional second argument picks the retrain rule (igm_wrapper.RETRAIN_RULES,
+default igm_default); other rules write to igm330_live_test_<rule>.
     sbatch experiments/igm330_retrain/live_model_test_sbatch.sh
+    RULE=credit sbatch experiments/igm330_retrain/live_model_test_sbatch.sh
 """
 
 import os
@@ -43,7 +46,8 @@ import frost.glacier_model.igm_wrapper as W  # noqa: E402
 
 RGI = 'RGI2000-v7.0-G-11-01706'
 SRC = os.path.join('data/results/central_europe_combined_retrain', RGI)
-TARGET = 'data/results/igm330_live_test'
+RULE = sys.argv[2] if len(sys.argv) > 2 else 'igm_default'
+TARGET = 'data/results/igm330_live_test' + ('' if RULE == 'igm_default' else f'_{RULE}')
 ELAS = [2950.0, 3000.0, 3050.0, 3100.0, 2900.0, 3150.0, 3020.0, 2980.0]
 YEARS = (2000, 2020)
 
@@ -71,8 +75,8 @@ def run_mode(mode):
         W.forward('Calibration', False, True, i, 'ELA', usurf,
                   {'ela': ela, 'abl_grad': 7.0, 'acc_grad': 2.0}, *YEARS, wd, None,
                   emulator_path=emulator, max_velbar=1000, in_process=True,
-                  emulator_retrain='igm_default')
-        print(f'TIMING {mode} {name} ela {ela}: {time.time() - t0:.1f} s', flush=True)
+                  emulator_retrain=RULE)
+        print(f'TIMING {RULE} {mode} {name} ela {ela}: {time.time() - t0:.1f} s', flush=True)
 
 
 def compare():

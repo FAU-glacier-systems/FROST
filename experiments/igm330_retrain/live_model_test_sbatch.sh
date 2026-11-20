@@ -6,6 +6,7 @@
 # Submit from an Alex login node, in the repo root:
 #   sbatch experiments/igm330_retrain/live_model_test_sbatch.sh          (fresh + live)
 #   sbatch experiments/igm330_retrain/live_model_test_sbatch.sh live     (reuse fresh_*)
+#   RULE=credit sbatch experiments/igm330_retrain/live_model_test_sbatch.sh   (other retrain rule)
 
 #SBATCH --nodes=1
 #SBATCH --partition=a40
@@ -17,6 +18,7 @@
 
 module load python
 conda activate igm32-frost
-[ "$1" = live ] || python experiments/igm330_retrain/live_model_test.py fresh
-python experiments/igm330_retrain/live_model_test.py live
-python experiments/igm330_retrain/live_model_test.py compare
+RULE=${RULE:-igm_default}
+[ "$1" = live ] || python experiments/igm330_retrain/live_model_test.py fresh "$RULE"
+python experiments/igm330_retrain/live_model_test.py live "$RULE"
+python experiments/igm330_retrain/live_model_test.py compare "$RULE"
