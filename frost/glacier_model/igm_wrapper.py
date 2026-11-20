@@ -425,8 +425,6 @@ def forward(exp, output1D, output2D_3D, member_id, smb_model, usurf, smb,
         igm_params['processes']['clim_1D_3D']['ref_period'] = [2000, 2019]
         igm_params['processes']['clim_1D_3D']['temp_bias'] = temp_bias
         igm_params['processes']['clim_1D_3D']['prcp_fac'] = prcp_fac
-        igm_params['processes']['clim_1D_3D'][
-            'prcp_gradient'] = 0.00035  # https://hess.copernicus.org/articles/24/5355/2020/
         igm_params['processes']['clim_1D_3D']['temp_default_gradient'] = \
             float(smb.get('temp_gradient', -6.5)) / 1000
         igm_params['processes']['clim_1D_3D']['update_freq'] = 1

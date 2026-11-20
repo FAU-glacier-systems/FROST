@@ -67,15 +67,6 @@ def initialize(cfg, state):
     print('CLIMATE PRECIPITATION FACTOR')
     print(state.prcp_fac)
 
-    if cfg.processes.clim_1D_3D.prcp_gradient == []:
-        print('WARNING: no precipitation gradient defined. Setting default: 0.00035')
-        state.prcp_gradient = 0.00035
-    else:
-        state.prcp_gradient = np.array(cfg.processes.clim_1D_3D.prcp_gradient).astype(np.float32)
-
-    print('CLIMATE PRECIPITATION GRADIENT')
-    print(state.prcp_gradient)
-
     if cfg.processes.clim_1D_3D.temp_default_gradient == []:
         print('WARNING: no temperature default gradient defined. Setting default: -.0.0065')
         state.temp_default_gradient = -0.0065
@@ -92,7 +83,6 @@ def initialize(cfg, state):
 # start JJF
     #state.temp_bias = oggm_mb_calib["temp_bias"]
     #state.prcp_fac = oggm_mb_calib["prcp_fac"]
-    #state.prcp_fac = oggm_mb_calib["prcp_gradient"]
     #print(cfg)
     #print(os.getcwd())
 
@@ -120,7 +110,9 @@ def initialize(cfg, state):
     state.temp = temp.reshape((nb_y, nb_m))
     state.temp_std = temp_std.reshape((nb_y, nb_m))
 
-    # correct the temperature and precipitation with factor and bias
+    # correct the temperature and precipitation with factor and bias; the
+    # precipitation is the same at every elevation (no precipitation
+    # gradient, as OGGM's TI model and frost/glacier_model/no_flow.ti_month)
     state.temp = state.temp + state.temp_bias
     state.prec = state.prec * state.prcp_fac
 
