@@ -885,12 +885,12 @@ def smb_scatter(ax, summary, profiles, colors, markers):
 def run_configuration(experiment, flow=True):
     """EnKF block of pipeline_config.yaml and params_inversion.yaml of
     experiments/<experiment> (empty where missing). Experiments with both
-    kinds of glaciers (central_europe_TI) have pipeline_config_igm.yaml and
-    pipeline_config_noflow.yaml instead."""
+    kinds of glaciers have pipeline_config_igm.yaml (central_europe_TI) or
+    pipeline_config.yaml (igm330_TI) and pipeline_config_noflow.yaml."""
     folder = os.path.join('experiments', experiment)
-    config = os.path.join(folder, 'pipeline_config.yaml')
+    config = os.path.join(folder, f'pipeline_config_{"igm" if flow else "noflow"}.yaml')
     if not os.path.exists(config):
-        config = os.path.join(folder, f'pipeline_config_{"igm" if flow else "noflow"}.yaml')
+        config = os.path.join(folder, 'pipeline_config.yaml')
     loaded = []
     for path in (config, os.path.join(folder, 'params_inversion.yaml')):
         content = {}

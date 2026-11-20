@@ -1,0 +1,13 @@
+run	parameter	unit	n	n_censored	r	bias	mae	inside_1sigma_pct	inside_2sigma_pct	median_std
+new	ela	ice	16	8	0.0339	-3.15e+03	3.15e+03	0	0	0.815
+new	abl	ice	25	0	0.00378	-4.63	4.63	0	4	0.365
+new	abl	w.e.	25	0	0.00378	-4.84	4.84	0	0	0.332
+new	acc	ice	19	0	0.277	-0.411	1.21	36.8	57.9	0.612
+new	acc	w.e.	19	0	0.277	-0.509	1.18	42.1	52.6	0.557
+submitted	ela	ice	16	8	0.676	29.2	120	54.2	75	98.8
+submitted	abl	ice	25	0	0.128	1.82	4.08	40	64	2.73
+submitted	abl	w.e.	25	0	0.128	1.03	3.62	40	72	2.48
+submitted	acc	ice	19	0	0.000423	0.822	1.82	47.4	78.9	1.26
+submitted	acc	w.e.	19	0	0.000423	0.613	1.68	47.4	78.9	1.14
+new	profile	w.e.	25	0		0.304	0.88		64.1	
+submitted	profile	w.e.	25	0		0.113	1.13		72.4	

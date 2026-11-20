@@ -1,0 +1,8 @@
+RGI2000-v7.0-G-11-03124 Vernagtferner
+RGI2000-v7.0-G-11-03450 Ghiacciaio_di_Malevalle
+RGI2000-v7.0-G-11-01976 Jamtalferner
+RGI2000-v7.0-G-11-03803 Zettalunitzkees
+RGI2000-v7.0-G-11-02869 Careser
+RGI2000-v7.0-G-11-02875 Vedretta_Lunga
+RGI2000-v7.0-G-11-01075 Adlergletscher
+RGI2000-v7.0-G-11-02484 Ghiacciaio_del_Basòdino
