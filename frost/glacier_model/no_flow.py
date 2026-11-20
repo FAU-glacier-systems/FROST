@@ -20,7 +20,8 @@ same way (-H/20), so its information enters through the start thickness
 instead of biasing the ablation gradient low (Basodino: a quarter of the
 cells melt out at the observed rates, Vedretta Lunga a fifth, Careser a
 ninth). Without flow nothing leaves the accumulation area or reaches cells
-outside the ice mask.
+outside the ice mask. The TI SMB (smb_ti) gets the same ice-mask rule in
+forward.
 """
 
 import os
@@ -113,7 +114,7 @@ def ti_from_results(result):
 def smb_ti(usurf, climate, year, params, snow=None, snow_ratio=None):
     """SMB (m ice/yr) of the calendar year `year` for members (params of
     ti_params): IGM's clim_1D_3D + smb_1D_3D, i.e. OGGM's monthly TI model
-    (ti_month); no ice-mask rule."""
+    (ti_month); no ice-mask rule here (forward applies it)."""
     index = year - climate['yr_0']
     smb = np.zeros(np.broadcast_shapes(usurf.shape, params['melt_f'].shape), np.float32)
     for month in range(12):
@@ -184,6 +185,10 @@ def forward(usurf, topg, icemask, ela=None, gradabl=None, gradacc=None,
             smb = smb_simple(topg + thk, icemask, ela, gradabl, gradacc)
         else:
             smb = smb_ti(topg + thk, ti['climate'], year, params, snow, snow_ratio)
+            # outline rule of smb_simple: without it, cells above the snow
+            # line outside the glacier grew ice (Adlergletscher +134 % of its
+            # 2000 volume by 2020); the band data are inside the outline
+            smb = np.where((smb < 0) | icemask, smb, -10.0)
         thk = np.maximum(thk + smb, 0.0)
         surfaces.append(topg + thk)
         thicknesses.append(thk)
