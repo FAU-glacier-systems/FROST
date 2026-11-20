@@ -1,6 +1,7 @@
 experiment_name: "test_default"     # Name of the experiment
 rgi_id: "RGI2000-v7.0-G-11-01706"   # Glacier ID
-smb_model: "ELA"                    # Type of SMB model used
+smb_model: "ELA"                    # SMB model to calibrate: "ELA" or "TI" (temperature index); the
+                                    # prior blocks at the end must match it (both are given there)
 
 pipeline_steps:
   download: true                   # Enable downloading input data
@@ -38,6 +39,9 @@ EnKF:
   glacier_wide_dhdt: false         # the band covariance already constrains the glacier mean
   # ice_flow: none                 # for glaciers with an ITS_LIVE p99 on the ice < 5 m/yr: dh/dt = smb, no IGM (experiments/central_europe_noflow)
 
+  # Prior of the SMB parameters: the block of the chosen smb_model.
+  # smb_model ELA: ELA (m) and the ablation and accumulation gradients (m ice/yr per km),
+  # constant 2000-2020; no climate data needed
   smb_prior_mean:
     ela: 3144                      # Prior mean ELA
     abl_grad: 7.55                 # Prior mean ablation gradient
@@ -47,6 +51,19 @@ EnKF:
     ela: 498                       # Std. dev. of ELA prior
     abl_grad: 9.04                 # Std. dev. of ablation gradient prior
     acc_grad: 3.39                 # Std. dev. of accumulation gradient prior
+
+  # smb_model TI: OGGM's monthly temperature-index model on the W5E5 climate, which the
+  # download step gets from the OGGM shop (climate_historical.nc); replace the two
+  # blocks above by these (experiments/igm330_TI uses them):
+  # prior_from_oggm: true            # prior mean from OGGM's calibration of the glacier (mb_calib.json)
+  # smb_prior_mean:                  # used for any parameter OGGM does not give
+  #   melt_f: 5.0                    # melt factor, mm w.e. / (degC day)
+  #   prcp_fac: 1.42                 # precipitation factor
+  #   temp_bias: 0.92                # temperature bias, degC
+  # smb_prior_std:
+  #   melt_f: 2.5
+  #   prcp_fac: 0.5
+  #   temp_bias: 1.0
 
 
 

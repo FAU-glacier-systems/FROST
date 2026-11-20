@@ -49,6 +49,22 @@ posterior spread.
 `experiments/central_europe_combined_retrain/readme_profiles.py`; the full
 evaluation is in `experiments/README.md`.*
 
+### Since v2.0 (development branch `v3-dev`)
+
+- **IGM 3.3.0**, the latest IGM release, with IGM's own emulator
+  retraining rules in the forward runs (`igm_wrapper.RETRAIN_RULES`;
+  `emulator_retrain: true` takes `credit`: 300 iterations at the start, then
+  5 whenever the glacier has changed enough, so the speed changes smoothly).
+- **Faster**: one process keeps IGM's compiled ice-flow model and runs the
+  ensemble members of a glacier one after the other (live IGM model, about
+  7 s instead of 28 s per member on Rhonegletscher, identical results).
+- **Both SMB models tested on the 25 GLAMOS / WGMS glaciers**
+  (`experiments/igm330_live_combined` for ELA, `experiments/igm330_TI` for
+  TI). Primary score: the elevation-band mass balance; ELA and gradients
+  are a secondary check. The TI model also reproduces the year-to-year
+  glacier-wide balance (median r 0.76 against 0.08 for the constant ELA
+  model).
+
 Known limitation: the calibration treats ice thickness and sliding as known.
 Where the modelled ice flux into the tongue is too small (most clearly on
 Grosser Aletschgletscher), the missing emergence is compensated by a flatter
@@ -70,12 +86,33 @@ python -m pytest tests/test_smoke.py    # imports and configs, a few seconds
 ```
 
 `environment.yml` installs FROST itself (editable, with the test extras) and
-IGM at a fixed commit (IGM 3.3.0 on the development branch `v3-dev`; FROST
-v2.0 was run with IGM 3.2.1 plus 5 commits, see the note in
-`environment.yml`); the other dependencies and their
-versions are listed in `setup.py`. The end-to-end test runs the default setup
-on Rhonegletscher and needs a GPU (`tests/run_end_to_end.sh` on a Slurm
-cluster).
+IGM from GitHub at a fixed commit: IGM 3.3.0 plus a fix on IGM's main branch
+without which the download step (an IGM run without ice flow) fails. Do not
+install IGM separately with `pip install igm-model`; if you have an IGM
+checkout, install that commit (see `environment.yml`). Check with
+`python -c "import importlib.metadata as m; print(m.version('igm-model'))"`
+(3.3.0). FROST v2.0 was run with IGM 3.2.1 plus 5 commits. The other
+dependencies and their versions are listed in `setup.py`. The end-to-end
+test runs the default setup on Rhonegletscher and needs a GPU
+(`tests/run_end_to_end.sh` on a Slurm cluster).
+
+The download step needs internet access (on a cluster, set the proxy in the
+job script as `hpc_sbatch.sh` does).
+
+### Data
+
+| Data | Used for | How |
+|---|---|---|
+| Elevation change 2000-2020, Hugonnet et al. (2021) | calibration target | **download yourself** (step 2 below) |
+| RGI 7.0 outline, DEM, GlaThiDa | glacier domain; thickness check | OGGM shop, by the pipeline |
+| Monthly climate W5E5 (`climate_historical.nc`) and OGGM's own TI calibration (`mb_calib.json`) | TI model only | OGGM shop, by the pipeline |
+| Ice thickness IceBoost v2.0 (or Millan et al. 2022) | start geometry | Zenodo, by the pipeline |
+| Surface velocity ITS_LIVE (or Millan et al. 2022) | sliding inversion | ITS_LIVE, by the pipeline |
+| GLAMOS (in `data/raw/glamos`), WGMS Fluctuations of Glaciers | evaluation only, never calibration | WGMS: download yourself for the evaluation scripts (`data/raw/README.md`) |
+
+The ELA model needs no climate data. The TI model runs on the glacier's
+W5E5 climate cell as OGGM provides it; other climate forcing (e.g. CORDEX
+projections) must be in the same OGGM format (`experiments/alps_TI_projections`).
 
 ---
 
@@ -89,18 +126,31 @@ cluster).
 1. **Set up an experiment.** Copy `experiments/test_default` to
    `experiments/<experiment-name>` and adapt `pipeline_config.yml`:
    - `experiment_name`, `rgi_id` (RGI 7.0, e.g. `RGI2000-v7.0-G-11-01706`)
-   - `smb_model`: `ELA` (ELA and two gradients) or `TI` (temperature index;
-     `EnKF: prior_from_oggm: true` takes the prior from OGGM's calibration)
+   - `smb_model`: the SMB model to calibrate, `ELA` or `TI` (table below);
+     `EnKF: smb_prior_mean` and `smb_prior_std` must hold its parameters,
+     which the pipeline checks before it starts (the template has both
+     blocks)
    - `EnKF`: prior mean and std of the SMB parameters, ensemble size,
      iterations, model error; `ice_flow: none` for glaciers that barely move
      (ITS_LIVE 99th percentile on the ice below 5 m/yr)
    - `params_inversion.yaml`: the sliding inversion (usually unchanged)
+
+   | `smb_model` | `ELA` | `TI` |
+   |---|---|---|
+   | Model | SMB = gradient x (z - ELA), ablation and accumulation gradient; constant in time | OGGM's monthly temperature-index model: melt above -1 degC, snow below 0-2 degC |
+   | Calibrated parameters | `ela` (m), `abl_grad`, `acc_grad` (m ice/yr per km) | `melt_f` (mm w.e. per degC day), `prcp_fac`, `temp_bias` (degC); optionally `temp_gradient` (K/km) |
+   | Prior | in the config | `prior_from_oggm: true`: mean from OGGM's calibration of the glacier, std in the config |
+   | Climate data | none | W5E5 monthly, from the download step |
+   | Gives | mean SMB profile 2000-2020 | SMB of every year and month (projections with a climate forcing) |
+
+   The run prints the SMB model and its parameters at the start, and
+   `calibration_results.json` records them (`smb_model`, `parameters`).
 2. **Get the elevation change.** Download the dh/dt tiles of Hugonnet et al.
    (2021) for your region and period and set `download: hugonnet_directory`,
    e.g. `data/raw/hugonnet/11_rgi60_2000-01-01_2020-01-01`:
    https://www.sedoo.fr/theia-publication-products/?uuid=c428c5b9-df8f-4f86-9b75-e04c778e29b9
    Everything else (outline, DEM, climate, thickness, velocity) is downloaded
-   by the pipeline.
+   by the pipeline (table *Data* above).
 3. **Run the pipeline.** `pipeline_steps` in the config switches the steps
    (download, inversion, calibration) on and off.
 
@@ -113,8 +163,9 @@ cluster).
    ```
 
 4. **Look at the results** in `data/results/<experiment-name>/<rgi_id>/`:
-   - `calibration_results.json`: posterior ensemble, mean, std and the misfit
-     of every iteration
+   - `calibration_results.json`: the SMB model (`smb_model`), its parameters
+     (`parameters`, in the order of the columns of `final_ensemble`), the
+     prior, the posterior ensemble, mean, std and the misfit of every iteration
    - `Monitor/status.png`: observations and parameters over the iterations;
      `Monitor/maps_prognostic.png`: observed and modelled maps of dh/dt,
      velocity, flux divergence and SMB (`monitor_plots: all` keeps one file

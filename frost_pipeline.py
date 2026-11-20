@@ -31,6 +31,12 @@ def oggm_prior(rgi_id_dir, rgi_id):
 
 def run_frost_pipeline(cfg):
     print(f"Running FROST for RGI ID: {cfg['rgi_id']}")
+    # a wrong SMB setup fails here, not after the download and inversion
+    frost_calibration.check_smb_setup(cfg['smb_model'], cfg['EnKF'].get('smb_prior_mean'),
+                                      cfg['EnKF'].get('smb_prior_std'),
+                                      cfg['EnKF'].get('prior_from_oggm', False))
+    print(f"SMB model: {cfg['smb_model']} "
+          f"({frost_calibration.SMB_MODELS[str(cfg['smb_model'])]['text']})")
     print(f"Steps: download={cfg['pipeline_steps']['download']}, "
           f"inversion={cfg['pipeline_steps']['inversion']}, "
           f"calibration={cfg['pipeline_steps']['calibrate']}")

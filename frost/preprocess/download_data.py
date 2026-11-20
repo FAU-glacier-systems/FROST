@@ -5,6 +5,7 @@
 
 # import required packages
 import argparse
+import importlib.util
 import os
 import numpy as np
 import netCDF4
@@ -321,6 +322,24 @@ def scale_raster(input_file, output_file, scale_factor):
     print(f"Scaled raster saved to {output_file} with metadata.")
 
 
+def igm_run_bug():
+    """Message if the installed igm_run has the bug of the IGM 3.3.0 release:
+    it reads processes.iceflow...fp16_inference in every run, so IGM runs
+    without ice flow, such as the OGGM-shop download, fail at the start
+    (fixed on IGM main, ca3a8b75); '' otherwise. Reads the source as text,
+    without importing IGM."""
+    spec = importlib.util.find_spec('igm.igm_run')
+    if spec is None or not spec.origin:
+        return ''
+    with open(spec.origin) as f:
+        source = f.read()
+    if 'if cfg.processes.iceflow.unified.network.fp16_inference:' not in source:
+        return ''
+    return ('The installed IGM (the 3.3.0 release) reads processes.iceflow in every run, so '
+            'IGM runs without ice flow such as this download fail. Install the IGM commit '
+            'pinned in environment.yml, which has the fix.')
+
+
 # Function to handle the main logic
 def download_OGGM_shop(rgi_id, rgi_id_dir, flag_OGGM_climate,
                        thickness_product='iceboost', velocity_product='itslive',
@@ -397,6 +416,8 @@ def download_OGGM_shop(rgi_id, rgi_id_dir, flag_OGGM_climate,
         os.remove(os.path.join('data', 'input.nc'))
 
     if run_oggm_shop() != 0:
+        if igm_run_bug():
+            raise RuntimeError(f'OGGM shop failed for {rgi_id}. {igm_run_bug()}')
         # OGGM writes no glathida_data.csv for a glacier without GlaThiDa
         # points, but IGM reads it whenever incl_glathida is set
         glathida_file = os.path.join('data', rgi_id, 'glathida_data.csv')

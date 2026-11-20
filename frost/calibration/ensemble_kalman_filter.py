@@ -467,6 +467,7 @@ class EnsembleKalmanFilter:
                      synthetic, method='enkf', diagnostics=None):
         self.params = dict()
         self.params['method'] = method
+        self.params['smb_model'] = str(self.smb_model)
         self.params['diagnostics'] = diagnostics or []
 
         keys = self.initial_smb.keys()

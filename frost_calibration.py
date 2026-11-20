@@ -5,6 +5,7 @@
 
 import argparse
 import os.path
+import shutil
 
 import numpy as np
 import yaml
@@ -12,6 +13,45 @@ import yaml
 from frost.calibration.ensemble_kalman_filter import EnsembleKalmanFilter
 from frost.calibration.observation_provider import ObservationProvider
 from frost.visualization.monitor import Monitor
+
+# The SMB models and their parameters (keys of smb_prior_mean and
+# smb_prior_std in the config); TI may also calibrate temp_gradient (K/km)
+SMB_MODELS = {
+    'ELA': dict(required=('ela', 'abl_grad', 'acc_grad'), optional=(),
+                text='ELA model: equilibrium line altitude (m), ablation and accumulation '
+                     'gradient (m ice/yr per km), constant 2000-2020'),
+    'TI': dict(required=('melt_f', 'prcp_fac', 'temp_bias'), optional=('temp_gradient',),
+               text="temperature-index model (OGGM, monthly W5E5 climate of "
+                    "climate_historical.nc): melt factor (mm w.e. per degC day), "
+                    "precipitation factor, temperature bias (degC)"),
+}
+
+
+def check_smb_setup(smb_model, smb_prior_mean, smb_prior_std, prior_from_oggm=False):
+    """Stop with a clear message unless smb_model is ELA or TI and the
+    prior mean and std hold exactly its parameters (prior_from_oggm, TI
+    only, gives the mean of melt_f, prcp_fac and temp_bias)."""
+    if str(smb_model) not in SMB_MODELS:
+        raise ValueError(f"smb_model '{smb_model}' is unknown: use 'ELA' or 'TI'")
+    model = SMB_MODELS[str(smb_model)]
+    if prior_from_oggm and str(smb_model) != 'TI':
+        raise ValueError(f'prior_from_oggm takes the TI prior from OGGM; it does not apply '
+                         f'to smb_model {smb_model}')
+    allowed = model['required'] + model['optional']
+    oggm = model['required'] if prior_from_oggm else ()
+    for name, prior, given in [('smb_prior_mean', smb_prior_mean or {}, oggm),
+                               ('smb_prior_std', smb_prior_std or {}, ())]:
+        missing = [p for p in model['required'] if p not in prior and p not in given]
+        unknown = [p for p in prior if p not in allowed]
+        problems = ([f'lacks {", ".join(missing)}'] if missing else []) + \
+            ([f'has {", ".join(unknown)}, not a parameter of {smb_model}'] if unknown else [])
+        if problems:
+            raise ValueError(
+                f'smb_model {smb_model} calibrates {", ".join(model["required"])}'
+                + (f' (optionally {", ".join(model["optional"])})' if model['optional'] else '')
+                + f'; EnKF {name} ' + ' and '.join(problems)
+                + '. The prior blocks of experiments/test_default/pipeline_config.yml show '
+                  'both models.')
 
 
 def main(rgi_id, rgi_id_dir, smb_model, synthetic, ensemble_size, inflation,
@@ -89,8 +129,22 @@ def main(rgi_id, rgi_id_dir, smb_model, synthetic, ensemble_size, inflation,
     if not os.path.exists(rgi_id_dir):
         os.makedirs(rgi_id_dir, exist_ok=True)
 
+    check_smb_setup(smb_model, smb_prior_mean, smb_prior_std)
+    climate = os.path.join(rgi_id_dir, 'climate_historical.nc')
+    if str(smb_model) == 'TI' and not os.path.exists(climate):
+        # the download step puts it there only when it ran with smb_model TI;
+        # the OGGM shop keeps it in Preprocess either way
+        shop = os.path.join(rgi_id_dir, 'Preprocess', 'data', rgi_id, 'climate_historical.nc')
+        if not os.path.exists(shop):
+            raise FileNotFoundError(f'smb_model TI needs the monthly climate {climate} (W5E5 '
+                                    'from the OGGM shop); run the download step '
+                                    '(pipeline_steps: download: true)')
+        shutil.copy(shop, climate)
+        print(f'Climate for the TI model: {shop} copied to {climate}')
+
     print(f'Running calibration for glacier: {rgi_id}')
-    print(f'SMB model: {smb_model}')
+    print(f'SMB model: {smb_model}, {SMB_MODELS[str(smb_model)]["text"]}; calibrated: '
+          f'{", ".join(smb_prior_mean)}')
     print(f'Ensemble size: {ensemble_size}',
           f'Inflation: {inflation}',
           f'Iterations: {iterations}',
